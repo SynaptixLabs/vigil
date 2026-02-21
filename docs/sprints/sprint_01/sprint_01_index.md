@@ -32,56 +32,78 @@ No export, no reports, no replay. Just **capture everything, lose nothing**.
 
 ## Phase Plan
 
-### Phase 1 — Storage + Messaging Foundation (DEV) ~10V
+> **Canonical detail:** `todo/sprint_01_team_dev_todo.md` (DEV) and `todo/sprint_01_team_qa_todo.md` (QA).
+> IDs below match the canonical todos exactly.
+
+### Phase 1 — Infrastructure Upgrades (DEV) ~4V
 
 | # | Task | File(s) | V |
 |---|---|---|---|
-| D101 | Dexie database schema + CRUD | `src/core/db.ts` | 3 |
-| D102 | Background message handler (router) | `src/background/message-handler.ts` | 2 |
-| D103 | Session manager (state machine) | `src/background/session-manager.ts` | 3 |
-| D104 | Keep-alive (chrome.alarms) | `src/background/keep-alive.ts` | 1 |
-| D105 | Update service-worker.ts (import + wire all) | `src/background/service-worker.ts` | 1 |
+| D101 | Message handler (type-safe router) | `src/background/message-handler.ts` | 2 |
+| D102 | Content messaging (onMessage integration) | `src/content/content-script.ts` | 1 |
+| D103 | Keep-alive (chrome.alarms) | `src/background/keep-alive.ts` | 1 |
+| D104 | Branded extension icons | `public/icons/icon-*.png` | 0 |
+| D105 | Dexie database schema + CRUD (5 tables) | `src/core/db.ts` | 3 |
 
-### Phase 2 — Recording Engine (DEV) ~10V
-
-| # | Task | File(s) | V |
-|---|---|---|---|
-| D107 | rrweb recorder wrapper | `src/content/recorder.ts` | 5 |
-| D108 | Action extractor (rrweb events → Action[]) | `src/content/action-extractor.ts` | 3 |
-| D109 | Selector engine (smart CSS selectors) | `src/content/selector-engine.ts` | 2 |
-| D110 | Update content-script.ts (import recorder, listen for messages) | `src/content/content-script.ts` | 1 |
-
-### Phase 3 — Overlay UI (DEV) ~9V
+### Phase 2 — Session Lifecycle — R001 (DEV) ~5V
 
 | # | Task | File(s) | V |
 |---|---|---|---|
-| D112 | Shadow DOM mount | `src/content/overlay/mount.ts` | 2 |
-| D113 | ControlBar (Record/Pause/Stop/Screenshot/Bug) | `src/content/overlay/ControlBar.tsx` | 3 |
-| D114 | BugEditor (inline form with auto-context) | `src/content/overlay/BugEditor.tsx` | 3 |
-| D115 | Overlay CSS (isolated) | `src/content/styles/overlay.css` | 1 |
+| D106 | Session manager (state machine) | `src/background/session-manager.ts` | 3 |
+| D107 | NewSession popup form | `src/popup/pages/NewSession.tsx` | 2 |
+| D108 | SessionList popup view | `src/popup/pages/SessionList.tsx` | 2 |
+| D109 | Popup routing (App.tsx) | `src/popup/App.tsx` | 1 |
 
-### Phase 4 — Popup + Screenshot (DEV) ~8V
+### Phase 3 — Recording Engine — R002 (DEV) ~11V
 
 | # | Task | File(s) | V |
 |---|---|---|---|
-| D116 | Screenshot capture | `src/background/screenshot.ts` | 2 |
-| D117 | Popup: NewSession form (wired to background) | `src/popup/pages/NewSession.tsx` | 2 |
-| D118 | Popup: SessionList (read from Dexie, show status) | `src/popup/pages/SessionList.tsx` | 2 |
-| D119 | Update App.tsx (routing between list ↔ new session) | `src/popup/App.tsx` | 1 |
-| D120 | Branded extension icons | `public/icons/icon-*.png` | 1 |
+| D110 | rrweb recorder wrapper (start/pause/stop) | `src/content/recorder.ts` | 5 |
+| D111 | Event buffer + flush to background | `src/content/recorder.ts`, `src/background/session-manager.ts` | 2 |
+| D112 | Cross-page persistence (re-inject on nav) | `src/content/content-script.ts`, `src/background/session-manager.ts` | 2 |
+| D113 | Action extractor (rrweb → Action[]) | `src/content/action-extractor.ts` | 3 |
+| D114 | Selector engine (smart CSS selectors) | `src/content/selector-engine.ts` | 2 |
 
-### Phase 5 — Tests (DEV + QA) ~10V
+### Phase 4 — Control Bar + Capture — R003, R004, R005 (DEV) ~10V
 
-| # | Task | File(s) | Owner | V |
-|---|---|---|---|---|
-| D106 | Unit: db, session-manager, message-handler | `tests/unit/core/`, `tests/unit/background/` | DEV | 2 |
-| D111 | Unit: action-extractor, selector-engine | `tests/unit/content/` | DEV | 2 |
-| D121 | Integration: full pipeline (create→record→bug→stop→verify) | `tests/integration/session-pipeline.test.ts` | DEV | 2 |
-| Q101 | E2E: Create session → recording starts | `tests/e2e/session-create.spec.ts` | QA | 2 |
-| Q102 | E2E: Control bar visible + functional | `tests/e2e/control-bar.spec.ts` | QA | 1 |
-| Q103 | E2E: Screenshot saves to IndexedDB | `tests/e2e/screenshot-capture.spec.ts` | QA | 1 |
-| Q104 | E2E: Bug editor opens, pre-fills, saves | `tests/e2e/bug-editor.spec.ts` | QA | 1 |
-| Q105 | E2E: Stop → session COMPLETED | `tests/e2e/session-lifecycle.spec.ts` | QA | 1 |
+| # | Task | File(s) | V |
+|---|---|---|---|
+| D115 | Shadow DOM mount | `src/content/overlay/mount.ts` | 2 |
+| D116 | ControlBar (Record/Pause/Stop/Screenshot/Bug) | `src/content/overlay/ControlBar.tsx` | 3 |
+| D117 | Screenshot capture | `src/background/screenshot.ts` | 2 |
+| D118 | Bug/Feature editor (inline form with auto-context) | `src/content/overlay/BugEditor.tsx` | 3 |
+| D119 | Overlay CSS (Shadow DOM scoped) | `src/content/styles/overlay.css` | 1 |
+
+### Phase 5 — Unit + Integration Tests (DEV) ~6V
+
+| # | Task | File(s) | V |
+|---|---|---|---|
+| D120 | Unit: db.ts CRUD | `tests/unit/core/db.test.ts` | 1 |
+| D121 | Unit: session-manager state machine | `tests/unit/background/session-manager.test.ts` | 1 |
+| D122 | Unit: action-extractor | `tests/unit/content/action-extractor.test.ts` | 1 |
+| D123 | Unit: selector-engine | `tests/unit/content/selector-engine.test.ts` | 1 |
+| D124 | Integration: session lifecycle pipeline | `tests/integration/session-lifecycle.test.ts` | 2 |
+| D125 | All tests green (`npx vitest run`) | — | 0 |
+
+### Phase 6 — Verification (DEV)
+
+| # | Task | V |
+|---|---|---|
+| D126 | `npm run build` — clean | 0 |
+| D127 | `npx tsc --noEmit` — clean | 0 |
+| D128 | `npx eslint src/` — clean | 0 |
+| D129 | Manual smoke test on TaskPilot | 0 |
+
+### QA — E2E Specs (~10V, after DEV Phase 4)
+
+| # | Task | File(s) | V |
+|---|---|---|---|
+| Q100 | Enhance QA target app (recording edge cases) | `tests/fixtures/target-app/` | 1 |
+| Q101 | E2E: Create session → recording starts | `tests/e2e/session-create.spec.ts` | 2 |
+| Q102 | E2E: Control bar visible + functional | `tests/e2e/control-bar.spec.ts` | 1 |
+| Q103 | E2E: Screenshot saves to IndexedDB | `tests/e2e/screenshot-capture.spec.ts` | 1 |
+| Q104 | E2E: Bug editor opens, pre-fills, saves | `tests/e2e/bug-editor.spec.ts` | 2 |
+| Q105 | E2E: Session lifecycle end-to-end | `tests/e2e/session-lifecycle.spec.ts` | 1 |
 
 ---
 

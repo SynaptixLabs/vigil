@@ -349,4 +349,112 @@ Used for manual acceptance testing by the Founder. Not wired into automated E2E.
 
 ---
 
-*Last updated: 2026-02-21*
+---
+
+## Sprint 01 E2E Patterns
+
+> **QA Team Reference.** Added Sprint 01.
+
+### Shadow DOM — Key Rule
+
+The overlay (`ControlBar`, `BugEditor`) renders inside a Shadow DOM. Playwright **automatically pierces open shadow roots** — `getByTestId()` and `locator('[data-testid="..."]')` work without special syntax.
+
+**DEV requirement:** Shadow root MUST be created with `mode: 'open'`. Closed shadow roots block Playwright and make E2E impossible.
+
+```typescript
+// This works transparently whether the element is in Shadow DOM or not:
+await expect(page.getByTestId('refine-control-bar')).toBeVisible();
+await page.getByTestId('btn-pause').click();
+```
+
+---
+
+### Session Helper
+
+All Sprint 01 specs share a `createSession` helper in `tests/e2e/helpers/session.ts`. Import instead of duplicating popup interactions.
+
+```typescript
+import { test, expect } from './fixtures/extension.fixture';
+import { createSession, openTargetApp } from './helpers/session';
+
+test('my test', async ({ context, extensionId }) => {
+  const { popupPage } = await createSession(context, extensionId, 'My Session');
+  const page = await openTargetApp(context, '/form.html'); // optional path
+  await expect(page.getByTestId('refine-control-bar')).toBeVisible({ timeout: 5000 });
+});
+```
+
+---
+
+### data-testid Contract — Sprint 01
+
+DEV **must** implement these `data-testid` attributes exactly. QA specs depend on them.
+
+#### Popup
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `btn-new-session` | Button | Opens NewSession form from SessionList |
+| `input-session-name` | Text input | Session name field in NewSession form |
+| `btn-start-recording` | Button | Submits NewSession form, sends START_SESSION |
+| `recording-status` | Any | Shows current session status text (e.g., "RECORDING") |
+| `session-list-item` | Repeated | One per session in SessionList |
+| `session-status` | Any | Status text in session detail view |
+| `session-duration` | Any | Duration in session detail (non-empty after COMPLETED) |
+| `session-bug-count` | Any | Number of bugs logged (integer as text) |
+| `session-screenshot-count` | Any | Number of screenshots captured (integer as text) |
+
+#### Control Bar (Shadow DOM)
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `refine-control-bar` | Root container | Entire floating bar |
+| `recording-indicator` | Any | Status label — text: "RECORDING", "PAUSED" |
+| `btn-pause` | Button | Visible when RECORDING |
+| `btn-resume` | Button | Visible when PAUSED; hidden when RECORDING |
+| `btn-stop` | Button | Always visible during active session |
+| `btn-screenshot` | Button | Triggers screenshot capture |
+| `btn-bug` | Button | Opens BugEditor |
+
+#### Bug Editor (Shadow DOM)
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `refine-bug-editor` | Root container | Entire inline bug form |
+| `bug-editor-url` | Input or span | Pre-filled with current page URL |
+| `bug-editor-title` | Text input | Bug title — required |
+| `bug-editor-description` | Textarea | Bug description — optional |
+| `btn-save-bug` | Button | Saves bug and closes editor |
+| `btn-cancel-bug` | Button | Closes editor without saving |
+
+---
+
+### E2E Test Specs — Sprint 01
+
+| Spec | File | What it verifies |
+|---|---|---|
+| Session Create | `tests/e2e/session-create.spec.ts` | Popup form → RECORDING → control bar appears |
+| Control Bar | `tests/e2e/control-bar.spec.ts` | Pause/Resume/Stop + survives page navigation |
+| Screenshot | `tests/e2e/screenshot-capture.spec.ts` | Screenshot button → persisted to session |
+| Bug Editor | `tests/e2e/bug-editor.spec.ts` | Opens with pre-filled URL, saves bug, cancel works |
+| Session Lifecycle | `tests/e2e/session-lifecycle.spec.ts` | Full flow: create → navigate → bug → screenshot → COMPLETED |
+
+All specs are **contract-first** — written before DEV delivery. They will pass once DEV completes Phase 1–4.
+
+---
+
+### QA Target App — Sprint 01 Additions (Q100)
+
+Added to `tests/fixtures/target-app/` for rrweb recording coverage:
+
+| Page | Element | `data-testid` | Purpose |
+|---|---|---|---|
+| `form.html` | Textarea | `input-description` | Multiline input recording |
+| `form.html` | Date input | `input-date` | Date picker interaction |
+| `index.html` | Delayed div (2s) | `delayed-content` | Dynamic DOM mutation recording |
+| `index.html` | Toggle button | `toggle-section` | `aria-expanded` state change |
+| `index.html` | Toggle body | `toggle-body` | Hidden→visible state transition |
+
+---
+
+*Last updated: 2026-02-22*

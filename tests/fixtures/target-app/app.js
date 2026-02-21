@@ -29,6 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Index Page - Delayed content (appears after 2s)
+  const delayedContent = document.querySelector('[data-testid="delayed-content"]');
+  if (delayedContent) {
+    setTimeout(() => {
+      delayedContent.classList.remove('hidden');
+    }, 2000);
+  }
+
+  // Index Page - Expandable toggle section
+  const toggleBtn = document.getElementById('toggle-btn');
+  const toggleBody = document.getElementById('toggle-body');
+  if (toggleBtn && toggleBody) {
+    toggleBtn.addEventListener('click', () => {
+      const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+      toggleBody.classList.toggle('hidden', isExpanded);
+      toggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+      toggleBtn.textContent = isExpanded ? 'Show Details' : 'Hide Details';
+    });
+  }
+
   // Form Page - Validation and Submission
   const form = document.getElementById('test-form');
   const successMsg = document.querySelector('[data-testid="msg-success"]');

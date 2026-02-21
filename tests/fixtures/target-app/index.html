@@ -32,6 +32,29 @@
         <li>Item 4 - Clickable</li>
       </ul>
     </section>
+
+    <section>
+      <h3>Dynamic Content</h3>
+      <p class="hint">This element appears after a 2-second delay (tests dynamic DOM recording).</p>
+      <div id="delayed-content" data-testid="delayed-content" class="hidden">
+        Delayed content loaded!
+      </div>
+    </section>
+
+    <section>
+      <h3>Expandable Section</h3>
+      <button data-testid="toggle-section" id="toggle-btn" aria-expanded="false">
+        Show Details
+      </button>
+      <div id="toggle-body" class="hidden" data-testid="toggle-body">
+        <p>This content is revealed on click. Tests state change recording.</p>
+        <ul>
+          <li>Detail item A</li>
+          <li>Detail item B</li>
+          <li>Detail item C</li>
+        </ul>
+      </div>
+    </section>
   </main>
 
   <script src="app.js"></script>

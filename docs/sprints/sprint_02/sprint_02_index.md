@@ -1,204 +1,130 @@
-# sprint_02 — Sprint Index
+# Sprint 02 — Export & Ship
 
-**Sprint window:** 2026-02-25 → 2026-02-28
-**Owners:** `[FOUNDER]` / `[CTO]` / `[CPO]`
-
-## Status
-
-- Sprint status: 🟡 PLANNING
-- Current focus: Reports + Replay + Export — **ship the full product**
-- Key risks: Playwright codegen quality, rrweb-player integration, ZIP bundling in browser
+**Sprint window:** 2026-02-25 → 2026-02-27
+**Goal:** Ship the complete product. Reports, replay, Playwright export, ZIP bundles, keyboard shortcuts. After this sprint, Refine is **DONE**.
+**Budget:** ~46 Vibes
+**PRD scope:** R006, R007, R010, R011, R012, R013
 
 ---
 
-## Sprint Goal
+## What "Done" Looks Like
 
-Ship **Refine v1.0** — the complete product. After this sprint:
+FOUNDER records a session → stops → generates JSON + Markdown report → watches rrweb visual replay → exports Playwright `.spec.ts` → downloads ZIP bundle (replay + report + screenshots + spec). QA engineer opens the `.spec.ts`, runs it, it passes against the target app.
 
-1. Session report: JSON + Markdown with timeline, pages, actions, bugs, screenshots
-2. Visual replay: self-contained HTML file with rrweb-player (play/pause/speed/scrub)
-3. Playwright test export: action log → `.spec.ts` with smart selectors
-4. ZIP bundle: replay.html + report.json + report.md + screenshots/ + regression.spec.ts
-5. Full session management: list, view details, delete, export
-6. Keyboard shortcuts for power users
-
-**After Sprint 02: Refine is DONE. Ship it.**
-
-**Estimated effort:** ~46 Vibes
+**This is the complete product. Sprint 02 = ship.**
 
 ---
 
-## Team Structure
+## Infra from Sprint 00 + 01
 
-| Role | Tag | Scope |
-|---|---|---|
-| DEV | `[DEV:export]` | Report gen, replay bundler, Playwright codegen, ZIP export, session management, keyboard shortcuts, unit tests |
-| QA | `[QA]` | E2E tests for export flows, full regression, acceptance target validation |
-| CTO | `[CTO]` | Architecture compliance, final review, release prep |
-| FOUNDER | `[FOUNDER]` | Final acceptance: record session on Papyrus → export → hand to QA |
-
----
-
-## PRD Requirements Covered
-
-| Req | Description | Priority | Vibes | Owner |
-|---|---|---|---|---|
-| R006 | Session report generation (JSON + MD) | P0 | 8 | DEV |
-| R007 | Session list with delete capability | P0 | 5 | DEV |
-| R010 | Visual replay via rrweb-player | P1 | 10 | DEV |
-| R011 | Playwright test script export | P1 | 15 | DEV |
-| R012 | Export as ZIP bundle | P1 | 5 | DEV |
-| R013 | Keyboard shortcuts | P1 | 3 | DEV |
+| Asset | Status |
+|---|---|
+| Recording engine (rrweb + actions + screenshots + bugs) | ✅ Sprint 01 |
+| Dexie DB (5 tables, CRUD, cascading delete) | ✅ Sprint 01 |
+| Popup (session list + new session form) | ✅ Sprint 01 |
+| Control bar + bug editor in Shadow DOM | ✅ Sprint 01 |
+| Chrome messaging + session state machine | ✅ Sprint 01 |
+| All test infra (Vitest + Playwright + fixture) | ✅ Sprint 00-01 |
+| QA target app (3847) + TaskPilot demo (3900) | ✅ Sprint 00 |
 
 ---
 
-## Deliverables Checklist
+## Phase Plan
 
-### Phase 1: Report Generation — R006 (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 1 | `src/core/report-generator.ts` — JSON report from session data | DEV | ☐ |
-| 2 | Markdown report template — timeline, pages, actions, bugs, screenshots | DEV | ☐ |
-| 3 | Report triggered on session stop (auto-generate) + manual re-generate button | DEV | ☐ |
+### Phase 1 — Report Generation (DEV) ~13V
 
-### Phase 2: Session Management — R007 (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 4 | Enhanced session list in popup: name, date, duration, status, bug/feature/screenshot counts | DEV | ☐ |
-| 5 | Session detail view: `src/popup/pages/SessionDetail.tsx` — full session info + action timeline | DEV | ☐ |
-| 6 | Delete session: confirmation dialog → remove session + all recordings + bugs + screenshots from Dexie | DEV | ☐ |
-| 7 | Storage usage indicator in popup footer | DEV | ☐ |
-
-### Phase 3: Visual Replay — R010 (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 8 | `src/core/replay-bundler.ts` — rrweb events → self-contained HTML with rrweb-player | DEV | ☐ |
-| 9 | Replay HTML template: embedded rrweb-player, play/pause, speed control (0.5x/1x/2x/4x), timeline scrubber | DEV | ☐ |
-| 10 | "Watch Replay" button in session detail view → opens/downloads replay.html | DEV | ☐ |
-
-### Phase 4: Playwright Export — R011 (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 11 | `src/core/playwright-codegen.ts` — Action[] → Playwright .spec.ts | DEV | ☐ |
-| 12 | Generated spec includes: `page.goto()`, `page.click()`, `page.fill()`, `expect()` assertions | DEV | ☐ |
-| 13 | Selector strategy in export: data-testid > aria-label > id > CSS (matches engine) | DEV | ☐ |
-| 14 | Bug locations marked as comments in generated spec: `// BUG: [P1] Title — URL` | DEV | ☐ |
-| 15 | "Export Playwright" button in session detail → downloads .spec.ts | DEV | ☐ |
-
-### Phase 5: ZIP Bundle — R012 (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 16 | ZIP assembly: replay.html + report.json + report.md + regression.spec.ts + screenshots/*.png | DEV | ☐ |
-| 17 | ZIP created client-side using JSZip (or similar) — no server needed | DEV | ☐ |
-| 18 | "Export ZIP" button in session detail → downloads `refine-{session-id}.zip` | DEV | ☐ |
-
-### Phase 6: Keyboard Shortcuts — R013 (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 19 | `Ctrl+Shift+R` — toggle recording (start/pause) | DEV | ☐ |
-| 20 | `Ctrl+Shift+S` — take screenshot | DEV | ☐ |
-| 21 | `Ctrl+Shift+B` — open bug editor | DEV | ☐ |
-| 22 | Register via `chrome.commands` in manifest.json | DEV | ☐ |
-
-### Phase 7: Unit + Integration Tests (DEV)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 23 | Unit: `tests/unit/core/report-generator.test.ts` — verify JSON + MD output from mock session | DEV | ☐ |
-| 24 | Unit: `tests/unit/core/playwright-codegen.test.ts` — verify .spec.ts output from mock actions | DEV | ☐ |
-| 25 | Unit: `tests/unit/core/replay-bundler.test.ts` — verify HTML output contains rrweb-player + events | DEV | ☐ |
-| 26 | Integration: `tests/integration/export-pipeline.test.ts` — session → report + replay + spec + ZIP | DEV | ☐ |
-| 27 | All tests green: `npx vitest run` | DEV | ☐ |
-
-### Phase 8: E2E Tests (QA)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 28 | E2E: `tests/e2e/session-report.spec.ts` — stop session → verify report generated | QA | ☐ |
-| 29 | E2E: `tests/e2e/session-management.spec.ts` — list, view detail, delete session | QA | ☐ |
-| 30 | E2E: `tests/e2e/export-playwright.spec.ts` — export → verify download triggered | QA | ☐ |
-| 31 | E2E: `tests/e2e/export-zip.spec.ts` — export ZIP → verify download triggered | QA | ☐ |
-| 32 | E2E: `tests/e2e/keyboard-shortcuts.spec.ts` — Ctrl+Shift+R/S/B → correct actions | QA | ☐ |
-| 33 | Regression: all Sprint 00 + Sprint 01 E2E still green | QA | ☐ |
-| 34 | Full suite: `npx playwright test` — all pass | QA | ☐ |
-
-### Phase 9: Release Prep (CTO)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 35 | Version bump: `manifest.json` + `package.json` → v1.0.0 | CTO | ☐ |
-| 36 | `CHANGELOG.md` — Sprint 00 + 01 + 02 summary | CTO | ☐ |
-| 37 | README.md — update with full feature list + usage instructions | CTO | ☐ |
-| 38 | Final CTO review + sign-off | CTO | ☐ |
-
-### Phase 10: Acceptance (FOUNDER)
-| # | Artifact | Owner | Status |
-|---|----------|-------|--------|
-| 39 | Full acceptance test on Papyrus: record session → stop → view report → watch replay → export Playwright → export ZIP | FOUNDER | ☐ |
-| 40 | Hand exported .spec.ts to QA team → QA confirms it runs | FOUNDER + QA | ☐ |
-| 41 | FOUNDER sign-off: Refine v1.0 is SHIPPED | FOUNDER | ☐ |
-
----
-
-## Required Artifacts
-
-- Requirements delta: `reviews/sprint_02_requirements_delta.md`
-- Decisions (sprint-local): `sprint_02_decisions_log.md`
-- DEV todo: `todo/sprint_02_team_dev_todo.md`
-- QA todo: `todo/sprint_02_team_qa_todo.md`
-- DEV report: `reports/sprint_02_team_dev_report.md` (on completion)
-- QA report: `reports/sprint_02_team_qa_report.md` (on completion)
-
----
-
-## Quick Links
-
-### Todos
-- [DEV Todo](todo/sprint_02_team_dev_todo.md)
-- [QA Todo](todo/sprint_02_team_qa_todo.md)
-
-### Reports
-- `reports/sprint_02_team_dev_report.md` (pending)
-- `reports/sprint_02_team_qa_report.md` (pending)
-
-### Decisions
-- [Sprint decisions](sprint_02_decisions_log.md)
-- [Global decisions](../../0l_DECISIONS.md)
-
----
-
-## Key Technical Decisions (Pending)
-
-| ID | Question | Options | Status |
+| # | Task | File(s) | V |
 |---|---|---|---|
-| S02-001 | ZIP library | (A) JSZip (most popular, 100KB) (B) fflate (smaller, faster) (C) browser Compression Streams API | Pending |
-| S02-002 | rrweb-player bundling | (A) Inline in replay HTML (B) CDN link (C) Separate file in ZIP | Pending |
-| S02-003 | Playwright codegen assertion style | (A) `expect(locator).toBeVisible()` only (B) Include text assertions (C) Full snapshot assertions | Pending |
+| D201 | Report generator (Session → JSON + Markdown) | `src/core/report-generator.ts` | 5 |
+| D202 | Replay bundler (rrweb events → self-contained HTML with rrweb-player) | `src/core/replay-bundler.ts` | 5 |
+| D203 | Session detail view in popup (report + actions timeline) | `src/popup/pages/SessionDetail.tsx` | 3 |
+
+### Phase 2 — Playwright Codegen (DEV) ~15V
+
+| # | Task | File(s) | V |
+|---|---|---|---|
+| D204 | Playwright codegen (Action[] → `.spec.ts` string) | `src/core/playwright-codegen.ts` | 10 |
+| D205 | ZIP bundler (replay.html + report.json + report.md + screenshots/ + regression.spec.ts) | `src/core/zip-bundler.ts` | 5 |
+
+### Phase 3 — Popup Export UI + Session Mgmt (DEV) ~8V
+
+| # | Task | File(s) | V |
+|---|---|---|---|
+| D206 | Export buttons in SessionDetail (Report / Replay / Playwright / ZIP) | `src/popup/pages/SessionDetail.tsx` | 2 |
+| D207 | Session delete with confirmation | `src/popup/pages/SessionList.tsx` | 2 |
+| D208 | Keyboard shortcuts (Ctrl+Shift+R/S/B) | `src/background/shortcuts.ts` + `manifest.json` commands | 2 |
+| D209 | Polish pass: loading states, error toasts, empty states | Various popup components | 2 |
+
+### Phase 4 — Tests (DEV + QA) ~10V
+
+| # | Task | File(s) | Owner | V |
+|---|---|---|---|---|
+| D210 | Unit: report-generator (JSON + MD output) | `tests/unit/core/report-generator.test.ts` | DEV | 2 |
+| D211 | Unit: playwright-codegen (Action → spec.ts) | `tests/unit/core/playwright-codegen.test.ts` | DEV | 3 |
+| D212 | Unit: replay-bundler (HTML output contains rrweb-player) | `tests/unit/core/replay-bundler.test.ts` | DEV | 1 |
+| Q201 | E2E: Generate report after session → verify download | `tests/e2e/report-export.spec.ts` | QA | 1 |
+| Q202 | E2E: Watch replay opens valid HTML | `tests/e2e/replay-viewer.spec.ts` | QA | 1 |
+| Q203 | E2E: Export Playwright → file is syntactically valid TS | `tests/e2e/playwright-export.spec.ts` | QA | 2 |
+| Q204 | E2E: Download ZIP → contains all expected files | `tests/e2e/zip-export.spec.ts` | QA | 1 |
+| Q205 | E2E: Delete session → removed from list + DB | `tests/e2e/session-delete.spec.ts` | QA | 1 |
+| Q206 | E2E: Keyboard shortcuts trigger correct actions | `tests/e2e/keyboard-shortcuts.spec.ts` | QA | 1 |
+| Q207 | Regression: Full Sprint 00 + 01 + 02 suite green | All specs | QA | 0 |
 
 ---
 
-## Definition of Done (Sprint 02 = SHIP)
+## Decisions
 
-```
-✅ Session report generates JSON + Markdown with full timeline
-✅ Visual replay opens as self-contained HTML with rrweb-player
-✅ Playwright export produces valid .spec.ts with smart selectors
-✅ ZIP bundle contains: replay + report + screenshots + spec
-✅ Session list: view, detail, delete — all functional
-✅ Keyboard shortcuts: Ctrl+Shift+R/S/B working
-✅ All unit + integration tests pass (npx vitest run)
-✅ All E2E tests pass (npx playwright test)
-✅ TypeScript clean, ESLint clean, build clean
-✅ Version v1.0.0 tagged
-✅ CHANGELOG.md + README.md updated
-✅ FOUNDER records session on Papyrus → exports → hands to QA → QA runs spec
-✅ FOUNDER sign-off: SHIPPED 🚢
-```
+| ID | Decision | Rationale |
+|---|---|---|
+| S02-001 | rrweb-player bundled as inline script in replay HTML | Self-contained HTML — no external CDN dependency |
+| S02-002 | Playwright codegen: navigate + click + fill + assertion structure | Matches Playwright best practices. Assertions for `toBeVisible()` on key elements |
+| S02-003 | ZIP uses JSZip library (add to dependencies) | Client-side ZIP creation, no server needed |
+| S02-004 | Keyboard shortcuts via `chrome.commands` API in manifest.json | Native extension shortcut — works even when popup is closed |
+| S02-005 | Generated `.spec.ts` includes `// BUG:` comments at locations where bugs were logged | Links test script to bug context for QA review |
 
 ---
 
-## Open Questions (For FOUNDER)
+## Dependency Map
 
-1. **Replay player:** Embed rrweb-player in replay HTML (~200KB) or link to CDN? Recommend: **Embed** (works offline, no external dependencies).
-2. **Playwright assertion depth:** Just navigation + visibility checks? Or include text content assertions? Recommend: **Visibility + text for key elements** (balance between brittle and useful).
-3. **ZIP filename:** `refine-{session-id}.zip` or `refine-{session-name}-{date}.zip`? Recommend: **`refine-{session-name}-{date}.zip`** (human-readable).
+```
+Phase 1 (reports + replay) ──► Phase 3 (popup export UI)
+Phase 2 (codegen + ZIP)    ──┘          │
+                                    Phase 4 (tests)
+```
+
+DEV runs Phase 1 + Phase 2 in parallel → Phase 3 → Phase 4 (unit).
+QA starts Phase 4 E2E once Phase 3 is done.
+
+---
+
+## Acceptance Gates
+
+| # | Gate | How | Owner |
+|---|---|---|---|
+| 1 | `npm run build` succeeds | CLI | DEV |
+| 2 | All unit + integration tests pass (Sprint 00-02) | `npx vitest run` | DEV |
+| 3 | JSON report contains: timeline, pages, actions, bugs, screenshots | Unit test | DEV |
+| 4 | Markdown report is human-readable | Manual review | FOUNDER |
+| 5 | Replay HTML opens in browser and plays back session | Manual | FOUNDER |
+| 6 | Playwright `.spec.ts` is syntactically valid TypeScript | `npx tsc --noEmit` on exported file | QA |
+| 7 | Playwright `.spec.ts` runs against target app | `npx playwright test exported.spec.ts` | QA |
+| 8 | ZIP contains: replay.html, report.json, report.md, screenshots/, regression.spec.ts | Manual inspect | QA |
+| 9 | Session delete cascades correctly | E2E | QA |
+| 10 | Keyboard shortcuts work | Manual | QA |
+| 11 | All E2E specs pass (Sprint 00-02) | `npx playwright test` | QA |
+| 12 | FOUNDER end-to-end walkthrough on TaskPilot | Demo | FOUNDER |
+
+---
+
+## Ship Checklist (Sprint 02 = Final)
+
+- [ ] `CHANGELOG.md` written (v0.1.0 → v1.0.0)
+- [ ] Version bumped: `manifest.json` + `package.json` → `1.0.0`
+- [ ] Git tag: `v1.0.0`
+- [ ] `README.md` updated with full usage instructions
+- [ ] `dist/` built from clean checkout
+- [ ] Team distribution: share `dist/` folder or repo tag
+- [ ] FOUNDER final acceptance
 
 ---
 

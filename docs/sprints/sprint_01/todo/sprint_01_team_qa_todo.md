@@ -1,109 +1,153 @@
-# sprint_01 — Team QA Todo: Recording E2E + Target App Updates
+# Sprint 01 — Team QA Todo
 
 **Owner:** `[QA]`
-**Sprint scope:** E2E tests for R001-R005, target app updates, regression
-
-## Sprint Goals (QA)
-
-- Write E2E tests for the full recording loop (create → record → navigate → screenshot → bug → stop)
-- Update QA target app with recording-specific test scenarios
-- Maintain Sprint 00 E2E regression (extension loads, content script injects, navigation)
-- Validate cross-page recording persistence
-- Validate control bar UX in headed Chromium
-
-## Reading Order (MANDATORY before writing tests)
-
-1. `AGENTS.md` (root Tier-1) — project-wide rules
-2. `docs/04_TESTING.md` — test strategy, E2E patterns, fixture usage
-3. `docs/01_ARCHITECTURE.md` — module diagram, data flows
-4. `docs/03_MODULES.md` — capability registry
-5. `tests/e2e/fixtures/extension.fixture.ts` — your base fixture (extend, don't replace)
-
-## Tasks
-
-### Phase 1: Start Immediately — Target App Updates (no DEV dependency)
-
-| ID | Task | Acceptance Criteria | Files | Status |
-|---|---|---|---|---|
-| Q101 | **Update target app for recording scenarios** | Add: (1) multi-step form wizard (3 steps, next/back) (2) dynamic content section (button adds/removes items) (3) `data-testid` on all new elements (4) timer/auto-update element (tests recording of dynamic DOM) | `tests/fixtures/target-app/` (update) | ☐ |
-| Q102 | **Add `data-testid` coverage report** | Script or checklist that verifies every interactive element in target app has `data-testid`. Run as part of QA verification. | `tests/fixtures/target-app/verify-testids.js` or checklist in todo | ☐ |
-
-### Phase 2: After DEV delivers recording — E2E Specs
-
-> **Blocked on:** DEV D126 (build succeeds with recording engine)
-
-| ID | Task | Acceptance Criteria | Files | Status |
-|---|---|---|---|---|
-| Q103 | **E2E: Session creation** | Open popup → click "New Session" → fill name → click "Start Recording" → verify control bar appears on target app. Verify session appears in popup list with "recording" status. | `tests/e2e/session-create.spec.ts` | ☐ |
-| Q104 | **E2E: Recording flow** | Start session → interact with target app (click 3 buttons, fill 2 inputs, navigate 2 pages) → pause → verify control bar shows "PAUSED" → resume → stop → verify session status "stopped" in popup. | `tests/e2e/recording-flow.spec.ts` | ☐ |
-| Q105 | **E2E: Screenshot capture** | During active session → click screenshot button on control bar → verify "✓ Captured" feedback → open popup → verify screenshot count incremented. | `tests/e2e/screenshot-capture.spec.ts` | ☐ |
-| Q106 | **E2E: Bug editor** | During active session → click bug button → verify editor opens with pre-filled URL → fill title + description → select priority → save → verify bug count in popup. Verify editor closes and recording resumes. | `tests/e2e/bug-editor.spec.ts` | ☐ |
-| Q107 | **E2E: Cross-page recording** | Start session on page 1 → navigate to page 2 → navigate to page 3 → verify control bar re-appears on each page → stop → verify session has 3 page URLs recorded. | `tests/e2e/cross-page-recording.spec.ts` | ☐ |
-
-### Phase 3: Regression + Verification
-
-| ID | Task | Acceptance Criteria | Files | Status |
-|---|---|---|---|---|
-| Q108 | **Regression: Sprint 00 E2E still pass** | `extension-loads.spec.ts`, `content-script-injects.spec.ts`, `target-app-navigation.spec.ts` — all still green after Sprint 01 changes. | existing specs | ☐ |
-| Q109 | **Full suite green** | `npx playwright test` — all Sprint 00 + Sprint 01 E2E specs pass | — | ☐ |
-| Q110 | **Update `docs/04_TESTING.md`** | Add Sprint 01 E2E patterns: recording flow testing, control bar assertions, cross-page test strategy, screenshot verification approach. | `docs/04_TESTING.md` (append) | ☐ |
-| Q111 | **QA sprint report** | Document: tests written, issues found, coverage gaps, recommendations for Sprint 02. | `reports/sprint_01_team_qa_report.md` | ☐ |
+**Sprint:** 01
+**Depends on:** DEV Phase 3 + Phase 4 (control bar + popup wired)
+**Budget:** ~10V (QA share)
 
 ---
 
-## E2E Test Patterns (Sprint 01 specific)
+## Reading Order
 
-### Testing the control bar (Shadow DOM)
-```typescript
-// The control bar lives inside Shadow DOM — use Playwright's shadowRoot access
-const refineRoot = page.locator('#refine-root');
-const shadowHost = refineRoot.locator('>>> .refine-control-bar');
-await expect(shadowHost.locator('button[data-action="pause"]')).toBeVisible();
+1. `AGENTS.md` (root Tier-1)
+2. `docs/04_TESTING.md` — E2E patterns + extension fixture
+3. `tests/e2e/fixtures/extension.fixture.ts` — reuse from Sprint 00
+4. `docs/sprints/sprint_01/sprint_01_index.md`
+5. This file
+
+---
+
+## Immediate — No DEV Dependency
+
+### Q100: Enhance QA target app for recording edge cases — 1V ✅ DONE
+
+Add elements to `tests/fixtures/target-app/` that exercise rrweb recording scenarios:
+
+| Page | Element to add | `data-testid` | Tests |
+|---|---|---|---|
+| `form.html` | Textarea (Description) | `input-description` | Multiline input recording |
+| `form.html` | Date input | `input-date` | Date picker recording |
+| `index.html` | Delayed element (JS shows after 2s) | `delayed-content` | Dynamic DOM recording |
+| `index.html` | Expandable section (click to show/hide) | `toggle-section` | State change recording |
+
+**Acceptance:**
+- [x] All new elements have `data-testid`
+- [x] Target app still serves cleanly on port 3847
+- [x] Existing Sprint 00 E2E specs still pass (3/3 ✅)
+
+---
+
+## After DEV Delivers — E2E Specs
+
+> **Status:** All 5 specs are **written (contract-first)**. Waiting for DEV Phase 3 + 4 delivery to turn green.
+> Shared helper: `tests/e2e/helpers/session.ts`
+> data-testid contracts documented in `docs/04_TESTING.md` Sprint 01 section.
+
+### Q101: E2E — Session Creation (`tests/e2e/session-create.spec.ts`) — 2V ✅ SPEC WRITTEN
+
+**Test flow:**
+1. Open extension popup (`chrome-extension://${extensionId}/src/popup/popup.html`)
+2. Click "New Session" button
+3. Fill session name: "QA Test Session"
+4. Click "Start Recording"
+5. Switch to target app tab (`http://localhost:3847`)
+6. Assert: floating control bar visible at bottom of page
+7. Assert: control bar shows red recording indicator
+
+**Acceptance:**
+- [ ] Session appears in popup session list with RECORDING status
+- [ ] Control bar renders inside shadow DOM on target app
+- [ ] No console errors from extension
+
+---
+
+### Q102: E2E — Control Bar Functionality (`tests/e2e/control-bar.spec.ts`) — 1V ✅ SPEC WRITTEN
+
+**Test flow (assumes active recording from Q101 setup):**
+1. Start recording on target app
+2. Assert: Pause button visible
+3. Click Pause → assert amber indicator, "PAUSED" state
+4. Click Resume → assert red indicator returns
+5. Navigate to About page → assert control bar persists
+6. Click Stop → assert control bar disappears
+
+**Acceptance:**
+- [ ] Pause/Resume toggle works
+- [ ] Control bar survives page navigation
+- [ ] Stop removes control bar from DOM
+
+---
+
+### Q103: E2E — Screenshot Capture (`tests/e2e/screenshot-capture.spec.ts`) — 1V ✅ SPEC WRITTEN
+
+**Test flow:**
+1. Start recording on target app
+2. Click Screenshot button in control bar
+3. Stop recording
+4. Open popup → navigate to session
+5. Assert: session has at least 1 screenshot stored
+
+**Note:** Verifying IndexedDB from E2E is tricky. Options:
+- A) Check popup UI shows screenshot count > 0
+- B) Use `page.evaluate()` to query Dexie directly in the extension context
+
+**Acceptance:**
+- [ ] Screenshot button doesn't throw errors
+- [ ] At least one screenshot persisted (verify via popup UI or DB query)
+
+---
+
+### Q104: E2E — Bug Editor (`tests/e2e/bug-editor.spec.ts`) — 2V ✅ SPEC WRITTEN
+
+**Test flow:**
+1. Start recording, navigate to target app form page
+2. Click on an input field (to set "last clicked element")
+3. Click Bug button in control bar
+4. Assert: BugEditor form opens
+5. Assert: URL field pre-filled with current page URL
+6. Fill title: "Test Bug"
+7. Click Save
+8. Assert: form closes, returns to control bar
+9. Stop recording
+10. Verify bug saved (popup UI shows bug count or DB query)
+
+**Acceptance:**
+- [ ] Bug editor opens from control bar
+- [ ] URL auto-filled
+- [ ] Save persists bug and closes editor
+- [ ] Cancel closes without saving
+
+---
+
+### Q105: E2E — Session Lifecycle (`tests/e2e/session-lifecycle.spec.ts`) — 1V ✅ SPEC WRITTEN
+
+**Test flow:**
+1. Create session → start recording
+2. Navigate across 3 pages on target app (index → about → form)
+3. Log 1 bug on form page
+4. Take 1 screenshot
+5. Stop recording
+6. Open popup → find session
+7. Assert: status is COMPLETED
+8. Assert: session has duration > 0
+
+**Acceptance:**
+- [ ] Full lifecycle without errors
+- [ ] Session status transitions: RECORDING → STOPPED → COMPLETED
+- [ ] Multi-page recording doesn't break
+
+---
+
+## Definition of Done
+
 ```
-
-### Testing cross-page persistence
-```typescript
-// Navigate and verify control bar re-appears
-await page.goto('http://localhost:3847/about.html');
-await page.waitForSelector('#refine-root'); // Content script re-injected
-const controlBar = page.locator('#refine-root >>> .refine-control-bar');
-await expect(controlBar).toBeVisible();
-```
-
-### Testing screenshot capture
-```typescript
-// Count screenshots via popup
-const popup = await context.newPage();
-await popup.goto(`chrome-extension://${extensionId}/src/popup/popup.html`);
-const screenshotCount = popup.locator('[data-testid="screenshot-count"]');
-await expect(screenshotCount).toHaveText('1'); // After one capture
+✅ QA target app enhanced with 4 new elements + existing specs still pass
+✅ 5 new E2E specs written and passing
+✅ E2E covers: create, control bar, screenshot, bug editor, full lifecycle
+✅ No regressions on Sprint 00 E2E specs (extension-loads, content-script-injects, navigation)
+✅ npx playwright test — all specs green
 ```
 
 ---
 
-## Critical Rules
-
-1. **Use the fixture.** Always import from `./fixtures/extension.fixture.ts` — never raw `@playwright/test`.
-2. **Build before test.** `npm run build` must run before any E2E. Add check or document clearly.
-3. **Headed mode only.** Extensions require `headless: false`. Do not override this.
-4. **Shadow DOM assertions.** Control bar is in Shadow DOM. Use Playwright's `>>>` piercing selector or `locator.shadowRoot`.
-5. **No source code changes.** QA owns `tests/`, `demos/`, `docs/04_TESTING.md`. Source code is DEV domain.
-6. **Port map:** 3847 (target app), 3900 (demo app), 5173 (Vite HMR — don't touch).
-
-## Definition of Done (QA)
-
-```
-✅ Target app updated with recording-specific scenarios
-✅ All 5 new E2E specs written with meaningful assertions
-✅ Sprint 00 regression — all 3 old specs still pass
-✅ npx playwright test — full suite green
-✅ docs/04_TESTING.md updated with Sprint 01 patterns
-✅ QA sprint report written
-```
-
-## Risks / Blockers
-
-- **Shadow DOM selector stability:** Playwright's `>>>` piercing may behave differently across Playwright versions. Pin Playwright version if needed.
-- **Timing:** rrweb recording start is async. E2E tests need `waitForSelector` or `waitForFunction` to verify recording has begun before interacting.
-- **Screenshot verification:** Can't easily assert screenshot _content_ in E2E. Verify by checking count and metadata existence instead.
-- **DEV dependency:** E2E specs (Q103-Q107) blocked on DEV delivering working recording engine. Start with Q101-Q102 immediately.
+*Last updated: 2026-02-21*

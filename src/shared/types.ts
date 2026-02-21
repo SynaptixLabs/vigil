@@ -40,14 +40,17 @@ export enum FeatureType {
 export enum MessageType {
   PING = 'PING',
   PONG = 'PONG',
+  CREATE_SESSION = 'CREATE_SESSION',
   START_RECORDING = 'START_RECORDING',
   STOP_RECORDING = 'STOP_RECORDING',
   PAUSE_RECORDING = 'PAUSE_RECORDING',
   RESUME_RECORDING = 'RESUME_RECORDING',
+  RECORDING_CHUNK = 'RECORDING_CHUNK',
+  ACTION_RECORDED = 'ACTION_RECORDED',
   LOG_BUG = 'LOG_BUG',
   LOG_FEATURE = 'LOG_FEATURE',
   CAPTURE_SCREENSHOT = 'CAPTURE_SCREENSHOT',
-  SESSION_STATUS_UPDATE = 'SESSION_STATUS_UPDATE'
+  SESSION_STATUS_UPDATE = 'SESSION_STATUS_UPDATE',
 }
 
 /**
@@ -55,52 +58,87 @@ export enum MessageType {
  */
 export interface Action {
   id: string;
+  sessionId: string;
   timestamp: number;
-  type: 'click' | 'input' | 'navigation' | 'assertion';
+  type: 'click' | 'input' | 'navigation' | 'scroll';
+  pageUrl: string;
   selector?: string;
+  selectorStrategy?: 'data-testid' | 'aria-label' | 'id' | 'css';
+  selectorConfidence?: 'high' | 'medium' | 'low';
   value?: string;
-  url?: string;
 }
 
 /**
  * Represents a logged bug during a session.
  */
 export interface Bug {
-  id: string;
+  id: string;               // bug-XXXXXXXX
   sessionId: string;
-  timestamp: number;
+  type: 'bug';
   priority: BugPriority;
   title: string;
   description: string;
-  screenshotUrl?: string;
-  actionId?: string; // Links to the specific action where the bug occurred
+  url: string;
+  elementSelector?: string;
+  screenshotId?: string;
+  timestamp: number;
 }
 
 /**
  * Represents a logged feature request during a session.
  */
 export interface Feature {
-  id: string;
+  id: string;               // feat-XXXXXXXX
   sessionId: string;
-  timestamp: number;
-  type: FeatureType;
+  type: 'feature';
+  featureType: FeatureType;
   title: string;
   description: string;
-  screenshotUrl?: string;
-  actionId?: string; // Links to the specific action where the feature was requested
+  url: string;
+  elementSelector?: string;
+  screenshotId?: string;
+  timestamp: number;
 }
 
 /**
  * Represents a complete recording session.
  */
 export interface Session {
-  id: string; // Format: ats-YYYY-MM-DD-NNN
+  id: string;               // ats-YYYY-MM-DD-NNN
+  name: string;
+  description: string;
   status: SessionStatus;
-  startTime: number;
-  endTime?: number;
-  duration?: number;
-  url: string; // Starting URL
-  actions: Action[];
-  bugs: Bug[];
-  features: Feature[];
+  startedAt: number;        // Unix ms
+  stoppedAt?: number;
+  duration: number;         // ms (excludes paused time)
+  pages: string[];          // distinct URLs visited
+  actionCount: number;
+  bugCount: number;
+  featureCount: number;
+  screenshotCount: number;
+}
+
+/**
+ * A chunk of rrweb events from one page load within a session.
+ */
+export interface RecordingChunk {
+  id?: number;              // auto-increment (Dexie)
+  sessionId: string;
+  chunkIndex: number;
+  pageUrl: string;
+  events: unknown[];        // rrweb serialized events
+  createdAt: number;
+}
+
+/**
+ * A screenshot captured during a session.
+ */
+export interface Screenshot {
+  id: string;               // ss-XXXXXXXX
+  sessionId: string;
+  dataUrl: string;          // base64 data URL (JPEG 80%)
+  url: string;              // page URL when captured
+  timestamp: number;
+  width: number;
+  height: number;
 }

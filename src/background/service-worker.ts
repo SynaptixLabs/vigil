@@ -1,21 +1,16 @@
 /**
  * @file service-worker.ts
  * @description Background service worker for SynaptixLabs Refine.
- * Manages extension lifecycle, cross-context messaging, and core state.
+ * Wires: message router, keep-alive alarm listener, session manager.
  */
 
-// Initialize background script
+import { handleMessage } from './message-handler';
+import { initKeepAliveListener } from './keep-alive';
+
 console.log('[Refine] Background service worker initialized.');
 
-// Listen for messages from popup or content scripts
-// chrome.runtime is scoped to background — NOT imported from shared/
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  console.log('[Refine] Received message:', message.type, { payload: message.payload });
+// Route all incoming messages through the type-safe handler
+chrome.runtime.onMessage.addListener(handleMessage);
 
-  // Acknowledge receipt
-  sendResponse({ ok: true, data: { received: message.type } });
-});
-
-// TODO: keep-alive (Sprint 01)
-// MV3 service workers shut down after ~30s of inactivity.
-// We will need to implement a keep-alive mechanism using chrome.alarms.
+// Start keep-alive alarm listener (alarm itself is created on session start)
+initKeepAliveListener();

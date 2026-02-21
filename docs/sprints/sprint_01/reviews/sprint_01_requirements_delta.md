@@ -1,27 +1,26 @@
-# sprint_01 — Requirements Delta
+# Sprint 01 — Requirements Delta
 
-## PRD Changes from Sprint 00
+## PRD Baseline
+- PRD version: 0.1.0
+- Sprint 01 scope: R001, R002, R003, R004, R005 (all P0 MVP)
 
-No PRD changes. Sprint 01 implements P0 features as specified.
+## Changes from PRD
 
-## Scope
+**None.** Sprint 01 implements P0 requirements as specified. No scope additions or removals.
 
-| Req | In Scope | Notes |
+## Deferred from Sprint 01
+
+| Requirement | Reason | Target |
 |---|---|---|
-| R001 | ✅ | Session creation |
-| R002 | ✅ | DOM recording via rrweb |
-| R003 | ✅ | Control bar |
-| R004 | ✅ | Screenshot capture |
-| R005 | ✅ | Bug/feature editor |
-| R006 | ❌ → Sprint 02 | Report generation |
-| R007 | ❌ → Sprint 02 | Session list + delete (basic list included, full management in S02) |
+| R006 (Reports) | Depends on recording data existing first | Sprint 02 |
+| R007 (Session list + delete) | Basic list ships in Sprint 01; delete + detail view in Sprint 02 | Sprint 02 |
 
-## Deferred from Original Sprint 01 Plan
+## Added (not in PRD)
 
-- None. All P0 recording features included.
+| Item | Rationale |
+|---|---|
+| S01-003: Dexie 5-table normalized schema | Architecture decision for query performance — not a feature change |
 
-## Added (not in original PRD)
+---
 
-- `generateFeatureId()` — mirrors bug ID pattern (`feat-XXXXXXXX`)
-- Screenshot compression (JPEG 80% or max 1280px resize) — performance optimization
-- rrweb `blockSelector` for `#refine-root` — prevents recording Refine's own UI
+*Last updated: 2026-02-21*

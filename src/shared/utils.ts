@@ -43,3 +43,19 @@ export const formatTimestamp = (timestamp: number): string => {
 export const generateBugId = (): string => {
   return `bug-${crypto.randomUUID().split('-')[0]}`;
 };
+
+/**
+ * Generates a unique Feature ID using crypto.randomUUID().
+ * Format: feat-XXXXXXXX
+ */
+export const generateFeatureId = (): string => {
+  return `feat-${crypto.randomUUID().split('-')[0]}`;
+};
+
+/**
+ * Generates a unique Screenshot ID using crypto.randomUUID().
+ * Format: ss-XXXXXXXX
+ */
+export const generateScreenshotId = (): string => {
+  return `ss-${crypto.randomUUID().split('-')[0]}`;
+};
