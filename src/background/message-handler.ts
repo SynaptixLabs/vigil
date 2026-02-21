@@ -33,13 +33,16 @@ export function handleMessage(
       return false;
 
     case MessageType.CREATE_SESSION: {
-      const { name, description, url } = message.payload as {
+      const { name, description, url, tabId: payloadTabId } = message.payload as {
         name: string;
         description: string;
         url: string;
+        tabId?: number;
       };
+      // popup sender.tab is undefined — use tabId sent explicitly in the payload
+      const targetTabId = payloadTabId ?? tabId;
       sessionManager
-        .createSession(name, description ?? '', url, tabId)
+        .createSession(name, description ?? '', url, targetTabId)
         .then((session) => sendResponse({ ok: true, data: session }))
         .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
       return true;

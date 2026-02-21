@@ -16,12 +16,14 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [activeTabUrl, setActiveTabUrl] = useState('');
+  const [activeTabId, setActiveTabId] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs[0]?.url) setActiveTabUrl(tabs[0].url);
+      if (tabs[0]?.id) setActiveTabId(tabs[0].id);
     });
   }, []);
 
@@ -39,6 +41,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
           name: name.trim(),
           description: description.trim(),
           url: activeTabUrl,
+          tabId: activeTabId,
         },
         source: 'popup',
       },
