@@ -17,7 +17,7 @@
  */
 
 import { test, expect } from './fixtures/extension.fixture';
-import { createSession, openTargetApp } from './helpers/session';
+import { createSession, openTargetApp, getPopupPage } from './helpers/session';
 
 test('full session lifecycle: create → record → navigate → bug → screenshot → stop → COMPLETED', async ({ context, extensionId }) => {
   // 1. Create session
@@ -67,29 +67,30 @@ test('full session lifecycle: create → record → navigate → bug → screens
   await expect(page.getByTestId('refine-control-bar')).not.toBeVisible({ timeout: 3000 });
 
   // 10. Popup shows session as COMPLETED
-  await popupPage.bringToFront();
-  await popupPage.reload();
-  await popupPage.waitForLoadState('networkidle');
+  const verifyPopup = await getPopupPage(popupPage, context, extensionId);
+  await verifyPopup.bringToFront();
+  await verifyPopup.reload();
+  await verifyPopup.waitForLoadState('networkidle');
 
-  const sessionItem = popupPage.getByTestId('session-list-item').first();
+  const sessionItem = verifyPopup.getByTestId('session-list-item').first();
   await expect(sessionItem).toBeVisible({ timeout: 3000 });
   await sessionItem.click();
 
   // Status must be COMPLETED
-  await expect(popupPage.getByTestId('session-status')).toContainText('COMPLETED', { timeout: 3000 });
+  await expect(verifyPopup.getByTestId('session-status')).toContainText('COMPLETED', { timeout: 3000 });
 
   // Duration must be non-zero
-  const durationEl = popupPage.getByTestId('session-duration');
+  const durationEl = verifyPopup.getByTestId('session-duration');
   await expect(durationEl).toBeVisible();
   const durationText = await durationEl.innerText();
   expect(durationText.trim()).not.toBe('0');
   expect(durationText.trim()).not.toBe('');
 
   // At least 1 bug and 1 screenshot
-  const bugCountText = await popupPage.getByTestId('session-bug-count').innerText();
+  const bugCountText = await verifyPopup.getByTestId('session-bug-count').innerText();
   expect(parseInt(bugCountText, 10)).toBeGreaterThanOrEqual(1);
 
-  const screenshotCountText = await popupPage.getByTestId('session-screenshot-count').innerText();
+  const screenshotCountText = await verifyPopup.getByTestId('session-screenshot-count').innerText();
   expect(parseInt(screenshotCountText, 10)).toBeGreaterThanOrEqual(1);
 });
 
@@ -104,9 +105,10 @@ test('stopping a recording session with no interactions still completes cleanly'
   await expect(page.getByTestId('refine-control-bar')).not.toBeVisible({ timeout: 3000 });
 
   // Popup still shows session as COMPLETED (not ERROR or STOPPED)
-  await popupPage.bringToFront();
-  await popupPage.reload();
-  await popupPage.waitForLoadState('networkidle');
-  await popupPage.getByTestId('session-list-item').first().click();
-  await expect(popupPage.getByTestId('session-status')).toContainText('COMPLETED', { timeout: 3000 });
+  const verifyPopup2 = await getPopupPage(popupPage, context, extensionId);
+  await verifyPopup2.bringToFront();
+  await verifyPopup2.reload();
+  await verifyPopup2.waitForLoadState('networkidle');
+  await verifyPopup2.getByTestId('session-list-item').first().click();
+  await expect(verifyPopup2.getByTestId('session-status')).toContainText('COMPLETED', { timeout: 3000 });
 });

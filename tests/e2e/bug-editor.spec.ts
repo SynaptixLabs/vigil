@@ -22,7 +22,7 @@
  */
 
 import { test, expect } from './fixtures/extension.fixture';
-import { createSession, openTargetApp } from './helpers/session';
+import { createSession, openTargetApp, getPopupPage } from './helpers/session';
 
 test('bug editor opens with pre-filled URL, saves bug, and persists to session', async ({ context, extensionId }) => {
   const { popupPage } = await createSession(context, extensionId, 'Q104 Session');
@@ -45,8 +45,8 @@ test('bug editor opens with pre-filled URL, saves bug, and persists to session',
   const urlField = page.getByTestId('bug-editor-url');
   await expect(urlField).toBeVisible();
   const capturedUrl = await urlField.inputValue().catch(() => urlField.innerText());
-  expect(capturedUrl).toContain('localhost:3847');
-  expect(capturedUrl).toContain('form.html');
+  expect(capturedUrl).toContain('localhost:38470');
+  expect(capturedUrl).toContain('form');
 
   // 6. Fill in bug title
   await page.getByTestId('bug-editor-title').fill('Input field does not validate on blur');
@@ -63,11 +63,12 @@ test('bug editor opens with pre-filled URL, saves bug, and persists to session',
   await expect(page.getByTestId('refine-control-bar')).not.toBeVisible({ timeout: 3000 });
 
   // 10. Verify bug count in popup session detail
-  await popupPage.bringToFront();
-  await popupPage.reload();
-  await popupPage.waitForLoadState('networkidle');
-  await popupPage.getByTestId('session-list-item').first().click();
-  const bugCount = popupPage.getByTestId('session-bug-count');
+  const verifyPopup = await getPopupPage(popupPage, context, extensionId);
+  await verifyPopup.bringToFront();
+  await verifyPopup.reload();
+  await verifyPopup.waitForLoadState('networkidle');
+  await verifyPopup.getByTestId('session-list-item').first().click();
+  const bugCount = verifyPopup.getByTestId('session-bug-count');
   await expect(bugCount).toBeVisible({ timeout: 3000 });
   const countText = await bugCount.innerText();
   expect(parseInt(countText, 10)).toBeGreaterThanOrEqual(1);

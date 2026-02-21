@@ -39,6 +39,7 @@ export function mountOverlay(sessionId: string, options: OverlayOptions = {}): v
     React.createElement(ControlBar, {
       sessionId,
       sessionName: options.sessionName ?? sessionId,
+      onStop: unmountOverlay,
     })
   );
 

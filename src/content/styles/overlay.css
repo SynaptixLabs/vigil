@@ -125,6 +125,12 @@
   50% { opacity: 0.3; }
 }
 
+.refine-indicator-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .refine-status-badge {
   font-size: 10px;
   font-weight: 700;

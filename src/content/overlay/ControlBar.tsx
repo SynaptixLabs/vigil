@@ -11,11 +11,12 @@ import BugEditor from './BugEditor';
 interface ControlBarProps {
   sessionId: string;
   sessionName: string;
+  onStop?: () => void;
 }
 
 type RecordingState = 'recording' | 'paused';
 
-const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
+const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop }) => {
   const [recordingState, setRecordingState] = useState<RecordingState>('recording');
   const [elapsed, setElapsed] = useState(0);
   const [startTime] = useState(Date.now());
@@ -68,7 +69,9 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
   };
 
   const handleStop = () => {
-    chrome.runtime.sendMessage({ type: MessageType.STOP_RECORDING, source: 'content' });
+    chrome.runtime.sendMessage({ type: MessageType.STOP_RECORDING, source: 'content' }, () => {
+      onStop?.();
+    });
   };
 
   const handleScreenshot = () => {
@@ -98,7 +101,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
       )}
 
       <div className="refine-control-bar" data-testid="refine-control-bar">
-        <div className="flex items-center gap-1.5" data-testid="recording-indicator">
+        <div className="refine-indicator-wrapper" data-testid="recording-indicator">
           <div
             className={`refine-recording-dot ${recordingState === 'paused' ? 'refine-recording-dot--paused' : ''}`}
           />
@@ -119,6 +122,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
           <button
             className="refine-btn"
             title="Pause"
+            aria-label="Pause recording"
             data-testid="btn-pause"
             onClick={handlePauseResume}
           >
@@ -129,6 +133,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
           <button
             className="refine-btn"
             title="Resume"
+            aria-label="Resume recording"
             data-testid="btn-resume"
             onClick={handlePauseResume}
           >
@@ -139,6 +144,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
         <button
           className="refine-btn refine-btn--danger"
           title="Stop recording"
+          aria-label="Stop recording"
           data-testid="btn-stop"
           onClick={handleStop}
         >
@@ -148,6 +154,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
         <button
           className="refine-btn"
           title="Take screenshot"
+          aria-label="Take screenshot"
           data-testid="btn-screenshot"
           onClick={handleScreenshot}
         >
@@ -157,6 +164,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName }) => {
         <button
           className="refine-btn refine-btn--record"
           title="Log bug or feature"
+          aria-label="Log bug or feature"
           data-testid="btn-bug"
           onClick={() => setShowBugEditor((v) => !v)}
         >

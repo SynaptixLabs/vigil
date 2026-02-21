@@ -34,8 +34,11 @@ test('creating a session via popup starts recording and shows control bar on tar
   await targetPage.waitForTimeout(500);
   expect(errors, `Extension errors: ${errors.join(', ')}`).toHaveLength(0);
 
-  // 6. Popup session list reflects RECORDING status
-  await popupPage.bringToFront();
-  await expect(popupPage.getByTestId('session-list-item').first()).toBeVisible();
-  await expect(popupPage.getByTestId('recording-status')).toContainText('RECORDING');
+  // 6. Popup session list reflects RECORDING status (re-open popup — it may have closed on focus loss)
+  const verifyPopup = popupPage.isClosed()
+    ? await context.newPage().then(p => p.goto(`chrome-extension://${extensionId}/src/popup/popup.html`).then(() => p))
+    : popupPage;
+  await verifyPopup.bringToFront();
+  await expect(verifyPopup.getByTestId('session-list-item').first()).toBeVisible({ timeout: 5000 });
+  await expect(verifyPopup.getByTestId('recording-status').first()).toContainText('RECORDING');
 });

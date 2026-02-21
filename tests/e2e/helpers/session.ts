@@ -41,14 +41,30 @@ export async function createSession(
   await popupPage.goto(`chrome-extension://${extensionId}/src/popup/popup.html`);
   await popupPage.waitForLoadState('networkidle');
 
-  await popupPage.getByTestId('btn-new-session').click();
+  await popupPage.getByTestId('btn-new-session').first().click();
   await popupPage.getByTestId('input-session-name').fill(sessionName);
   await popupPage.getByTestId('btn-start-recording').click();
 
-  // Allow background to acknowledge and content script to receive message
-  await popupPage.waitForTimeout(1500);
+  // Allow background to process — popup may close if it loses focus; that is normal
+  try {
+    await popupPage.waitForTimeout(1500);
+  } catch {
+    // popup closed — background already processed the message
+  }
 
   return { popupPage, sessionName };
+}
+
+export async function getPopupPage(
+  existingPage: Page,
+  context: BrowserContext,
+  extensionId: string
+): Promise<Page> {
+  if (!existingPage.isClosed()) return existingPage;
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/src/popup/popup.html`);
+  await page.waitForLoadState('networkidle');
+  return page;
 }
 
 export async function openTargetApp(

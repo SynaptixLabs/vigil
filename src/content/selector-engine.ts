@@ -45,7 +45,18 @@ export function getBestSelector(element: Element): SelectorResult {
     };
   }
 
-  // 4. CSS fallback — low confidence
+  // 4. role + accessible name — medium confidence (Playwright-native)
+  const role = element.getAttribute('role');
+  const name = (element as HTMLElement).innerText?.trim().slice(0, 50);
+  if (role && name) {
+    return {
+      selector: `[role="${role}"]:has-text("${name.replace(/"/g, '\\"')}")`,
+      strategy: 'css',
+      confidence: 'medium',
+    };
+  }
+
+  // 5. CSS fallback — low confidence
   return {
     selector: buildCssSelector(element),
     strategy: 'css',

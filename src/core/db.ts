@@ -45,6 +45,17 @@ export async function updateSession(id: string, changes: Partial<Session>): Prom
   await db.sessions.update(id, changes);
 }
 
+export async function deleteSession(id: string): Promise<void> {
+  await db.transaction('rw', [db.sessions, db.bugs, db.features, db.screenshots, db.recordings, db.actions], async () => {
+    await db.sessions.delete(id);
+    await db.bugs.where('sessionId').equals(id).delete();
+    await db.features.where('sessionId').equals(id).delete();
+    await db.screenshots.where('sessionId').equals(id).delete();
+    await db.recordings.where('sessionId').equals(id).delete();
+    await db.actions.where('sessionId').equals(id).delete();
+  });
+}
+
 export async function getAllSessions(): Promise<Session[]> {
   return db.sessions.orderBy('startedAt').reverse().toArray();
 }

@@ -125,7 +125,7 @@ export const sessionManager = {
     const duration = Math.max(0, now - session.startedAt - pausedMs);
 
     await updateSession(state.sessionId, {
-      status: SessionStatus.STOPPED,
+      status: SessionStatus.COMPLETED,
       stoppedAt: now,
       duration,
     });

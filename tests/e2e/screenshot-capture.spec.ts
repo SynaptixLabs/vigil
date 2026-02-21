@@ -15,7 +15,7 @@
  */
 
 import { test, expect } from './fixtures/extension.fixture';
-import { createSession, openTargetApp } from './helpers/session';
+import { createSession, openTargetApp, getPopupPage } from './helpers/session';
 
 test('screenshot button captures and persists a screenshot', async ({ context, extensionId }) => {
   const { popupPage } = await createSession(context, extensionId, 'Q103 Session');
@@ -42,13 +42,14 @@ test('screenshot button captures and persists a screenshot', async ({ context, e
   await expect(page.getByTestId('refine-control-bar')).not.toBeVisible({ timeout: 3000 });
 
   // 6. Verify in popup: session shows screenshot count ≥ 1
-  await popupPage.bringToFront();
-  await popupPage.reload();
-  await popupPage.waitForLoadState('networkidle');
+  const verifyPopup = await getPopupPage(popupPage, context, extensionId);
+  await verifyPopup.bringToFront();
+  await verifyPopup.reload();
+  await verifyPopup.waitForLoadState('networkidle');
 
   // Open session detail (click first session in list)
-  await popupPage.getByTestId('session-list-item').first().click();
-  const screenshotCount = popupPage.getByTestId('session-screenshot-count');
+  await verifyPopup.getByTestId('session-list-item').first().click();
+  const screenshotCount = verifyPopup.getByTestId('session-screenshot-count');
   await expect(screenshotCount).toBeVisible({ timeout: 3000 });
   const countText = await screenshotCount.innerText();
   expect(parseInt(countText, 10)).toBeGreaterThanOrEqual(1);

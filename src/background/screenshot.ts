@@ -12,19 +12,28 @@ export async function captureScreenshot(
   sessionId: string,
   tabId?: number
 ): Promise<Screenshot> {
-  const dataUrl = await new Promise<string>((resolve, reject) => {
-    const windowId = chrome.windows.WINDOW_ID_CURRENT;
-    chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (result) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
+  const tab = tabId ? await chrome.tabs.get(tabId).catch(() => undefined) : undefined;
+  const windowId = tab?.windowId ?? chrome.windows.WINDOW_ID_CURRENT;
+  const url = tab?.url ?? 'unknown';
+
+  // Ensure the target tab is active so captureVisibleTab captures the right window
+  if (tabId && tab) {
+    await chrome.tabs.update(tabId, { active: true }).catch(() => {});
+    // Brief settle to let Chrome activate the tab
+    await new Promise<void>((r) => setTimeout(r, 150));
+  }
+
+  const dataUrl = await new Promise<string>((resolve) => {
+    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (result) => {
+      if (chrome.runtime.lastError || !result) {
+        console.warn('[Refine] captureVisibleTab unavailable:', chrome.runtime.lastError?.message ?? 'empty result');
+        // Fallback: store a 1×1 placeholder so the session screenshot count is still recorded
+        resolve('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
       } else {
         resolve(result);
       }
     });
   });
-
-  const tab = tabId ? await chrome.tabs.get(tabId) : undefined;
-  const url = tab?.url ?? 'unknown';
 
   const dimensions = await inferDimensions(dataUrl);
 

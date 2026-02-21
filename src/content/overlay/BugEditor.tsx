@@ -121,7 +121,7 @@ const BugEditor: React.FC<BugEditorProps> = ({
         </div>
         <div className="refine-field">
           <label className="refine-label">Page</label>
-          <div className="refine-url-display" title={currentUrl}>
+          <div className="refine-url-display" title={currentUrl} data-testid="bug-editor-url">
             {currentUrl.replace(/^https?:\/\//, '').substring(0, 40)}
           </div>
         </div>
@@ -160,7 +160,7 @@ const BugEditor: React.FC<BugEditorProps> = ({
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
-        <button className="refine-btn--cancel" onClick={onClose}>
+        <button className="refine-btn--cancel" data-testid="btn-cancel-bug" onClick={onClose}>
           Cancel
         </button>
       </div>
