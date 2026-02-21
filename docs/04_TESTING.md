@@ -215,4 +215,138 @@ test('content script injects on target app', async ({ context }) => {
 
 ---
 
-*Last updated: 2026-02-20*
+## Playwright Extension E2E Patterns
+
+> **Q007 — QA Team Reference.** Added Sprint 00.
+
+### How to Run E2E Tests
+
+```bash
+# Build extension first (REQUIRED — E2E cannot run without dist/)
+npm run build
+
+# Run all E2E tests (headed, Chromium only)
+npx playwright test
+
+# Run a specific spec
+npx playwright test tests/e2e/extension-loads.spec.ts
+
+# Debug with UI mode
+npx playwright test --ui
+
+# Show HTML report after run
+npx playwright show-report
+```
+
+> **CI:** Tests run via `xvfb-run npx playwright test` on Linux. The `playwright.config.ts` does NOT hardcode `headless: false` — the extension fixture handles this.
+
+---
+
+### Extension Fixture Pattern
+
+All E2E spec files **must** import from `./fixtures/extension.fixture` — never from `@playwright/test` directly.
+
+```typescript
+// tests/e2e/fixtures/extension.fixture.ts
+import { test as base, chromium, type BrowserContext } from '@playwright/test';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+export const test = base.extend<{
+  context: BrowserContext;
+  extensionId: string;
+}>({
+  context: async ({}, use) => {
+    const pathToExtension = path.join(__dirname, '../../../dist');
+    const context = await chromium.launchPersistentContext('', {
+      headless: false, // Required — extensions don't load in headless mode
+      args: [
+        `--disable-extensions-except=${pathToExtension}`,
+        `--load-extension=${pathToExtension}`,
+      ],
+    });
+    await use(context);
+    await context.close();
+  },
+  extensionId: async ({ context }, use) => {
+    let [background] = context.serviceWorkers();
+    if (!background) background = await context.waitForEvent('serviceworker');
+    const extensionId = background.url().split('/')[2]; // Dynamically resolved
+    await use(extensionId);
+  },
+});
+
+export const expect = base.expect;
+```
+
+---
+
+### How to Write a New E2E Test
+
+1. Create `tests/e2e/<feature-name>.spec.ts`
+2. Import `test` and `expect` from `./fixtures/extension.fixture`
+3. Use the `context` fixture (not `page`) to open new pages
+4. Use `extensionId` fixture to navigate to popup or extension pages
+
+```typescript
+import { test, expect } from './fixtures/extension.fixture';
+
+test('my new E2E test', async ({ context, extensionId }) => {
+  const page = await context.newPage();
+
+  // Navigate to extension popup
+  await page.goto(`chrome-extension://${extensionId}/src/popup/popup.html`);
+  await expect(page.locator('[data-testid="my-element"]')).toBeVisible();
+
+  // Navigate to target app
+  await page.goto('http://localhost:3847');
+  await expect(page.getByTestId('hero-cta')).toBeVisible();
+});
+```
+
+---
+
+### E2E Test Specs — Sprint 00
+
+| Spec | File | What it verifies |
+|---|---|---|
+| Extension Loads | `tests/e2e/extension-loads.spec.ts` | Popup opens, shows "Refine" branding + version |
+| Content Script Injects | `tests/e2e/content-script-injects.spec.ts` | `[Refine] Content script loaded` in console on target app |
+| Target App Navigation | `tests/e2e/target-app-navigation.spec.ts` | Extension stays active across page navigations, no errors |
+
+---
+
+### Common Pitfalls
+
+| Pitfall | Cause | Fix |
+|---|---|---|
+| `Error: Extension not found` | `dist/` missing or stale | Run `npm run build` before E2E |
+| `headless` error | Extension rejected | `headless: false` is set in the fixture — never override |
+| Extension ID mismatch | Hardcoded ID | Always use `extensionId` fixture — ID resolves dynamically from service worker |
+| Tests hang on `waitForEvent('serviceworker')` | Extension didn't load | Verify `dist/manifest.json` exists and has `background.service_worker` |
+| `webServer` not ready | Target app not running | `playwright.config.ts` starts it via `npm start` in `tests/fixtures/target-app/` |
+| Tests run in parallel | Workers > 1 | `playwright.config.ts` enforces `workers: 1` and `fullyParallel: false` |
+
+---
+
+### QA Test Target App
+
+**Location:** `tests/fixtures/target-app/`
+**Port:** `3847`
+**Start:** `npm start` (from that directory) — also auto-started by `playwright.config.ts` webServer
+
+All interactive elements have `data-testid` attributes — use `page.getByTestId()` for selectors.
+
+### Demo App (TaskPilot)
+
+**Location:** `demos/refine-demo-app/`
+**Port:** `3900`
+**Start:** `npm run dev` (from that directory)
+
+Used for manual acceptance testing by the Founder. Not wired into automated E2E.
+
+---
+
+*Last updated: 2026-02-21*

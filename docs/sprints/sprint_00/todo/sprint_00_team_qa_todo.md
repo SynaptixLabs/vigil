@@ -17,13 +17,13 @@
 
 | ID | Task | Acceptance criteria | Files | Status |
 |---|---|---|---|---|
-| Q001 | Create `playwright.config.ts` | Chromium only. Extension loading via `launchPersistentContext`. `dist/` as extension path. Screenshot on failure. Reporter: html. `webServer` for target app on port 3847 | `playwright.config.ts` | Todo |
-| Q002 | Create E2E extension fixture | Playwright fixture: build extension, launch persistent context with extension loaded, expose `extensionId` and `context` | `tests/e2e/fixtures/extension.fixture.ts` | Todo |
-| Q003 | Create QA test target app | Simple static HTML/JS app: nav links, forms, buttons with `data-testid`, list view. Serve on `localhost:3847` | `tests/fixtures/target-app/*` | Todo |
-| Q004 | E2E: Extension loads | Build → launch Chromium with extension → popup opens → contains "Refine" text | `tests/e2e/extension-loads.spec.ts` | Todo |
-| Q005 | E2E: Content script injects | Navigate to target app → verify console message from content script | `tests/e2e/content-script-injects.spec.ts` | Todo |
-| Q006 | E2E: Navigate target app | Navigate between pages on target app → verify extension stays loaded across navigations | `tests/e2e/target-app-navigation.spec.ts` | Todo |
-| Q007 | Document E2E patterns | Add Playwright extension testing patterns + examples to `docs/04_TESTING.md` | `docs/04_TESTING.md` | Todo |
+| Q001 | Create `playwright.config.ts` | Chromium only. Extension loading via `launchPersistentContext`. `dist/` as extension path. Screenshot on failure. Reporter: html. `webServer` for target app on port 3847 | `playwright.config.ts` | Done |
+| Q002 | Create E2E extension fixture | Playwright fixture: build extension, launch persistent context with extension loaded, expose `extensionId` and `context` | `tests/e2e/fixtures/extension.fixture.ts` | Done |
+| Q003 | Create QA test target app | Simple static HTML/JS app: nav links, forms, buttons with `data-testid`, list view. Serve on `localhost:3847` | `tests/fixtures/target-app/*` | Done |
+| Q004 | E2E: Extension loads | Build → launch Chromium with extension → popup opens → contains "Refine" text | `tests/e2e/extension-loads.spec.ts` | Done |
+| Q005 | E2E: Content script injects | Navigate to target app → verify console message from content script | `tests/e2e/content-script-injects.spec.ts` | Done |
+| Q006 | E2E: Navigate target app | Navigate between pages on target app → verify extension stays loaded across navigations | `tests/e2e/target-app-navigation.spec.ts` | Done |
+| Q007 | Document E2E patterns | Add Playwright extension testing patterns + examples to `docs/04_TESTING.md` | `docs/04_TESTING.md` | Done |
 
 ## QA Test Target App Specification
 
@@ -90,7 +90,7 @@ export const expect = base.expect;
 
 | ID | Task | Acceptance criteria | Files | Status |
 |---|---|---|---|---|
-| Q008 | Create Refine Demo App | Rich multi-page app for Avi's manual testing. Runs on `localhost:3900`. Covers all interaction types Refine will record. See spec below. | `demos/refine-demo-app/*` | Todo |
+| Q008 | Create Refine Demo App | Rich multi-page app for Avi's manual testing. Runs on `localhost:3900`. Covers all interaction types Refine will record. See spec below. | `demos/refine-demo-app/*` | Done |
 
 ### Demo App Specification
 

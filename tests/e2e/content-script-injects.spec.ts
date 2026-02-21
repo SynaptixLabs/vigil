@@ -1,0 +1,16 @@
+import { test, expect } from './fixtures/extension.fixture';
+
+test('content script injects on QA target app and logs to console', async ({ context }) => {
+  const page = await context.newPage();
+  const consoleMessages: string[] = [];
+
+  page.on('console', msg => {
+    consoleMessages.push(msg.text());
+  });
+
+  await page.goto('http://localhost:3847');
+  await page.waitForTimeout(1500);
+
+  const injected = consoleMessages.some(m => m.includes('[Refine] Content script loaded'));
+  expect(injected, `Expected "[Refine] Content script loaded" in console. Got: ${JSON.stringify(consoleMessages)}`).toBe(true);
+});
