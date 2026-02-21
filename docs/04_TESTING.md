@@ -1,178 +1,218 @@
-# {{PROJECT_NAME}} — Testing
+# SynaptixLabs Refine — Testing
 
-Testing is part of the product. If it’s not tested, it’s not done.
-
-This doc defines:
-- Test types and where they live
-- Coverage expectations (by domain)
-- Regression policy (every bug gets a test)
-- How to run tests locally and in CI
+Testing is part of the product. If it's not tested, it's not done.
 
 ---
 
-## Testing pyramid (default)
+## Testing Strategy
 
-1. **Unit** tests (fast, deterministic)
-2. **Integration** tests (real dependencies where possible)
-3. **E2E** tests (critical flows only)
-4. **Regression** tests (golden sets / bug repros)
+Refine is a Chrome Extension — testing requires a mix of standard unit tests and extension-specific E2E.
 
----
+### Testing Pyramid
 
-## Coverage & gates (by domain)
-
-> Use these as defaults. If a project deviates, record the decision in `0l_DECISIONS.md`.
-
-| Domain | Primary gate | Coverage target (meaningful code) | Notes |
-|---|---|---:|---|
-| BE | Unit + integration must pass | ≥90% | Focus on business logic, validators, adapters |
-| FE | Unit/component + key flow tests | “Meaningful coverage” | Don’t chase vanity %; cover critical paths |
-| ML | Reproducibility + eval gates + regression | ≥90% (transforms/validators) | Golden sets + baseline comparison required |
-| SHARED | Unit + contract compatibility | ≥90% | Backward compatible APIs unless approved |
+1. **Unit** — Business logic, transformers, utilities (Vitest)
+2. **Integration** — Module interactions, storage layer (Vitest + Dexie mock)
+3. **E2E** — Full extension flows (Playwright with extension loading)
 
 ---
 
-## Test types
+## Coverage & Gates
 
-### Unit tests
+| Module | Primary gate | Coverage target | Notes |
+|---|---|---|---|
+| Core | Unit + integration | ≥90% | Storage, codegen, report gen — pure logic |
+| Shared | Unit | ≥90% | Types, utilities, constants |
+| Background | Unit + integration | Meaningful | Service worker lifecycle, message routing |
+| Content | Unit + E2E smoke | Meaningful | Shadow DOM + rrweb — E2E covers real behavior |
+| Popup | Component tests + E2E | Meaningful | React components |
 
-- What: pure functions, validators, feature builders, UI components
-- Where: `**/tests/unit/`
+---
 
-#### Example (pytest)
+## Test Types
 
-```python
-def test_parse_amount():
-    assert parse_amount("₪12.30") == 12.30
+### Unit Tests (Vitest)
+
+**Location:** `tests/unit/`
+**Run:** `npx vitest run`
+**Config:** `vitest.config.ts`
+
+Focus areas:
+- `core/storage` — Dexie operations with fake-indexeddb
+- `core/codegen` — Playwright script generation from action logs
+- `core/report` — Report generation (JSON + Markdown)
+- `shared/` — Type guards, utilities, ID generation
+- `content/action-tracker` — Event → action extraction logic
+
+### Integration Tests (Vitest)
+
+**Location:** `tests/integration/`
+**Run:** `npx vitest run tests/integration/`
+
+Focus areas:
+- Storage layer (Dexie + fake-indexeddb end-to-end)
+- Report generation from realistic session data
+- Playwright codegen from realistic action sequences
+
+### E2E Tests (Playwright)
+
+**Location:** `tests/e2e/`
+**Run:** `npx playwright test`
+**Config:** `playwright.config.ts`
+
+Refine uses Playwright for E2E extension testing via `chromium.launchPersistentContext()` with `--load-extension` args (supported since Playwright 1.37+). See ADR-008.
+
+**Extension fixture pattern:**
+```typescript
+// tests/e2e/fixtures/extension.fixture.ts
+import { test as base, chromium, type BrowserContext } from '@playwright/test';
+import path from 'path';
+
+export const test = base.extend<{
+  context: BrowserContext;
+  extensionId: string;
+}>({
+  context: async ({}, use) => {
+    const pathToExtension = path.join(__dirname, '../../../dist');
+    const context = await chromium.launchPersistentContext('', {
+      headless: false,
+      args: [
+        `--disable-extensions-except=${pathToExtension}`,
+        `--load-extension=${pathToExtension}`,
+      ],
+    });
+    await use(context);
+    await context.close();
+  },
+  extensionId: async ({ context }, use) => {
+    let [background] = context.serviceWorkers();
+    if (!background) background = await context.waitForEvent('serviceworker');
+    const extensionId = background.url().split('/')[2];
+    await use(extensionId);
+  },
+});
+export const expect = base.expect;
 ```
 
-### Integration tests
+**Important notes:**
+- Extensions require **headed mode** (`headless: false`) — this is a Chromium limitation
+- CI needs `xvfb-run` (Linux) for headed Chromium
+- Build extension (`npm run build`) before running E2E tests
+- Extension ID may change between builds — fixture handles this dynamically
 
-- What: service + DB, API + dependency, pipeline end-to-end
-- Where: `**/tests/integration/`
-- Prefer real infra via containers when feasible.
+### Test Target App
 
-#### Example (FastAPI + TestClient)
+**Location:** `tests/fixtures/target-app/`
+**Run:** `npx serve tests/fixtures/target-app -l 3847`
+**URL:** `http://localhost:3847`
 
-```python
-def test_health_endpoint(client):
-    r = client.get("/health")
-    assert r.status_code == 200
+A simple multi-page web app used as Refine's test subject. Contains forms, buttons, navigation, and `data-testid` attributes for selector testing.
+
+---
+
+## TDD Discipline
+
+1. **Write tests first** (or simultaneously with implementation)
+2. **Every bug fix gets a regression test** that would fail without the fix
+3. **No "DONE" without green tests**
+4. **E2E tests run against real extension** — no mocked Chrome APIs in E2E
+5. **Tests are code** — reviewed, maintained, refactored same as production code
+
+---
+
+## Regression Policy
+
+- Every bug fix MUST add a test that would fail before the fix
+- Full suite runs before any merge (`/project:regression` command)
+- No silent test deletions — removing a test requires CTO approval
+
+---
+
+## Test Commands
+
+```bash
+# All unit + integration tests
+npx vitest run
+
+# Watch mode (development)
+npx vitest
+
+# Single file
+npx vitest run tests/unit/shared/utils.test.ts
+
+# Coverage report
+npx vitest run --coverage
+
+# E2E tests (requires built extension + target app)
+npx playwright test
+
+# E2E with UI mode (debugging)
+npx playwright test --ui
+
+# E2E specific file
+npx playwright test tests/e2e/extension-loads.spec.ts
+
+# Full suite (unit + integration + E2E)
+npm run test:all
 ```
 
-### E2E tests
+---
 
-- What: critical user flows across modules
-- Where: `tests/e2e/` (shared suite)
-- Keep small and stable.
+## Definition of Done
 
-#### Example (Playwright)
+```
+FEATURE IS "DONE" ONLY WHEN:
+  ✅ Unit tests pass (vitest)
+  ✅ TypeScript compiles clean (tsc --noEmit)
+  ✅ npm run build succeeds
+  ✅ Extension loads in Chrome without console errors
+  ✅ E2E smoke test passes (playwright)
+  ✅ No regressions on full suite
+  ✅ Avi sign-off
+```
 
-```ts
-test("login flow", async ({ page }) => {
-  await page.goto("/");
-  // ...
+---
+
+## Test Writing Patterns
+
+### Unit test pattern (Vitest)
+```typescript
+import { describe, it, expect } from 'vitest';
+import { generateSessionId } from '@shared/utils';
+
+describe('generateSessionId', () => {
+  it('produces format ats-YYYY-MM-DD-NNN', () => {
+    const id = generateSessionId();
+    expect(id).toMatch(/^ats-\d{4}-\d{2}-\d{2}-\d{3}$/);
+  });
+
+  it('generates unique IDs on consecutive calls', () => {
+    const id1 = generateSessionId();
+    const id2 = generateSessionId();
+    expect(id1).not.toBe(id2);
+  });
 });
 ```
 
-### Regression tests (mandatory for bug fixes)
+### E2E test pattern (Playwright)
+```typescript
+import { test, expect } from './fixtures/extension.fixture';
 
-- Every bug fix must add a test that would fail before the fix.
-- Keep a **golden set** where it makes sense (ML and critical data transforms).
+test('extension popup shows Refine branding', async ({ context, extensionId }) => {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup.html`);
+  await expect(page.locator('text=Refine')).toBeVisible();
+});
 
----
-
-## Mocks, fixtures, and global stubs
-
-- Prefer **SynaptixLabs testing/mocks** when available (don’t build competing test harnesses).
-- Shared fixtures should live under: `shared/testing/` (or equivalent).
-- Module-specific fixtures go under the module test tree.
-
----
-
-## How to run tests (examples)
-
-> Replace with project-specific commands.
-
-```bash
-# Unit + integration (Python)
-pytest -q
-
-# Frontend
-pnpm test
-
-# E2E
-pnpm test:e2e
+test('content script injects on target app', async ({ context }) => {
+  const page = await context.newPage();
+  const consoleMessages: string[] = [];
+  page.on('console', msg => consoleMessages.push(msg.text()));
+  await page.goto('http://localhost:3847');
+  await page.waitForTimeout(1000);
+  expect(consoleMessages.some(m => m.includes('Refine content script loaded'))).toBe(true);
+});
 ```
 
 ---
 
-## CLI/TUI Testing Requirements
-
-### Async Subprocess Pattern (CRITICAL for CLI/TUI work)
-
-Any external process invocation in a TUI or CLI tool **MUST** follow this pattern:
-
-1. **Use async subprocess** — never blocking `subprocess.run()` in TUI contexts
-2. **Implement cancellation** — user must be able to cancel long-running operations
-3. **Stream output** — don't buffer entire output; stream line-by-line
-4. **Test responsiveness** — UI must remain responsive during subprocess execution
-
-#### Required Pattern (Python)
-
-```python
-import asyncio
-from asyncio.subprocess import PIPE
-
-async def run_external_command(cmd: list[str], timeout: float = 30.0):
-    """
-    Run external command with proper async handling.
-
-    - Streams output
-    - Supports cancellation
-    - Has timeout protection
-    """
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=PIPE,
-        stderr=PIPE,
-    )
-
-    try:
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(),
-            timeout=timeout
-        )
-        return proc.returncode, stdout.decode(), stderr.decode()
-    except asyncio.TimeoutError:
-        proc.kill()
-        await proc.wait()
-        raise
-    except asyncio.CancelledError:
-        proc.kill()
-        await proc.wait()
-        raise
-```
-
-#### Required Tests for CLI/TUI
-
-| Test Type | What to Test | Example |
-|-----------|--------------|---------|
-| Responsiveness | UI remains interactive during long ops | Key events processed within 100ms |
-| Cancellation | User can cancel running operations | Ctrl+C terminates subprocess cleanly |
-| Timeout | Long operations don't hang forever | 30s timeout with graceful failure |
-| Streaming | Output appears progressively | Lines appear as generated, not all at once |
-| Error handling | Subprocess failures don't crash TUI | Non-zero exit shows error, doesn't crash |
-
-#### Anti-Patterns (DO NOT USE)
-
-```python
-# ❌ WRONG: Blocks entire event loop
-result = subprocess.run(["slow_command"], capture_output=True)
-
-# ❌ WRONG: No timeout protection
-await asyncio.create_subprocess_exec(*cmd)  # hangs forever if command hangs
-
-# ❌ WRONG: Buffering entire output
-output = await proc.stdout.read()  # OOM risk on large output
-```
+*Last updated: 2026-02-20*

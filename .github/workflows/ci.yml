@@ -1,5 +1,5 @@
-# {{PROJECT_NAME}} CI Workflow
-# Runs on PR and push to main/dev
+# SynaptixLabs Refine CI Workflow
+# Chrome Extension — Vite + CRXJS + Vitest + Playwright
 
 name: CI
 
@@ -10,112 +10,124 @@ on:
     branches: [main, dev]
 
 env:
-  PYTHON_VERSION: "{{PYTHON_VERSION}}"
-  NODE_VERSION: "{{NODE_VERSION}}"
+  NODE_VERSION: "20"
 
 jobs:
   # ========================
-  # Backend Tests
+  # Lint + Type Check
   # ========================
-  backend:
-    name: Backend Tests
+  lint:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      
-      - name: Install dependencies
-        run: |
-          cd backend
-          pip install poetry
-          poetry install --with dev
-      
-      - name: Lint
-        run: |
-          cd backend
-          poetry run {{LINT_COMMAND}}
-      
-      - name: Run tests
-        run: |
-          cd backend
-          poetry run pytest --cov=. --cov-report=xml
-      
-      - name: Check coverage
-        run: |
-          cd backend
-          poetry run coverage report --fail-under=90
 
-  # ========================
-  # Frontend Tests
-  # ========================
-  frontend:
-    name: Frontend Tests
-    runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
-      
-      - name: Lint
-        run: |
-          cd frontend
-          npm run lint
-      
-      - name: Run unit tests
-        run: |
-          cd frontend
-          npm run test:unit
-      
-      - name: Install Playwright
-        run: |
-          cd frontend
-          npx playwright install --with-deps
-      
-      - name: Run E2E tests
-        run: |
-          cd frontend
-          npm run test:e2e
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        run: npx eslint src/
 
   # ========================
-  # Shared Tests
+  # Unit + Integration Tests
   # ========================
-  shared:
-    name: Shared Tests
+  unit-tests:
+    name: Unit & Integration Tests
     runs-on: ubuntu-latest
-    
+    needs: lint
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
       - name: Install dependencies
-        run: |
-          pip install poetry
-          poetry install --with dev
-      
-      - name: Run shared tests
-        run: |
-          poetry run pytest shared/ --cov=shared --cov-report=xml
-      
-      - name: Check coverage (95% for shared)
-        run: |
-          poetry run coverage report --fail-under=95
+        run: npm ci
+
+      - name: Run Vitest
+        run: npx vitest run --coverage
+
+  # ========================
+  # Build Extension
+  # ========================
+  build:
+    name: Build Extension
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify dist contains manifest.json
+        run: test -f dist/manifest.json
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-dist
+          path: dist/
+
+  # ========================
+  # E2E Tests (Extension)
+  # ========================
+  e2e-tests:
+    name: E2E Extension Tests
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Download extension dist
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-dist
+          path: dist/
+
+      - name: Run E2E tests (headed via xvfb)
+        run: xvfb-run npx playwright test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/

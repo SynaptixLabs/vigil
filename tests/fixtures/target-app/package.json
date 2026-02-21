@@ -1,0 +1,11 @@
+{
+  "name": "qa-target-app",
+  "version": "1.0.0",
+  "description": "Minimal QA test target app for E2E regression testing.",
+  "scripts": {
+    "start": "serve -l 3847"
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  }
+}

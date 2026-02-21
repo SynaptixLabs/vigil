@@ -1,30 +1,20 @@
-# {{PROJECT_NAME}} — Module Registry
+# SynaptixLabs Refine — Module Registry
 
-> **🚨 CRITICAL: Check Before Building**  
-> Owner: CPO  
+> **🚨 CRITICAL: Check Before Building**
+> Owner: CTO
 > **Always search this file before implementing new capabilities.**
-
----
-
-## How to Use
-
-1. **Before building:** Search this document
-2. **If capability exists:** Reuse it
-3. **If similar exists:** Extend it
-4. **If new:** Add entry here after implementation
 
 ---
 
 ## Module Index
 
-| Domain | Module | Path | Owner | Status | Capabilities |
-|--------|--------|------|-------|--------|--------------|
-| BE | `_example` | `backend/modules/_example/` | — | 📘 Reference | Template module |
-
-> **Note:** `_example` is a reference implementation. Copy it to start new modules:
-> ```bash
-> cp -r backend/modules/_example backend/modules/{{your_module}}
-> ```
+| Module | Path | Tag | Status | Capabilities |
+|--------|------|-----|--------|-------------|
+| Background | `src/background/` | `[DEV:background]` | 🟡 WIP | Service worker, session lifecycle, message hub |
+| Content | `src/content/` | `[DEV:content]` | 🟡 WIP | Content script, rrweb recording, control bar, bug editor |
+| Popup | `src/popup/` | `[DEV:popup]` | 🟡 WIP | Extension popup UI, session list, new session form |
+| Core | `src/core/` | `[DEV:core]` | 🟡 WIP | Storage (Dexie), report gen, Playwright codegen |
+| Shared | `src/shared/` | `[DEV:shared]` | 🟡 WIP | Types, constants, message protocol, utilities |
 
 **Status Key:** 🟢 Active | 🟡 WIP | 🔴 Deprecated | 📘 Reference
 
@@ -32,86 +22,73 @@
 
 ## Capability Registry
 
-### Core Services (shared/)
+### Shared (`src/shared/`)
 
-| Capability | Provides | Location | Do NOT Re-implement |
-|------------|----------|----------|---------------------|
-| Settings | `get_settings()` | `shared/config/` | Ad-hoc `.env` parsing |
-| Logging | `setup_logging()` | `shared/logging/` | Custom log formatters |
-| Database | Connection pool | `shared/db/` | Per-module connection code |
-| Exceptions | Base exceptions | `shared/exceptions/` | Module-specific base errors |
-| CLI Registry | Plugin loader | `shared/cli/` | Separate CLI systems |
-| Validation | Common validators | `shared/validation/` | Duplicate validation logic |
-| Testing | Factories, fixtures | `shared/testing/` | Per-module test utilities |
+| Capability | Provides | Do NOT Re-implement |
+|------------|----------|---------------------|
+| Types | Session, Bug, Feature, Action, Report types | Module-specific type defs for shared concepts |
+| Message Protocol | Chrome message types + helpers | Ad-hoc message passing |
+| Constants | Session ID format, selector strategy, limits | Hardcoded magic values |
+| Utilities | Timestamp formatting, ID generation | Duplicate utility functions |
 
-### Backend Modules
+### Background Module (`src/background/`)
 
-| Module | Provides | Location | Vibes to Use |
-|--------|----------|----------|--------------|
-| `_example` | Reference patterns | `backend/modules/_example/` | 0 V (copy only) |
+| Capability | Provides | Do NOT Re-implement |
+|------------|----------|---------------------|
+| Session Lifecycle | Create, pause, resume, stop sessions | Session state in content script |
+| Message Router | Central hub for popup ↔ content messaging | Direct popup-to-content messaging |
+| Service Worker Keep-Alive | chrome.alarms for active sessions | Manual timers |
 
-### Frontend Modules
+### Content Module (`src/content/`)
 
-| Module | Provides | Location | Vibes to Use |
-|--------|----------|----------|--------------|
-| — | — | — | — |
+| Capability | Provides | Do NOT Re-implement |
+|------------|----------|---------------------|
+| rrweb Recording | Start/stop/pause DOM recording | Custom DOM recording |
+| Control Bar | Floating overlay (Record/Pause/Stop/Screenshot/Bug) | Injected non-isolated UI |
+| Bug/Feature Editor | Inline form with auto-context | Popup-based bug entry |
+| Screenshot Capture | Requests via background → chrome.tabs.captureVisibleTab | html2canvas or canvas-based |
+| Shadow DOM Host | Isolates all Refine UI from target page | Direct CSS injection |
+| Action Tracker | Extracts user intent from rrweb events | Parallel event listeners |
+| Selector Engine | Smart CSS selector: data-testid > aria-label > CSS (uses Shared constants) | Hardcoded selector preference |
+
+### Popup Module (`src/popup/`)
+
+| Capability | Provides | Do NOT Re-implement |
+|------------|----------|---------------------|
+| Session List | View all sessions with metadata | Background-based session browser |
+| New Session Form | Create session with name + description | Content-script-based session creation |
+| Session Actions | Delete, export, view replay | Direct IndexedDB access from popup |
+
+### Core Module (`src/core/`)
+
+| Capability | Provides | Do NOT Re-implement |
+|------------|----------|---------------------|
+| Storage Layer | Dexie.js wrapper for all IndexedDB ops | Raw IndexedDB calls |
+| Report Generator | JSON + Markdown report from session data | Ad-hoc report formatting |
+| Playwright Codegen | Action log → .spec.ts transformer | Manual test script writing |
+| ZIP Bundler | Package replay + report + screenshots + spec | Multiple separate downloads |
 
 ---
 
-## Cross-Module Dependencies
+## Cross-Module Communication
 
 ```
-┌─────────────────────────────────────────┐
-│              Module A                    │
-└───────────────────┬─────────────────────┘
-                    │ ✗ Direct dependency
-                    ▼
-┌─────────────────────────────────────────┐
-│              Module B                    │
-└─────────────────────────────────────────┘
-
-          ✓ Correct Pattern:
-
-┌─────────┐     ┌─────────┐     ┌─────────┐
-│Module A │────▶│ shared/ │◀────│Module B │
-└─────────┘     └─────────┘     └─────────┘
+┌──────────┐     chrome.runtime     ┌────────────┐     chrome.runtime     ┌──────────┐
+│  Popup   │ ◄──── messages ────►   │ Background │  ◄──── messages ────►  │ Content  │
+│ (React)  │                        │  (Service  │                        │ (rrweb + │
+│          │                        │   Worker)  │                        │  overlay)│
+└──────────┘                        └─────┬──────┘                        └──────────┘
+                                          │
+                                    ┌─────▼──────┐
+                                    │   Core     │
+                                    │ (Storage,  │
+                                    │  Reports,  │
+                                    │  Codegen)  │
+                                    └────────────┘
 ```
 
-**Rule:** Modules depend on `shared/`, never on each other directly.
+**Rule:** Modules communicate via Chrome messaging API through Background as hub. Core is a library consumed by Background. No direct cross-module imports except Shared.
 
 ---
 
-## Adding New Capabilities
-
-### Checklist Before Adding
-
-- [ ] Searched this document
-- [ ] Checked `shared/` for utilities
-- [ ] Confirmed no similar module exists
-- [ ] CTO approved (if cross-module)
-
-### Entry Template
-
-```markdown
-| {{DOMAIN}} | `{{module}}` | `{{domain}}/modules/{{module}}/` | `[DEV:{{module}}]` | 🟡 WIP | {{capabilities}} |
-```
-
----
-
-## Deprecations
-
-| Date | Module | What Changed | Replacement |
-|------|--------|--------------|-------------|
-| — | — | — | — |
-
----
-
-## Search Tips
-
-- Use `Ctrl+F` to search this document
-- Search by: capability name, export name, or module name
-- If unsure, ask: "Does X exist?" before building
-
----
-
-*Last updated: {{DATE}}*
+*Last updated: 2026-02-20*

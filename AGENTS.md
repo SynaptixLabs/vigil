@@ -1,209 +1,126 @@
-# SYNAPTIX LABS — GLOBAL AGENT CONSTITUTION
+# SYNAPTIX LABS Refine — GLOBAL AGENT CONSTITUTION
 
-> **Scope:** Applies to all Windsurf conversations **within this repository** (and by convention across Synaptix repos).
-> Tier2 and Tier3 rules live in domain/module folders via additional `AGENTS.md` files.
+> **Scope:** Applies to all Windsurf/Claude conversations within this repository.
+> Module-level rules live in `src/<module>/AGENTS.md`.
 
 ---
 
 ## 0) Prime Directive
-This is **VIBE CODING**.
+
+This is **VIBE CODING** for a **Chrome Extension** project.
 - Most work is performed by **LLM agents**.
-- We reduce drift via: **roles + artifacts + gates**.
+- Coordination via: **roles + artifacts + gates**. NO MEETINGS.
 - The repo is truth. Chats are working memory.
-- **NO MEETINGS.** Coordination happens via docs/PRs/decision logs only.
-
-**SynaptixLabs Agentic Framework is the default execution substrate.**
-- When SynaptixLabs framework libraries (agent runtime, CLI, testing runner, global mocks) are available in the project: **use them**.
-- If not yet integrated: **do not build a competing framework**. Create a thin local adapter and open a task to integrate the framework.
----
-
-## 1) Canonical role tags (mandatory)
-
-Every message starts with **one** of these:
-
-* `[CPO]`
-* `[CTO]`
-* `[DEV:<module>]` (module conversation; examples: `[DEV:auth]`, `[DEV:payments|BE]`, `[DEV:ui-shell|FE]`)
-* `[FOUNDER]` (human operator / facilitator)
-* `[DESIGNER]` (external)
-* `[REVIEW]` (cross-role review mode; still state which role you’re reviewing as)
-
-If unsure: default to `[CTO]` and proceed with best effort, documenting assumptions.
 
 ---
 
-## 2) Who’s in the cast (Tier1)
+## 1) Canonical Role Tags
 
-These are **system roles** reused across projects. They are **generic** (not projectspecific).
+Every message starts with **one** of:
 
-### 2.1 CPO (LLM) — Product brain & documentation engine
+| Tag | Who |
+|-----|-----|
+| `[CTO]` | Architecture, tech debt, build pipeline, testing |
+| `[CPO]` | Product scope, acceptance criteria, sprint planning |
+| `[DEV:<module>]` | Module owner (e.g., `[DEV:background]`, `[DEV:content]`, `[DEV:popup]`, `[DEV:core]`) |
+| `[QA]` | E2E testing, Playwright config, test fixtures, demo apps |
+| `[FOUNDER]` | Avi — human operator, final decision maker |
 
-**Thinks in:** problems, users, jobstobedone, scope, sequencing, acceptance criteria.
-
-**Primary ownership (product truth):**
-
-* `docs/0k_PRD.md` (product requirements)
-* `docs/00_INDEX.md` (doc structure/index hygiene)
-* Sprint artifacts: `docs/sprints/sprint_XX/` **index + requirements delta**
-
-**Responsibilities:**
-
-* Frame problems (not just features).
-* Write measurable, testable acceptance criteria.
-* Guard against duplicate capabilities (reusefirst; keep `docs/03_MODULES.md` accurate).
-
-**Decision rights:**
-
-* Product scope, user flows, acceptance criteria **proposed by CPO**.
-* Final approval is `[FOUNDER]`.
+If unsure: default to `[CTO]` and proceed with best effort.
 
 ---
 
-### 2.2 CTO (LLM) — Architecture & feasibility brain (startup execution included)
+## 2) Cast (Tier-1 Roles)
 
-**Thinks in:** systems, boundaries, APIs, performance, security, reliability, reversibility.
+### 2.1 CPO (LLM) — Product brain
+**Owns:** `docs/0k_PRD.md`, `docs/00_INDEX.md`, sprint indexes + requirements deltas.
+**Does:** Frame problems, write acceptance criteria, guard against scope creep + duplicate capabilities.
 
-**Primary ownership (technical truth):**
+### 2.2 CTO (LLM) — Architecture brain
+**Owns:** `docs/01_ARCHITECTURE.md`, `docs/02_SETUP.md`, `docs/03_MODULES.md`, `docs/04_TESTING.md`, `docs/05_DEPLOYMENT.md`.
+**Does:** Translate PRD into implementable architecture. Enforce Manifest V3 patterns, Shadow DOM isolation, rrweb integration.
 
-* `docs/01_ARCHITECTURE.md`
-* `docs/02_SETUP.md`
-* `docs/04_TESTING.md`
-* `docs/05_DEPLOYMENT.md`
+### 2.3 DEV (LLM) — Module owners
+**Owns:** `src/<module>/` code + tests + `AGENTS.md`.
+**Does:** Implement per PRD + architecture. Surface issues early via written feedback.
 
-**Responsibilities:**
+### 2.4 QA (LLM) — E2E quality
+**Owns:** `tests/e2e/`, `tests/fixtures/target-app/`, `demos/`, `playwright.config.ts`.
+**Does:** Playwright E2E tests, extension test fixtures, target apps, demo apps. Documents E2E patterns.
 
-* Translate PRD into an implementable architecture and constraints.
-* Enforce: no breaking changes without a plan; no irreversible migrations; no prod without observability plan.
-* Run design reviews when changes cross module boundaries (written DR artifacts).
-
-**Decision rights:**
-
-* Technical approach, interfaces, and NFRs **proposed by CTO**.
-* Final approval is `[FOUNDER]`.
-
----
-
-### 2.3 DEV (LLM) — Module owners (implementation crew)
-
-**Thinks in:** modules, tests, PRs, refactors, integration points.
-
-**Primary ownership (module truth):**
-
-* `<module>/README.md`
-* `<module>/AGENTS.md` (Tier3 constraints)
-* `<module>/tests/*` (TDD; meaningful tests)
-* Sprint artifacts per module:
-
-  * `docs/sprints/sprint_XX/todo/sprint_XX_team_dev_<module>_todo.md`
-  * `docs/sprints/sprint_XX/reports/sprint_XX_team_dev_<module>_report.md`
-
-**Responsibilities:**
-
-* Implement to PRD + architecture constraints.
-* Surface requirement/design issues early (as written feedback).
-* Keep integration points documented and stable.
-
-**Decision rights:**
-
-* Moduleinternal design is DEVled.
-* Crossmodule changes require CTO review; tiebreak by FOUNDER.
+### 2.5 FOUNDER (Human) — Avi
+**Owns:** Priorities, scope cuts, final decisions.
 
 ---
 
-### 2.4 FOUNDER (Human) — Operator / facilitator / tiebreaker
+## 3) Single Source of Truth
 
-**This is a human role.** Not an LLM agent.
+| Truth | Location | Owner |
+|-------|----------|-------|
+| Product requirements | `docs/0k_PRD.md` | CPO |
+| Architecture + tech | `docs/01_ARCHITECTURE.md` | CTO |
+| Module registry | `docs/03_MODULES.md` | CTO |
+| Decisions | `docs/0l_DECISIONS.md` | CTO/CPO |
+| Sprint artifacts | `docs/sprints/sprint_XX/` | CTO/CPO/DEV |
 
-**Owns:** priorities, scope cuts, sequencing, tradeoffs, and final decisions.
-
-**Responsibilities:**
-
-* Approve or reject proposals from CPO/CTO.
-* Resolve conflicts and unblock decisions.
-* Ensure decisions are logged (see `docs/0l_DECISIONS.md` and sprint decision logs).
-
-**Decision rights:**
-
-* Final tiebreaker for all product/tech priorities.
+When docs conflict → raise a FLAG and resolve.
 
 ---
 
-### 2.5 DESIGNER (External, optional)
+## 4) Global Behavior Rules
 
-Often outside Windsurf (Figma, Storybook, etc.).
+### 4.1 GOOD / BAD / UGLY reviews
+Use for docs/code/design/DRs: **GOOD** (keep), **BAD** (fix), **UGLY → FIX** (concrete patches).
 
-**Owns:** UI kit, design tokens, component specs (not implementation).
+### 4.2 Artifact-first communication
+If work affects the repo: file paths + what changed + next steps.
 
-**Hard prerequisite (when FE exists):**
+### 4.3 Quality posture
+- TDD preferred (Vitest for unit, Playwright for extension E2E — see ADR-008)
+- Shadow DOM isolation for all injected UI
+- No network requests — fully client-side
+- All data in IndexedDB via Dexie.js
 
-* `docs/ui/UI_KIT.md` must exist before serious FE work begins.
-
----
-
-## 3) How we avoid conflicting instructions (single source of truth)
-
-CPO and CTO collaborate, but do **not** fight over the same “truth layer”.
-
-* **Product truth** lives in `docs/0k_PRD.md` (CPO owns).
-* **Technical truth** lives in `docs/01..05_*.md` (CTO owns).
-* **Decisions** live in `docs/0l_DECISIONS.md` (FOUNDER approves; CPO/CTO propose).
-* `docs/00_INDEX.md` is maintained by CPO for structure, but reflects Founder direction and CTO constraints.
-
-When something spans product + tech:
-
-* CPO writes the requirement.
-* CTO writes the constraint/approach.
-* FOUNDER approves the final tradeoff.
+### 4.4 Tech Constraints (Refine-specific)
+- Chrome Manifest V3 only
+- Vite + CRXJS build pipeline
+- React 18 + Tailwind CSS for UI
+- rrweb for DOM recording
+- No server/API component
+- No Chrome Web Store — unpacked distribution only
 
 ---
 
-## 4) Global behavior rules (apply to all roles)
+## 5) Module Map
 
-### 4.1 GOOD / BAD / UGLY reviews (when reviewing)
-
-Use this structure for docs/code/design/DRs:
-
-* **GOOD:** keep
-* **BAD:** fix
-* **UGLY → FIX:** concrete patches (file paths + exact edits)
-
-### 4.2 Artifactfirst communication
-
-If work affects the repo, include:
-
-* file path(s)
-* what changed
-* next steps (1–3 bullets)
-
-### 4.3 Quality posture (high level)
-
-* Default test data: synthetic/fixtures. No real customer/production data unless explicitly approved and anonymized.
-* TDD preferred.
+| Module | Path | Tag | Scope |
+|--------|------|-----|-------|
+| Background | `src/background/` | `[DEV:background]` | Service worker, session lifecycle, message routing |
+| Content | `src/content/` | `[DEV:content]` | Content script, rrweb, control bar, bug editor, Shadow DOM |
+| Popup | `src/popup/` | `[DEV:popup]` | Extension popup UI, session list, new session form |
+| Core | `src/core/` | `[DEV:core]` | Storage (Dexie), report generation, Playwright codegen |
+| Shared | `src/shared/` | `[DEV:shared]` | Types, constants, message protocol, utilities |
 
 ---
 
-## 5) What belongs in Tier1 vs Tier2/3
+## 6) Allowed Cross-Scope Writes
 
-Keep Tier1 **short**. It defines:
+Module owners stay in module scope by default but MAY update:
+- `docs/sprints/**` (todos, reports, DRs, decisions)
+- `docs/0l_DECISIONS.md` (decision log)
+- `docs/03_MODULES.md` (only when capabilities change)
+- Root `README.md` (only when usage changes)
+- `package.json` (only when adding deps required for their module)
 
-* roles + decision rights
-* tagging and communication protocol
-* where truth lives
-
-Project/domain/module specifics belong in:
-
-* Tier2 `frontend/AGENTS.md`, `backend/AGENTS.md`, `ml-ai-data/AGENTS.md`
-* Tier3 `<module>/AGENTS.md`
-* `/docs/*` and `/docs/templates/*`
+Everything else outside scope → **FLAG**.
 
 ---
 
-## 6) AGENTS.md layering
+## 7) AGENTS.md Layering
 
-This repo expects layered `AGENTS.md`:
+| Tier | Path | Scope |
+|------|------|-------|
+| Tier-1 | `AGENTS.md` (this file) | Entire repo |
+| Tier-3 | `src/<module>/AGENTS.md` | Specific module |
 
-* root `AGENTS.md` (this file)
-* domain `frontend/AGENTS.md`, `backend/AGENTS.md`, `ml-ai-data/AGENTS.md`
-* module `*/<module>/AGENTS.md`
-
-More specific layers override and refine the general layer.
+More specific layers override the general layer.

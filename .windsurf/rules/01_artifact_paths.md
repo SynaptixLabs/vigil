@@ -1,12 +1,19 @@
-# Common Artifact Paths (repo conventions)
+# Common Artifact Paths (Refine Extension)
 
-## Root-level (always)
+## Root-level
 
 | Artifact | Path | Owner |
 |----------|------|-------|
 | Global agent constitution (Tier-1) | `AGENTS.md` | `[CTO]` |
 | Project README | `README.md` | `[CTO]` |
-| Python config | `pyproject.toml` | `[CTO]` |
+| Claude CLI context | `CLAUDE.md` | `[CTO]` |
+| Changelog | `CHANGELOG.md` | `[CTO]` |
+| Package config | `package.json` | `[CTO]` |
+| TypeScript config | `tsconfig.json` | `[CTO]` |
+| TypeScript node config | `tsconfig.node.json` | `[CTO]` |
+| Vite config | `vite.config.ts` | `[CTO]` |
+| Manifest | `manifest.json` | `[CTO]` |
+| Tailwind config | `tailwind.config.ts` | `[CTO]` |
 | Git ignore | `.gitignore` | `[CTO]` |
 
 ## Windsurf rules
@@ -14,161 +21,72 @@
 | Artifact | Path | Owner |
 |----------|------|-------|
 | Entry point | `.windsurf/rules/00_repo_entrypoint.md` | `[CTO]` |
-| Synaptix ops (always-on) | `.windsurf/rules/00_synaptix_ops.md` | `[CTO]` |
-| Artifact paths (this file) | `.windsurf/rules/01_artifact_paths.md` | `[CTO]` |
+| Synaptix ops | `.windsurf/rules/00_synaptix_ops.md` | `[CTO]` |
+| Artifact paths | `.windsurf/rules/01_artifact_paths.md` | `[CTO]` |
 | Templates policy | `.windsurf/rules/02_templates_policy.md` | `[CTO]` |
 | Module permissions | `.windsurf/rules/10_module_agent_permissions.md` | `[CTO]` |
 | Context router | `.windsurf/rules/20_context_router.md` | `[CTO]` |
 | CTO role | `.windsurf/rules/role_cto.md` | `[CTO]` |
 | CPO role | `.windsurf/rules/role_cpo.md` | `[CPO]` |
-| Backend dev role | `.windsurf/rules/role_backend_dev.md` | `[CTO]` |
-| Frontend dev role | `.windsurf/rules/role_frontend_dev.md` | `[CTO]` |
-| ML dev role | `.windsurf/rules/role_ml_dev.md` | `[CTO]` |
-| Shared dev role | `.windsurf/rules/role_shared_dev.md` | `[CTO]` |
-
-## Global standards
-
-| Artifact | Path | Owner |
-|----------|------|-------|
-| Global dev standards | `_global/windsurf_global_rules.md` | `[CTO]` |
-| Global README | `_global/README.md` | `[CTO]` |
+| Extension dev role | `.windsurf/rules/role_extension_dev.md` | `[CTO]` |
 
 ## AGENTS.md tiers
 
 | Tier | Path | Scope |
 |------|------|-------|
-| Tier-1 (global) | `AGENTS.md` | Entire repo |
-| Tier-2 (backend) | `backend/AGENTS.md` | All BE modules |
-| Tier-2 (frontend) | `frontend/AGENTS.md` | All FE modules |
-| Tier-2 (ml-ai-data) | `ml-ai-data/AGENTS.md` | All ML modules |
-| Tier-2 (shared) | `shared/AGENTS.md` | All shared modules |
-| Tier-3 (module) | `<domain>/modules/<module>/AGENTS.md` | Specific module |
+| Tier-1 | `AGENTS.md` | Entire repo |
+| Tier-3 | `src/background/AGENTS.md` | Background module |
+| Tier-3 | `src/content/AGENTS.md` | Content module |
+| Tier-3 | `src/popup/AGENTS.md` | Popup module |
+| Tier-3 | `src/core/AGENTS.md` | Core module |
+| Tier-3 | `src/shared/AGENTS.md` | Shared module |
 
-## Documentation structure
+## Documentation
 
 | Artifact | Path | Owner |
 |----------|------|-------|
 | Docs index | `docs/00_INDEX.md` | `[CPO]` |
 | PRD | `docs/0k_PRD.md` | `[CPO]` |
 | Architecture | `docs/01_ARCHITECTURE.md` | `[CTO]` |
-| Setup guide | `docs/02_SETUP.md` | `[CTO]` |
-| Module registry | `docs/03_MODULES.md` | `[CTO]` |
-| Testing guide | `docs/04_TESTING.md` | `[CTO]` |
-| Deployment guide | `docs/05_DEPLOYMENT.md` | `[CTO]` |
-| Decisions log | `docs/0l_DECISIONS.md` | `[CTO]`/`[CPO]` |
-| UI Kit | `docs/ui/UI_KIT.md` | `[DESIGNER]` |
+| Setup | `docs/02_SETUP.md` | `[CTO]` |
+| Modules | `docs/03_MODULES.md` | `[CTO]` |
+| Testing | `docs/04_TESTING.md` | `[CTO]` |
+| Deployment | `docs/05_DEPLOYMENT.md` | `[CTO]` |
+| Decisions | `docs/0l_DECISIONS.md` | `[CTO]`/`[CPO]` |
+| Discussion Summary | `docs/knowledge/00_DISCUSSION_SUMMARY.md` | Reference |
 
 ## Sprint system
 
 | Artifact | Path | Owner |
 |----------|------|-------|
-| Sprint index | `docs/sprints/<SPRINT_ID>/<SPRINT_ID>_index.md` | `[CTO]`/`[CPO]` |
-| Sprint decisions | `docs/sprints/<SPRINT_ID>/<SPRINT_ID>_decisions_log.md` | `[CTO]` |
-| Module todos | `docs/sprints/<SPRINT_ID>/todo/<SPRINT_ID>_team_dev_<module>_todo.md` | `[DEV:*]` |
-| Module reports | `docs/sprints/<SPRINT_ID>/reports/<SPRINT_ID>_team_dev_<module>_report.md` | `[DEV:*]` |
-| Requirements delta | `docs/sprints/<SPRINT_ID>/reviews/<SPRINT_ID>_requirements_delta.md` | `[CPO]` |
-| Design reviews | `docs/sprints/<SPRINT_ID>/reviews/<SPRINT_ID>_DR_<topic>.md` | `[CTO]` |
+| Sprint index | `docs/sprints/sprint_XX/sprint_XX_index.md` | `[CTO]`/`[CPO]` |
+| Sprint decisions | `docs/sprints/sprint_XX/sprint_XX_decisions_log.md` | `[CTO]` |
+| Module todos | `docs/sprints/sprint_XX/todo/sprint_XX_team_dev_<module>_todo.md` | `[DEV:*]` |
+| Module reports | `docs/sprints/sprint_XX/reports/sprint_XX_team_dev_<module>_report.md` | `[DEV:*]` |
+| Requirements delta | `docs/sprints/sprint_XX/reviews/sprint_XX_requirements_delta.md` | `[CPO]` |
 
-## Templates
-
-| Artifact | Path | Purpose |
-|----------|------|---------|
-| Sprint index template | `docs/templates/sprints/sprint_XX_index_TEMPLATE.md` | New sprints |
-| Module todo template | `docs/templates/sprints/sprint_XX_team_dev_MODULE_todo_TEMPLATE.md` | Module todos |
-| Module report template | `docs/templates/sprints/sprint_XX_team_dev_MODULE_report_TEMPLATE.md` | Module reports |
-| Module AGENTS template | `docs/templates/module_AGENTS_TEMPLATE.md` | New module AGENTS.md |
-
-## Domain structure
-
-### Backend (`backend/`)
+## Source code
 
 ```
-backend/
-├── AGENTS.md                    # Tier-2 rules
-├── modules/
-│   ├── _example/                # Reference implementation
-│   │   ├── README.md
-│   │   ├── AGENTS.md            # Tier-3 rules
-│   │   ├── src/
-│   │   │   ├── __init__.py
-│   │   │   ├── models.py
-│   │   │   ├── services.py
-│   │   │   ├── api.py
-│   │   │   └── cli.py
-│   │   └── tests/
-│   │       ├── unit/
-│   │       └── integration/
-│   └── <your_module>/           # Same structure
+src/
+├── background/          # Service worker
+│   └── AGENTS.md
+├── content/             # Content script (rrweb + overlay)
+│   └── AGENTS.md
+├── popup/               # Extension popup (React)
+│   └── AGENTS.md
+├── core/                # Business logic (storage, reports, codegen)
+│   └── AGENTS.md
+└── shared/              # Types, constants, messages
+    └── AGENTS.md
+tests/
+├── unit/                # Unit tests (Vitest) — DEV owns
+├── integration/         # Integration tests (Vitest) — DEV owns
+├── e2e/                 # E2E tests (Playwright) — QA owns
+│   └── fixtures/        # Extension test fixture
+└── fixtures/
+    └── target-app/      # QA regression target (port 3847) — QA owns
+demos/
+└── refine-demo-app/     # Manual acceptance demo (port 3900) — QA owns
+dist/                    # Build output
 ```
-
-### Frontend (`frontend/`)
-
-```
-frontend/
-├── AGENTS.md                    # Tier-2 rules
-├── modules/
-│   └── <module>/
-│       ├── README.md
-│       ├── AGENTS.md            # Tier-3 rules
-│       ├── src/
-│       │   ├── index.ts
-│       │   ├── components/
-│       │   ├── pages/
-│       │   ├── hooks/
-│       │   └── stores/
-│       └── tests/
-```
-
-### ML/AI/Data (`ml-ai-data/`)
-
-```
-ml-ai-data/
-├── AGENTS.md                    # Tier-2 rules
-├── modules/
-│   └── <module>/
-│       ├── README.md
-│       ├── AGENTS.md            # Tier-3 rules
-│       ├── src/
-│       │   ├── data/
-│       │   ├── features/
-│       │   ├── models/
-│       │   ├── training/
-│       │   └── evaluation/
-│       ├── experiments/
-│       └── tests/
-```
-
-### Shared (`shared/`)
-
-```
-shared/
-├── AGENTS.md                    # Tier-2 rules
-├── cli/                         # CLI plugin system
-├── config/                      # Settings (Pydantic)
-├── db/                          # Database utilities
-├── exceptions/                  # Base exceptions
-├── logging/                     # Logging setup
-├── testing/                     # Test utilities
-├── utils/                       # Common utilities
-└── validation/                  # Validators
-```
-
-## Scripts
-
-| Script | Path | Purpose |
-|--------|------|---------|
-| Repo audit | `scripts/audit_repo_structure.py` | Validate structure |
-
-## SynaptixLabs framework (when vendored/installed)
-
-| Artifact | Path | Notes |
-|----------|------|-------|
-| CLI | `agents/slagents_cli/` | Or configured path |
-| Testing harness | `agents/**` | See AGENTS project docs |
-
-## Decisions
-
-| Artifact | Path | Notes |
-|----------|------|-------|
-| Primary decisions log | `docs/0l_DECISIONS.md` | Single source of truth |
-| ADRs (optional) | `docs/adrs/ADR-*.md` | Must be referenced from decisions log |

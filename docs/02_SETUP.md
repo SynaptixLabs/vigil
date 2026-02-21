@@ -1,4 +1,4 @@
-# {{PROJECT_NAME}} — Setup Guide
+# SynaptixLabs Refine — Setup Guide
 
 > **Development Environment Setup**
 > Owner: CTO
@@ -9,31 +9,10 @@
 
 | Tool | Version | Required |
 |------|---------|----------|
-| Python | >=3.11, <3.14 | ✅ |
-| Node.js | >=20.x | ✅ (if FE) |
-| pnpm | >=8.x | ✅ (if FE) |
-| Docker | Latest | Optional |
+| Node.js | >=20.x LTS | ✅ |
+| npm | >=10.x | ✅ |
+| Chrome | Latest | ✅ |
 | Git | Latest | ✅ |
-
-### ⚠️ Python Version Gate (CRITICAL)
-
-**Required:** Python 3.11, 3.12, or 3.13. Python 3.14+ is **NOT supported**.
-
-```bash
-# Verify your Python version BEFORE any work
-python --version
-# Must output: Python 3.11.x, 3.12.x, or 3.13.x
-
-# If using pyenv:
-pyenv install 3.12.4
-pyenv local 3.12.4
-
-# If using conda:
-conda create -n {{PROJECT_NAME}} python=3.12
-conda activate {{PROJECT_NAME}}
-```
-
-**Why this matters:** Python 3.14 has breaking changes that cause test noise and compatibility issues. The project will NOT work correctly on 3.14+.
 
 ---
 
@@ -41,109 +20,101 @@ conda activate {{PROJECT_NAME}}
 
 ```bash
 # 1. Clone repository
-git clone {{REPO_URL}}
-cd {{PROJECT_NAME}}
+git clone <repo-url>
+cd project-refiner
 
 # 2. Install dependencies
-{{INSTALL_COMMAND}}
+npm install
 
-# 3. Environment setup
-cp .env.example .env
-# Edit .env with your values
+# 3. Build extension
+npm run build
 
-# 4. Database setup
-{{DB_SETUP_COMMAND}}
-
-# 5. Verify installation
-{{VERIFY_COMMAND}}
+# 4. Load in Chrome
+#    → chrome://extensions
+#    → Enable "Developer mode" (top right)
+#    → "Load unpacked" → select dist/ folder
+#    → Refine icon appears in toolbar
 ```
 
 ---
 
-## Environment Variables
+## Development Workflow
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `DATABASE_URL` | Database connection | ✅ | - |
-| `SECRET_KEY` | App secret | ✅ | - |
-| `DEBUG` | Debug mode | ❌ | `false` |
-| `LOG_LEVEL` | Logging level | ❌ | `INFO` |
-
----
-
-## Running the Application
-
-### Development Mode
 ```bash
-{{DEV_RUN_COMMAND}}
-```
+# Watch mode — rebuilds on file changes
+npm run dev
 
-### Production Mode
-```bash
-{{PROD_RUN_COMMAND}}
-```
-
-### With Docker
-```bash
-docker-compose up -d
+# After rebuild, reload extension in Chrome:
+#    → chrome://extensions → Refine card → click refresh icon
+#    → Or press Ctrl+Shift+R on chrome://extensions page
 ```
 
 ---
 
-## Running Tests
+## Key Commands
 
 ```bash
-# All tests
-{{TEST_ALL_COMMAND}}
+npm run dev          # Watch mode build
+npm run build        # Production build → dist/
+npx tsc --noEmit     # Type check
+npx eslint .         # Lint
 
-# Unit tests only
-{{TEST_UNIT_COMMAND}}
+# Unit + Integration tests (DEV owns)
+npx vitest           # Unit tests (watch mode)
+npx vitest run       # Unit tests (single run)
+npx vitest run --coverage  # With coverage report
 
-# With coverage
-{{TEST_COVERAGE_COMMAND}}
+# E2E tests (QA owns — requires built dist/ + target app running)
+npx playwright test  # E2E tests (headed Chromium)
+npx playwright test --ui  # E2E with interactive debug UI
+
+# Combined
+npm run test:all     # Unit + E2E in sequence
 ```
 
 ---
 
 ## IDE Setup
 
-### VS Code
-Recommended extensions:
-- {{EXTENSION_1}}
-- {{EXTENSION_2}}
-- {{EXTENSION_3}}
+### Windsurf / VS Code
 
-### Windsurf
-See `AGENTS.md` files for agent-specific configurations.
+Recommended extensions:
+- ESLint
+- Tailwind CSS IntelliSense
+- TypeScript + JavaScript
+- Chrome Extension Manifest (optional)
+
+### Chrome DevTools
+
+- **Popup**: Right-click Refine icon → "Inspect popup"
+- **Service Worker**: `chrome://extensions` → Refine → "Inspect views: service worker"
+- **Content Script**: Regular DevTools (F12) on target page → Console → select Refine context
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
-
-**Issue:** {{COMMON_ISSUE_1}}
+**Issue:** Extension not loading after build
 ```bash
-# Solution
-{{SOLUTION_1}}
+# Verify dist/ folder exists and contains manifest.json
+ls dist/
+# Rebuild
+npm run build
 ```
 
-**Issue:** {{COMMON_ISSUE_2}}
-```bash
-# Solution
-{{SOLUTION_2}}
+**Issue:** "Developer mode extensions" nag banner
+```
+# Dismiss with "X" — appears once per Chrome restart
+# For team-wide: use Chrome Enterprise policy (optional)
+```
+
+**Issue:** Content script not injecting
+```
+# Check manifest.json content_scripts matches
+# Check Chrome DevTools console for errors
+# Verify page URL matches host_permissions
 ```
 
 ---
 
-## Vibe Cost
-
-| Setup Task | Vibes |
-|------------|-------|
-| Fresh setup | 2–3 V |
-| Dependency update | 1–2 V |
-| Environment debug | 3–5 V |
-
----
-
-*Last updated: {{DATE}}*
+*Last updated: 2026-02-20*

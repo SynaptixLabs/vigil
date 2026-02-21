@@ -1,10 +1,10 @@
-# 20 — Context Router
+# 20 — Context Router (Refine)
 
-Purpose: reduce "who am I?" confusion by inferring a default role from file paths.
+Purpose: infer default role from file paths.
 
-## Default role by path (unless user overrides)
+## Default role by path
 
-### Documentation paths
+### Documentation
 - `docs/0k_PRD.md` → `[CPO]`
 - `docs/00_INDEX.md` → `[CPO]`
 - `docs/sprints/**/requirements_delta*` → `[CPO]`
@@ -14,77 +14,46 @@ Purpose: reduce "who am I?" confusion by inferring a default role from file path
 - `docs/04_TESTING.md` → `[CTO]`
 - `docs/05_DEPLOYMENT.md` → `[CTO]`
 - `docs/0l_DECISIONS.md` → `[CTO]` / `[CPO]` (joint)
-- `docs/release/**` → `[CTO]`
-- `docs/ui/**` → `[DESIGNER]` / `[DEV:*|FE]`
-- `docs/sprints/**/todo/**` → `[DEV:<module>|*]`
-- `docs/sprints/**/reports/**` → `[DEV:<module>|*]`
+- `docs/sprints/**/todo/**` → `[DEV:<module>]`
+- `docs/sprints/**/reports/**` → `[DEV:<module>]`
 
-### Domain paths
-- `backend/**` → `[DEV:<module>|BE]`
-  - Use `@role_backend_dev` for stable persona
-- `frontend/**` → `[DEV:<module>|FE]`
-  - Use `@role_frontend_dev` for stable persona
-- `ml-ai-data/**` → `[DEV:<module>|ML]`
-  - Use `@role_ml_dev` for stable persona
-- `shared/**` → `[DEV:<module>|SHARED]`
-  - Use `@role_shared_dev` for stable persona
+### Source code
+- `src/background/**` → `[DEV:background]`
+- `src/content/**` → `[DEV:content]`
+- `src/popup/**` → `[DEV:popup]`
+- `src/core/**` → `[DEV:core]`
+- `src/shared/**` → `[DEV:shared]`
 
-### Infrastructure paths
+All source modules use `@role_extension_dev` for stable persona.
+
+### Infrastructure
 - `.windsurf/rules/**` → `[CTO]`
 - `.github/**` → `[CTO]`
-- `scripts/**` → `[CTO]` / `[DEV:*|SHARED]`
-- `pyproject.toml` → `[CTO]`
+- `manifest.json` → `[CTO]`
+- `vite.config.ts` → `[CTO]`
+- `tsconfig.json` → `[CTO]`
+- `package.json` → `[CTO]`
+- `tailwind.config.ts` → `[CTO]`
 
-### Module-specific inference
-When inside `<domain>/modules/<module>/`:
-- Infer module name from path
-- Tag as `[DEV:<module>|<DOMAIN_TAG>]`
-- Read nearest `AGENTS.md` (Tier-3) first
+### Tests
+- `tests/unit/<module>/**` → `[DEV:<module>]`
+- `tests/integration/**` → `[CTO]` / `[DEV:*]`
+- `tests/e2e/**` → `[QA]`
+- `tests/fixtures/target-app/**` → `[QA]`
 
-## Role instance prompts available
+### Demos
+- `demos/**` → `[QA]`
 
-| Path Pattern | Role Instance | How to Invoke |
-|--------------|---------------|---------------|
-| `backend/**` | Backend Dev | `@role_backend_dev` |
-| `frontend/**` | Frontend Dev | `@role_frontend_dev` |
-| `ml-ai-data/**` | ML Dev | `@role_ml_dev` |
-| `shared/**` | Shared Dev | `@role_shared_dev` |
+## Role instance prompts
+
+| Path Pattern | Role Instance | Invoke |
+|---|---|---|
+| `src/**` | Extension Dev | `@role_extension_dev` |
 | Executive work | CTO | `@role_cto` |
 | Product work | CPO | `@role_cpo` |
 
-## Auto-read order reminder
+## Auto-read order
 
-Always consult the nearest `AGENTS.md` first (the editor applies it automatically),
-then layer in:
-
-1. Tier-3 module `AGENTS.md` (if exists)
-2. Tier-2 domain `AGENTS.md`
-3. Tier-1 root `AGENTS.md`
-4. `_global/windsurf_global_rules.md`
-5. Relevant docs for the task
-
-## Examples
-
-```
-# Working on backend/modules/auth/src/services.py
-Inferred role: [DEV:auth|BE]
-Reading order:
-  1. backend/modules/auth/AGENTS.md
-  2. backend/AGENTS.md
-  3. AGENTS.md
-  4. docs/01_ARCHITECTURE.md (if needed)
-
-# Working on frontend/modules/dashboard/src/components/Chart.tsx
-Inferred role: [DEV:dashboard|FE]
-Reading order:
-  1. frontend/modules/dashboard/AGENTS.md
-  2. frontend/AGENTS.md
-  3. AGENTS.md
-  4. docs/ui/UI_KIT.md (always for FE)
-
-# Working on docs/0k_PRD.md
-Inferred role: [CPO]
-Reading order:
-  1. AGENTS.md
-  2. docs/00_INDEX.md
-```
+1. Module `src/<module>/AGENTS.md` (Tier-3)
+2. Root `AGENTS.md` (Tier-1)
+3. Relevant docs for the task

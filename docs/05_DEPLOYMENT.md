@@ -1,147 +1,84 @@
-# {{PROJECT_NAME}} — Deployment
+# SynaptixLabs Refine — Deployment
 
-> **Deployment Process & Infrastructure**  
+> **Distribution & Release Process**
 > Owner: CTO
 
 ---
 
-## Environments
+## Distribution Model
 
-| Environment | URL | Branch | Auto-Deploy |
-|-------------|-----|--------|-------------|
-| Development | `dev.{{domain}}` | `dev` | ✅ |
-| Staging | `staging.{{domain}}` | `dev` (tagged) | ❌ |
-| Production | `{{domain}}` | `main` | ❌ |
+**Unpacked Chrome Extension** — No Chrome Web Store.
+
+Team members install by:
+1. Pull latest from repo
+2. `npm run build` (or use pre-built `dist/` from release)
+3. `chrome://extensions` → Developer mode → Load unpacked → select `dist/`
 
 ---
 
-## Deployment Flow
+## Release Flow
 
 ```
-Feature Branch → dev → Staging → Production
-       │          │        │          │
-       │          │        │          └── Manual (CTO approval)
-       │          │        └── Manual (QA sign-off)
-       │          └── Auto on PR merge
+Feature Branch → dev → main (tagged)
+       │          │        │
+       │          │        └── Tag release (v0.1.0, v0.2.0, etc.)
+       │          └── PR merge (tests must pass)
        └── PR required
 ```
 
 ---
 
-## Pre-Deployment Checklist
+## Pre-Release Checklist
 
-### All Environments
-- [ ] All tests passing
-- [ ] Coverage target met
-- [ ] Linting passes
-- [ ] No security vulnerabilities
-
-### Staging
-- [ ] All above +
-- [ ] E2E tests pass
-- [ ] Manual QA completed
-- [ ] Performance acceptable
-
-### Production
-- [ ] All above +
-- [ ] Rollback plan documented
-- [ ] Monitoring configured
-- [ ] CTO approval
+- [ ] All unit tests passing (`npx vitest run`)
+- [ ] TypeScript clean (`npx tsc --noEmit`)
+- [ ] Build succeeds (`npm run build`)
+- [ ] Extension loads in Chrome without errors
+- [ ] Manual smoke test: create session, record, stop, view report
+- [ ] `CHANGELOG.md` updated
+- [ ] Version bumped in `manifest.json` + `package.json`
 
 ---
 
-## Deploy Commands
+## Release Commands
 
-### Development
 ```bash
-# Auto-deployed on merge to dev
-git push origin dev
-```
+# 1. Build production
+npm run build
 
-### Staging
-```bash
-# Tag and deploy
-git tag -a staging-$(date +%Y%m%d) -m "Staging deploy"
+# 2. Verify dist/
+ls dist/
+
+# 3. Tag release
+git tag -a v0.X.0 -m "Release v0.X.0: <summary>"
 git push origin --tags
-{{STAGING_DEPLOY_COMMAND}}
-```
 
-### Production
-```bash
-#### Merge to main and deploy
-git checkout main
-git merge dev
-git push origin main
-{{PROD_DEPLOY_COMMAND}}
+# 4. Share dist/ to team
+# (Copy dist/ folder or point team to repo tag)
 ```
 
 ---
 
-## Rollback Procedure
+## Rollback
 
-### Quick Rollback (< 5 min)
 ```bash
-#### Revert to previous deployment
-{{ROLLBACK_COMMAND}}
-```
-
-### Database Rollback
-```bash
-#### Only if migrations were run
-{{DB_ROLLBACK_COMMAND}}
+# Revert to previous version
+git checkout v0.X.0
+npm run build
+# Re-load dist/ in Chrome
 ```
 
 ---
 
 ## Infrastructure
 
-### Services
-| Service | Provider | Config |
-|---------|----------|--------|
-| Backend | {{BACKEND_HOST}} | `{{config_location}}` |
-| Frontend | {{FRONTEND_HOST}} | `{{config_location}}` |
-| Database | {{DB_HOST}} | `{{config_location}}` |
-| Cache | {{CACHE_HOST}} | `{{config_location}}` |
-
-### Environment Variables
-Managed via: {{ENV_MANAGEMENT}}
+| Component | Details |
+|-----------|---------|
+| Build | Vite + CRXJS → `dist/` |
+| Storage | Local IndexedDB (browser) |
+| Network | None (fully offline) |
+| Hosting | N/A (local extension) |
 
 ---
 
-## Monitoring
-
-### Health Checks
-| Endpoint | Expected | Alert If |
-|----------|----------|----------|
-| `/health` | 200 | Non-200 for 1 min |
-| `/api/health` | 200 | Non-200 for 1 min |
-
-### Alerts
-- Error rate > {{X}}%
-- Response time > {{Y}}ms
-- Memory usage > {{Z}}%
-
----
-
-## Secrets Management
-
-| Secret | Location | Rotation |
-|--------|----------|----------|
-| DB credentials | {{LOCATION}} | {{FREQUENCY}} |
-| API keys | {{LOCATION}} | {{FREQUENCY}} |
-| JWT secret | {{LOCATION}} | {{FREQUENCY}} |
-
----
-
-## Vibe Cost Reference
-
-| Deploy Task | Vibes |
-|-------------|-------|
-| Standard deploy | 1–2 V |
-| Deploy with migration | 2–4 V |
-| Rollback | 1–2 V |
-| Incident response | 5–15 V |
-
----
-
-*Last updated: {{DATE}}*
+*Last updated: 2026-02-20*

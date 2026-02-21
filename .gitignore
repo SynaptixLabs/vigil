@@ -123,4 +123,16 @@ temp/
 # ========================
 # Project Specific
 # ========================
-# Add project-specific ignores below
+# Chrome Extension build artifacts (beyond dist/ already ignored above)
+*.crx
+*.pem
+*.zip
+
+# TypeScript project references
+*.tsbuildinfo
+
+# Playwright browser binaries
+.playwright/
+
+# Vitest
+vitest.config.ts.timestamp-*
