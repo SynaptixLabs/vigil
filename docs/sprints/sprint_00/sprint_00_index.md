@@ -5,7 +5,7 @@
 
 ## Status
 
-- Sprint status: ✅ DEV + QA Complete — Awaiting Founder acceptance
+- Sprint status: ✅ DONE — CTO Approved 2026-02-21
 - Current focus: Project infra finalization + hello-world extension + test framework
 - Key risks: CRXJS Vite plugin compatibility with latest Vite 6.x (fallback: Vite 5.x)
 

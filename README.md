@@ -97,7 +97,7 @@ Start here: [`docs/00_INDEX.md`](docs/00_INDEX.md)
 
 | Sprint | Focus | Status |
 |--------|-------|--------|
-| Sprint 00 | Repo setup, scaffold, hello-world extension | 🟡 Active |
+| Sprint 00 | Repo setup, scaffold, hello-world extension | ✅ Done |
 | Sprint 01 | P0 MVP: Recording + Screenshots + Bug Editor | Planned |
 | Sprint 02 | P0 Complete: Reports + Sessions. P1: Replay | Planned |
 | Sprint 03 | P1: Playwright Export + ZIP + Shortcuts | Planned |
