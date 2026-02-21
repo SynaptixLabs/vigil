@@ -1,140 +1,140 @@
-# sprint_02 — Team DEV Todo: Export + Reports + Ship
+# sprint_02 — Team DEV Todo: Reports + Export + Ship
 
 **Owner:** `[DEV:export]`
-**Sprint:** 02 — FINAL SPRINT — Complete product delivery
-**Estimated effort:** ~39V (of 46V sprint total — QA owns ~7V of E2E work)
+**Sprint scope:** R006 (Reports), R007 (Session Mgmt), R010 (Replay), R011 (Playwright Export), R012 (ZIP), R013 (Shortcuts)
 
 ## Sprint Goals (DEV)
 
-- Build session management UI (list, detail view, delete)
-- Implement report generation (JSON + Markdown) from recorded sessions
-- Build visual replay bundler (self-contained HTML with rrweb-player)
-- Implement Playwright test script codegen from action log
-- Build ZIP export (replay + report + screenshots + spec)
-- Add keyboard shortcuts (Ctrl+Shift+R/S/B)
-- Write unit tests for all export/codegen modules
-- Achieve ship-quality across all code
+- Build report generation (JSON + Markdown) from session data
+- Build rrweb-player replay as self-contained HTML
+- Build Playwright codegen: action log → .spec.ts with smart selectors
+- Build ZIP bundle export (replay + report + screenshots + spec)
+- Complete session management UI (detail view, delete, export buttons)
+- Implement keyboard shortcuts via chrome.commands
+- Ship Refine v1.0
 
-## Reading Order
+## Reading Order (MANDATORY)
 
 1. `AGENTS.md` (root Tier-1)
 2. `src/core/AGENTS.md` — core module owns report gen, codegen, replay bundler
-3. `src/popup/AGENTS.md` — popup owns session list + detail UI
-4. `docs/01_ARCHITECTURE.md` §5 Data Flows
+3. `src/popup/AGENTS.md` — popup owns session detail + export buttons
+4. `docs/01_ARCHITECTURE.md` — data model, export pipeline diagram
 5. `docs/03_MODULES.md` — capability registry
-6. `docs/0k_PRD.md` — R006, R007, R010-R013 acceptance criteria
-7. `docs/sprints/sprint_02/sprint_02_index.md`
-
----
+6. `docs/04_TESTING.md` — test patterns
 
 ## Tasks
 
-### Phase 1: Session Management — R007 (~5V)
+### Phase 1: Report Generation — R006 (~8V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D201 | Session list page | Shows all sessions from Dexie: name, date, duration, status badge (recorded/stopped), bug count, screenshot count. Sorted by date descending. Empty state: "No sessions yet — start one!" Links to session detail. | `src/popup/pages/SessionList.tsx` | ☐ |
-| D202 | Session detail page | Single session view: metadata block (ID, name, description, start/stop times, duration), actions timeline (scrollable, shows action type + description + timestamp), bugs list (priority badge + description + screenshot thumbnail), screenshots grid (clickable to expand). | `src/popup/pages/SessionDetail.tsx` | ☐ |
-| D203 | Session delete | Delete button on session detail + session list (per-item). Confirm dialog: "Delete session X and all data? This cannot be undone." On confirm: cascade delete session + events + bugs + features + screenshots from Dexie. | `src/popup/pages/SessionDetail.tsx`, `src/popup/pages/SessionList.tsx` | ☐ |
-| D204 | Popup routing update | App.tsx routes: `/` → SessionList, `/new` → NewSession (Sprint 01), `/session/:id` → SessionDetail. Back button on detail/new pages. Active session indicator persists across pages. | `src/popup/App.tsx` | ☐ |
-| D205 | Unit tests: session queries | Test list query (returns all sessions sorted by date). Test cascade delete (session + related records removed). Test empty state. | `tests/unit/popup/session-list.test.ts` | ☐ |
+| D201 | **JSON report generator** | Input: Session + recordings + bugs + features + screenshots from Dexie. Output: structured JSON with: `metadata` (id, name, dates, duration), `pages[]` (url, timeSpent, actionCount), `timeline[]` (chronological: actions + bugs + features + screenshots), `summary` (totals, coverage). | `src/core/report-generator.ts` | ☐ |
+| D202 | **Markdown report generator** | Same input → Markdown output with: `# Session Report: {name}`, metadata table, `## Pages Visited`, `## Timeline` (chronological list), `## Bugs` (table: priority, title, URL, selector), `## Features` (table), `## Screenshots` (linked references). Human-readable, paste-into-sprint-docs quality. | `src/core/report-generator.ts` (same file, separate function) | ☐ |
+| D203 | **Auto-generate on session stop** | When session stops: auto-trigger report generation. Store report JSON in Dexie `sessions.report`. User can re-generate manually from session detail. | `src/background/session-manager.ts` (update) | ☐ |
 
-### Phase 2: Report Generation — R006 (~8V)
+### Phase 2: Session Management — R007 (~5V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D206 | Report generator — JSON | Input: session ID. Reads session + events + bugs + features + screenshots from Dexie. Output: `RefineReport` JSON object with: session metadata, pages visited (unique URLs + visit count), actions timeline (chronological), bugs array (with screenshot data URLs), features array, statistics (total actions, duration, pages, bugs, features, screenshots). | `src/core/report-generator.ts` | ☐ |
-| D207 | Report generator — Markdown | Same data as JSON but formatted as human-readable markdown: `# Session Report: {name}`, `## Summary` table, `## Pages Visited` list, `## Actions Timeline` table, `## Bugs` (each with priority, description, URL, screenshot as `![](data:image/png;base64,...)`), `## Features`, `## Screenshots` gallery. | `src/core/report-generator.ts` | ☐ |
-| D208 | Report UI | "Generate Report" button in SessionDetail. Shows generating spinner → then inline preview (markdown rendered) with "Download JSON" and "Download Markdown" buttons. Downloads via Blob URL + `chrome.downloads.download()`. | `src/popup/pages/SessionDetail.tsx` | ☐ |
-| D209 | Unit tests: report gen | Test JSON report structure from mock session data. Test Markdown output contains expected sections. Test report with zero bugs (edge case). Test report with 10+ screenshots (performance). | `tests/unit/core/report-generator.test.ts` | ☐ |
+| D204 | **Enhanced session list** | Show: name, date, duration, status badge (color-coded), counts (bugs/features/screenshots). Sort: most recent first. Empty state: "No sessions yet — start recording!" | `src/popup/pages/SessionList.tsx` (update) | ☐ |
+| D205 | **Session detail view** | Full session info: all metadata, action timeline (scrollable), bugs list, features list, screenshot thumbnails. Export buttons: "Report (MD)", "Report (JSON)", "Watch Replay", "Export Playwright", "Export ZIP". Delete button with confirmation. | `src/popup/pages/SessionDetail.tsx` | ☐ |
+| D206 | **Delete session** | Confirmation dialog: "Delete session {name}? This removes all recordings, bugs, features, and screenshots. Cannot be undone." On confirm: remove all related data from Dexie. Return to session list. | `src/popup/pages/SessionDetail.tsx` (inline) | ☐ |
+| D207 | **Storage usage indicator** | Popup footer: "Storage: X.X MB used". Calculate from Dexie table sizes. Warn (amber) at 100MB, alert (red) at 500MB. | `src/popup/components/StorageIndicator.tsx` | ☐ |
 
 ### Phase 3: Visual Replay — R010 (~10V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D210 | Replay bundler | Input: session ID. Reads rrweb events from Dexie. Output: self-contained HTML string with: (1) rrweb-player JS+CSS inlined (no external CDN), (2) events JSON embedded as `<script>` data, (3) playback controls (play/pause, speed selector: 0.5x/1x/2x/4x, timeline scrubber), (4) session metadata header (name, date, duration). | `src/core/replay-bundler.ts` | ☐ |
-| D211 | Bug markers on timeline | Red dots on the rrweb-player timeline at timestamps where bugs were logged. Hovering a dot shows bug description tooltip. | `src/core/replay-bundler.ts` | ☐ |
-| D212 | Replay UI | "Watch Replay" button in SessionDetail → generates HTML → opens in new tab (`window.open()` with data URL or blob URL). Alternative: download as `replay-{sessionId}.html`. | `src/popup/pages/SessionDetail.tsx` | ☐ |
-| D213 | Unit tests: replay bundler | Test output is valid HTML. Test events are embedded correctly. Test bug markers at correct timestamps. Test empty session (edge case — show "No events recorded" message). | `tests/unit/core/replay-bundler.test.ts` | ☐ |
+| D208 | **Replay bundler** | Input: recording chunks (rrweb events) from Dexie. Output: self-contained HTML string with embedded rrweb-player library + events JSON. HTML includes: play/pause button, speed control (0.5x/1x/2x/4x), timeline scrubber, fullscreen toggle. No external dependencies — works offline. | `src/core/replay-bundler.ts` | ☐ |
+| D209 | **Replay HTML template** | Clean, branded page: "SynaptixLabs Refine — Session Replay: {name}". Dark player UI. Session metadata shown above player. Bug/feature markers on timeline (red dots for bugs, blue for features). | `src/core/replay-bundler.ts` (template string) | ☐ |
+| D210 | **"Watch Replay" download** | Button in session detail → triggers browser download of `replay-{session-id}.html`. File opens in any browser — fully self-contained. | `src/popup/pages/SessionDetail.tsx` (button handler) | ☐ |
 
 ### Phase 4: Playwright Export — R011 (~15V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D214 | Playwright codegen | Input: session's action log (Action[] from Sprint 01). Output: valid Playwright `.spec.ts` string. Generates: `import { test, expect } from '@playwright/test'`, `test('Refine recorded session: {name}', async ({ page }) => { ... })`. Maps actions: navigate → `page.goto(url)`, click → `page.click(selector)`, type → `page.fill(selector, value)`, assert visibility → `expect(page.locator(selector)).toBeVisible()`. | `src/core/playwright-codegen.ts` | ☐ |
-| D215 | Selector quality in codegen | Use best selector from action log. Add confidence comment: `// selector: data-testid (high confidence)` or `// selector: CSS path (low confidence — consider adding data-testid)`. Flag selectors with nth-child as `// ⚠️ fragile selector`. | `src/core/playwright-codegen.ts` | ☐ |
-| D216 | Bug markers in codegen | Insert comments at bug locations: `// 🐛 BUG [P1]: "Button doesn't respond to click" — 2026-02-26T14:32:00Z`. If bug has screenshot, add: `// Screenshot: see screenshots/bug-XXXXXXXX.png`. | `src/core/playwright-codegen.ts` | ☐ |
-| D217 | Codegen UI | "Export Playwright" button in SessionDetail → generates .spec.ts → download as file via `chrome.downloads.download()`. Filename: `refine-{sessionId}.spec.ts`. | `src/popup/pages/SessionDetail.tsx` | ☐ |
-| D218 | Syntax validation | Generated script passes: `npx tsc --noEmit` when placed in a Playwright project with `@playwright/test` installed. Test this in CI or unit test by parsing the output with TypeScript compiler API. | `tests/unit/core/playwright-codegen.test.ts` | ☐ |
-| D219 | Unit tests: codegen | Test navigate action → `page.goto()`. Test click action → `page.click()`. Test type action → `page.fill()`. Test full session with mixed actions. Test bug comments inserted at correct positions. Test selector confidence comments. Test empty session (edge case). | `tests/unit/core/playwright-codegen.test.ts` | ☐ |
+| D211 | **Playwright codegen** | Input: Action[] from session. Output: valid Playwright .spec.ts string. Generates: `import { test, expect } from '@playwright/test'`, `test('Refine session: {name}', async ({ page }) => { ... })`. Each action → corresponding Playwright call. | `src/core/playwright-codegen.ts` | ☐ |
+| D212 | **Action → Playwright mapping** | `navigate(url)` → `await page.goto('url')`. `click(selector)` → `await page.click('selector')`. `type(selector, value)` → `await page.fill('selector', 'value')`. `scroll` → comment only. `screenshot` → `await page.screenshot({ path: 'step-N.png' })`. | `src/core/playwright-codegen.ts` | ☐ |
+| D213 | **Smart selector in export** | Use selector from action (already ranked by engine). If `confidence: 'high'` → use as-is. If `confidence: 'low'` → add `// TODO: fragile selector — add data-testid` comment. | `src/core/playwright-codegen.ts` | ☐ |
+| D214 | **Bug markers in spec** | Where bugs were logged during recording: insert comment block `// 🐛 BUG [P1]: "Title" — url — consider adding assertion here`. Helps QA know where to add expect() calls. | `src/core/playwright-codegen.ts` | ☐ |
+| D215 | **"Export Playwright" download** | Button → downloads `regression-{session-id}.spec.ts`. Syntactically valid — `npx tsc --noEmit` should pass on the generated file (with Playwright types available). | `src/popup/pages/SessionDetail.tsx` (button handler) | ☐ |
 
 ### Phase 5: ZIP Bundle — R012 (~5V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D220 | ZIP export | Uses JSZip (add to dependencies). Bundles: `replay.html`, `report.json`, `report.md`, `regression.spec.ts`, `screenshots/*.png` (each bug screenshot + standalone screenshots). Single ZIP download: `refine-{sessionId}.zip`. | `src/core/zip-exporter.ts` (new) | ☐ |
-| D221 | ZIP UI | "Export All (ZIP)" button in SessionDetail → shows progress → triggers download. | `src/popup/pages/SessionDetail.tsx` | ☐ |
-| D222 | Unit test: ZIP contents | Test ZIP contains expected files. Test file names match convention. Test ZIP with no screenshots (edge case). | `tests/unit/core/zip-exporter.test.ts` | ☐ |
+| D216 | **ZIP assembly** | Collect: replay.html, report.json, report.md, regression.spec.ts, screenshots/*.png. Use JSZip (or fflate) to create ZIP in-browser. No server round-trip. | `src/core/zip-exporter.ts` (new) | ☐ |
+| D217 | **"Export ZIP" download** | Button → generates ZIP → triggers browser download: `refine-{session-name}-{date}.zip`. Progress indicator for large sessions (>10MB). | `src/popup/pages/SessionDetail.tsx` (button handler) | ☐ |
+| D218 | **Screenshot filename mapping** | Screenshots in ZIP named: `screenshots/ss-001-{timestamp}.png`. Report references match filenames. | `src/core/zip-exporter.ts` | ☐ |
 
 ### Phase 6: Keyboard Shortcuts — R013 (~3V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D223 | Register shortcuts in manifest | Add `commands` section to `manifest.json`: `toggle-recording` (Ctrl+Shift+R), `take-screenshot` (Ctrl+Shift+S), `open-bug-editor` (Ctrl+Shift+B). **CTO must approve manifest change.** | `manifest.json` (CTO approval required) | ☐ |
-| D224 | Shortcut handler | `chrome.commands.onCommand.addListener()` in service worker. Routes: `toggle-recording` → start/pause/resume based on current state. `take-screenshot` → capture if session active. `open-bug-editor` → send message to content script to open editor. | `src/background/service-worker.ts` (update) | ☐ |
-| D225 | Unit test: command routing | Test each command routes to correct action. Test commands ignored when no active session (except toggle-recording which can start). | `tests/unit/background/commands.test.ts` | ☐ |
+| D219 | **Register chrome.commands** | Add to `manifest.json`: `commands` section with `toggle-recording` (Ctrl+Shift+R), `take-screenshot` (Ctrl+Shift+S), `open-bug-editor` (Ctrl+Shift+B). | `manifest.json` (update — CTO approval needed) | ☐ |
+| D220 | **Command handler** | `chrome.commands.onCommand` listener in background. Routes to session manager (toggle recording), screenshot (capture), or sends message to content (open bug editor). Only active when session is recording or paused. | `src/background/service-worker.ts` (update) | ☐ |
+| D221 | **Shortcut hints on control bar** | Tooltip on each button showing keyboard shortcut. E.g., "Screenshot (Ctrl+Shift+S)". | `src/content/overlay/ControlBar.tsx` (update) | ☐ |
 
-### Phase 7: Ship Prep
+### Phase 7: Unit + Integration Tests (~5V)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| D226 | Full build | `npm run build` → clean dist/ | All | ☐ |
-| D227 | Type check | `npx tsc --noEmit` → zero errors | All | ☐ |
-| D228 | Lint | `npx eslint src/` → zero errors | All | ☐ |
-| D229 | All unit + integration tests | `npx vitest run` → green. Coverage: ≥80% shared, ≥70% core, ≥60% content, ≥60% popup | All | ☐ |
-| D230 | Manual smoke test | Full flow on TaskPilot: create session → record 3+ pages → screenshot → 2 bugs → stop → view report → watch replay → export Playwright → export ZIP → delete session | All | ☐ |
+| D222 | **Unit: report-generator** | Given mock session data → verify JSON report structure (all required fields present). Verify Markdown report renders correctly (headings, tables, lists). Test edge cases: session with 0 bugs, session with 50 screenshots. | `tests/unit/core/report-generator.test.ts` | ☐ |
+| D223 | **Unit: playwright-codegen** | Given mock Action[] → verify generated .spec.ts: correct imports, page.goto, page.click, page.fill, bug comments. Verify selector strategy preserved. Verify output is parseable TypeScript. | `tests/unit/core/playwright-codegen.test.ts` | ☐ |
+| D224 | **Unit: replay-bundler** | Given mock rrweb events → verify HTML output contains rrweb-player script, events JSON, play/pause controls. Verify HTML is valid (basic structure check). | `tests/unit/core/replay-bundler.test.ts` | ☐ |
+| D225 | **Integration: export pipeline** | Create session → add recordings + bugs + screenshots → generate report → generate replay → generate spec → bundle ZIP. Verify ZIP contains all expected files with correct content. | `tests/integration/export-pipeline.test.ts` | ☐ |
+| D226 | **All tests green** | `npx vitest run` — all unit + integration pass. Sprint 00 + 01 tests still green (regression). | — | ☐ |
+
+### Phase 8: Verification
+
+| ID | Task | Acceptance Criteria | Files | Status |
+|---|---|---|---|---|
+| D227 | `npm run build` — clean | No errors, `dist/` produced | — | ☐ |
+| D228 | `npx tsc --noEmit` — clean | Zero type errors | — | ☐ |
+| D229 | `npx eslint src/` — clean | Zero lint errors | — | ☐ |
+| D230 | **Full manual test on TaskPilot** | Record 5-min session on TaskPilot → navigate 4+ pages → take 3 screenshots → log 2 bugs + 1 feature → stop → view report → watch replay → export Playwright spec → export ZIP → verify ZIP contents → verify .spec.ts is valid TypeScript | — | ☐ |
 
 ---
+
+## New Dependencies (require CTO approval)
+
+| Package | Purpose | Size | Alternative |
+|---|---|---|---|
+| `jszip` | ZIP creation in browser | ~100KB | `fflate` (~29KB, faster) |
+| `rrweb-player` | Visual replay component | ~200KB | None (official rrweb package) |
+
+> **Note:** Both are MIT licensed. `rrweb-player` is used only in the generated replay HTML (not bundled in extension). `jszip` / `fflate` is imported in `src/core/`.
 
 ## Critical Rules
 
-1. **All Sprint 01 rules still apply.** Module boundaries, Chrome API isolation, path aliases, TDD.
-2. **JSZip is a NEW dependency.** Add to `package.json` — FLAG to CTO for approval.
-3. **manifest.json changes require CTO approval.** The `commands` section is new.
-4. **Generated files must be standalone.** Replay HTML: zero external deps. Playwright spec: only needs `@playwright/test`. Report MD: standard markdown, no custom syntax.
-5. **No screenshots in git.** Screenshot data URLs stay in IndexedDB only. Test with mock data URLs.
-6. **rrweb-player inlining.** Bundle rrweb-player JS+CSS into the replay HTML. Do NOT use CDN links. Consider using a build-time script or raw string embedding.
-7. **Version 1.0.0.** CTO will bump version in manifest + package.json after all tests pass.
-
----
+1. **Core module is Chrome-API-free.** Report gen, codegen, replay bundler, ZIP exporter — all pure TypeScript. No `chrome.*` calls.
+2. **Downloads via chrome.downloads API** in background. Popup sends message → background triggers download.
+3. **Generated Playwright spec must be syntactically valid.** Test by running `npx tsc --noEmit` on the output.
+4. **Replay HTML must work offline.** No CDN links, no external resources. Everything embedded.
+5. **ZIP must be self-contained.** Anyone with the ZIP can: open replay, read report, run spec (with Playwright installed).
+6. **Manifest changes need CTO approval.** Adding `chrome.commands` requires manifest.json update.
 
 ## Definition of Done (DEV)
 
 ```
-✅ npm run build — succeeds
-✅ npx tsc --noEmit — zero errors
-✅ npx eslint src/ — zero errors
-✅ npx vitest run — all tests pass, coverage targets met
-✅ Session list shows all sessions with correct metadata
-✅ Session detail shows actions, bugs, screenshots
-✅ Session delete cascades correctly
-✅ JSON + Markdown reports generated correctly
-✅ Visual replay opens in new tab with working playback
-✅ Bug markers visible on replay timeline
-✅ Playwright script generated with correct syntax
-✅ Selector confidence comments present in generated code
+✅ Report generates JSON + Markdown from session data
+✅ Replay HTML opens in browser with working rrweb-player
+✅ Playwright .spec.ts is syntactically valid TypeScript
 ✅ ZIP bundle contains all 5 file types
+✅ Session detail view: all export buttons functional
+✅ Delete session removes all associated data
 ✅ Keyboard shortcuts trigger correct actions
-✅ Full flow works on TaskPilot demo app
-✅ FOUNDER completes real Papyrus acceptance session
+✅ npx vitest run — all pass (Sprint 00 + 01 + 02)
+✅ npx tsc --noEmit — clean
+✅ npx eslint src/ — clean
+✅ npm run build — clean
+✅ Full manual test on TaskPilot — complete export pipeline works
 ```
-
----
 
 ## Risks / Blockers
 
-- **rrweb-player inlining:** Player bundle is ~200KB. Inlining into HTML string may need careful escaping. Test early.
-- **JSZip + large sessions:** 30min session with 20 screenshots could be 50MB+ ZIP. Consider screenshot compression or resolution limit.
-- **Playwright codegen quality:** Generated scripts won't be perfect — they're a starting point for QA to refine. Document this expectation.
-- **chrome.commands limit:** MV3 allows max 4 commands. We use 3 — fits, but no room for expansion.
-- **Popup navigation state:** React Router in popup may lose state on popup close/reopen. Use URL hash routing + Dexie as source of truth.
+- **rrweb-player bundle size:** Embedding ~200KB of JS in replay HTML. Acceptable for internal tool.
+- **Large session ZIP size:** 30-min session could produce 50-100MB ZIP (mostly screenshots). Mitigation: compress screenshots to JPEG 80% before ZIP.
+- **Playwright codegen quality:** Generated specs will need human review — auto-generated selectors may be brittle. Bug markers help QA prioritize which assertions to add.
+- **JSZip memory usage:** Creating large ZIPs in-browser uses significant memory. Mitigation: stream chunks if possible, warn user for sessions > 100MB.
+- **chrome.commands conflict:** Shortcuts may conflict with browser or OS shortcuts. Make them configurable in manifest (user can remap in `chrome://extensions/shortcuts`).

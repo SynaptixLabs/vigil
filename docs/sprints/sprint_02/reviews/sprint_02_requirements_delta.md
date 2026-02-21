@@ -1,45 +1,32 @@
 # sprint_02 — Requirements Delta
 
-## PRD Requirements In Scope
+## PRD Changes from Sprint 01
 
-| ID | Requirement | Priority | Vibes | Sprint 02 Action |
-|---|---|---|---|---|
-| R006 | Session report generation (JSON + Markdown) | P0 | 8V | ✅ Full implementation |
-| R007 | Session list with delete capability | P0 | 5V | ✅ Full implementation |
-| R010 | Visual replay via rrweb-player | P1 | 10V | ✅ Full implementation |
-| R011 | Playwright test script export | P1 | 15V | ✅ Full implementation |
-| R012 | Export as ZIP bundle | P1 | 5V | ✅ Full implementation |
-| R013 | Keyboard shortcuts | P1 | 3V | ✅ Full implementation |
+No PRD changes. Sprint 02 completes all P0 + P1 features as specified.
+
+## Scope
+
+| Req | In Scope | Notes |
+|---|---|---|
+| R006 | ✅ | Report generation (JSON + MD) |
+| R007 | ✅ | Session list + detail + delete |
+| R010 | ✅ | Visual replay (rrweb-player) |
+| R011 | ✅ | Playwright test script export |
+| R012 | ✅ | ZIP bundle export |
+| R013 | ✅ | Keyboard shortcuts |
+| R020-R024 | ❌ CUT | P2 features deferred indefinitely |
 
 ## New Dependencies
 
-| Dependency | Type | Notes |
-|---|---|---|
-| JSZip | npm package (MIT) | Client-side ZIP generation. CTO approval needed for new dep. |
-| rrweb-player | npm package (MIT) | Already installed in Sprint 00. Inlined into replay HTML. |
-
-## Sprint 02 Total: ~46V
-
-## Cumulative Budget
-
-| Sprint | Vibes | Running Total |
-|---|---|---|
-| Sprint 00 | ~15V | 15V |
-| Sprint 01 | ~47V | 62V |
-| Sprint 02 | ~46V | 108V |
-| **Total budget** | **~110V** | **2V buffer** |
-
-## Cut (P2 — Not Shipping)
-
-| ID | Requirement | Priority | Reason |
+| Package | Purpose | License | Decision |
 |---|---|---|---|
-| R020 | Session tagging / filtering | P2 | Nice-to-have. Can be added post-v1. |
-| R021 | Bug/feature export to markdown | P2 | Report gen (R006) covers most of this need. |
-| R022 | Action annotation | P2 | Adds complexity to recording engine. Post-v1. |
-| R023 | Element inspector mode | P2 | Separate tool concern. Post-v1. |
-| R024 | Dark/light theme for overlay | P2 | Cosmetic. Post-v1. |
+| `jszip` or `fflate` | ZIP creation in browser | MIT | Pending S02-001 |
+| `rrweb-player` | Visual replay component (embedded in export HTML only) | MIT | Already in package.json |
 
-## Changes from PRD
+## Ship Criteria
 
-- **R012 dependency added:** JSZip npm package required (not in original PRD dependency list)
-- **No scope changes.** Sprint 02 implements R006, R007, R010-R013 exactly as specified in PRD v0.1.0.
+- Version: v1.0.0
+- manifest.json version: 1.0.0
+- CHANGELOG.md covers Sprint 00 + 01 + 02
+- README.md updated with full feature list
+- FOUNDER acceptance on Papyrus

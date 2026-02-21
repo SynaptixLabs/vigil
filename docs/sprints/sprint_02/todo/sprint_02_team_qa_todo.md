@@ -1,82 +1,110 @@
-# sprint_02 — Team QA Todo: Export E2E + Full Regression
+# sprint_02 — Team QA Todo: Export E2E + Full Regression + Ship
 
 **Owner:** `[QA]`
-**Sprint:** 02 — FINAL SPRINT — Ship-quality E2E coverage
-**Estimated effort:** ~7V
+**Sprint scope:** E2E tests for R006-R007, R010-R013, full regression, ship acceptance
 
 ## Sprint Goals (QA)
 
-- Write E2E tests for all export features (R006, R007, R010-R013)
-- Full regression across all 3 sprints (Sprint 00 + 01 + 02)
-- Verify generated outputs (reports, replay, Playwright scripts, ZIP)
-- Write the final acceptance test script for FOUNDER walkthrough
+- Write E2E tests for the entire export pipeline (report, replay, Playwright spec, ZIP)
+- Write E2E tests for session management (list, detail, delete)
+- Write E2E tests for keyboard shortcuts
+- Full regression: Sprint 00 + 01 + 02 E2E suite must pass
+- Validate exported Playwright spec actually runs against target app
+- Support FOUNDER acceptance testing
 
-## Reading Order
+## Reading Order (MANDATORY)
 
 1. `AGENTS.md` (root Tier-1)
-2. `docs/04_TESTING.md` — E2E patterns
-3. `docs/sprints/sprint_02/sprint_02_index.md` — sprint scope
-4. `docs/0k_PRD.md` — R006, R007, R010-R013 acceptance criteria
-
----
+2. `docs/04_TESTING.md` — all E2E patterns
+3. `docs/01_ARCHITECTURE.md` — export pipeline diagram
+4. `tests/e2e/fixtures/extension.fixture.ts` — base fixture
 
 ## Tasks
 
-### Phase 1: E2E Tests for Export Features
+### Phase 1: Start Immediately — No DEV Dependency
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| Q201 | E2E: session management | View session list → verify sessions shown with metadata. Open session detail → verify actions, bugs, screenshots displayed. Delete session → confirm dialog → verify removed from list. | `tests/e2e/session-management.spec.ts` | ☐ |
-| Q202 | E2E: report generation | Complete a recording session on target app → stop → open session detail → click "Generate Report" → verify JSON download + Markdown download. Verify report contains: session name, pages visited, bugs logged during session. | `tests/e2e/report-generation.spec.ts` | ☐ |
-| Q203 | E2E: visual replay | Complete a session → stop → click "Watch Replay" → verify new tab opens with rrweb-player. Verify playback controls visible (play, speed, scrubber). Verify bug markers on timeline if bugs were logged. | `tests/e2e/replay-export.spec.ts` | ☐ |
-| Q204 | E2E: Playwright export | Complete a session with clicks + navigation → stop → click "Export Playwright" → verify .spec.ts download. Open downloaded file content → verify contains `page.goto`, `page.click`, `import { test }` from `@playwright/test`. Verify bug comments present if bugs were logged. | `tests/e2e/playwright-export.spec.ts` | ☐ |
-| Q205 | E2E: ZIP export | Complete a full session → stop → click "Export All (ZIP)" → verify ZIP download. Verify ZIP filename matches convention. Ideally verify ZIP contains expected files (replay.html, report.json, report.md, regression.spec.ts, screenshots/). | `tests/e2e/zip-export.spec.ts` | ☐ |
-| Q206 | E2E: keyboard shortcuts | During recording: press Ctrl+Shift+S → verify screenshot captured. Press Ctrl+Shift+B → verify bug editor opens. Press Ctrl+Shift+R → verify recording pauses. Press again → resumes. | `tests/e2e/keyboard-shortcuts.spec.ts` | ☐ |
+| Q201 | **Prepare export validation scripts** | Create helper utilities for E2E tests: (1) script to verify ZIP contents (expected files present) (2) script to verify .spec.ts is parseable TypeScript (3) script to verify replay HTML opens correctly | `tests/e2e/helpers/export-validators.ts` | ☐ |
+| Q202 | **Plan generated spec validation** | Design test: exported .spec.ts runs against QA target app. May need fixture that: generates spec from recording → writes to temp file → runs Playwright on it. Document approach. | `tests/e2e/helpers/spec-runner.ts` or plan doc | ☐ |
 
-### Phase 2: Full Regression
+### Phase 2: After DEV Delivers Export — E2E Specs
+
+> **Blocked on:** DEV D227 (build succeeds with export pipeline)
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| Q207 | Sprint 00 regression | All 3 Sprint 00 specs pass: extension-loads, content-script-injects, target-app-navigation | `tests/e2e/*.spec.ts` | ☐ |
-| Q208 | Sprint 01 regression | All 5 Sprint 01 specs pass: session-create, recording-flow, control-bar, screenshot-capture, bug-editor | `tests/e2e/*.spec.ts` | ☐ |
-| Q209 | Full suite green | `npx playwright test` → ALL specs pass (Sprint 00 + 01 + 02) | All | ☐ |
+| Q203 | **E2E: Session report** | Record session → stop → open popup → go to session detail → verify report metadata visible (duration, page count, bug count). Click "Report (MD)" → verify download triggered. | `tests/e2e/session-report.spec.ts` | ☐ |
+| Q204 | **E2E: Session management** | Create 3 sessions → verify all appear in list sorted by date → click session → detail view loads → delete session → confirm dialog → verify removed from list → verify other sessions untouched. | `tests/e2e/session-management.spec.ts` | ☐ |
+| Q205 | **E2E: Playwright export** | Record session with clicks + inputs on target app → stop → export Playwright → verify download triggered → verify file name matches pattern `regression-ats-*.spec.ts`. | `tests/e2e/export-playwright.spec.ts` | ☐ |
+| Q206 | **E2E: ZIP export** | Record session → stop → export ZIP → verify download triggered → verify file name matches `refine-*.zip`. | `tests/e2e/export-zip.spec.ts` | ☐ |
+| Q207 | **E2E: Keyboard shortcuts** | Active recording → press Ctrl+Shift+S → verify screenshot count increments. Press Ctrl+Shift+B → verify bug editor opens. Press Ctrl+Shift+R → verify recording pauses. | `tests/e2e/keyboard-shortcuts.spec.ts` | ☐ |
+| Q208 | **E2E: Generated spec runs** (stretch) | Export Playwright spec from recording on QA target app → run the exported spec → verify it passes. This is the "full loop" test — Refine generates a test that actually works. | `tests/e2e/generated-spec-runs.spec.ts` | ☐ |
 
-### Phase 3: Acceptance Script + Report
+### Phase 3: Regression + Ship
 
 | ID | Task | Acceptance Criteria | Files | Status |
 |---|---|---|---|---|
-| Q210 | FOUNDER acceptance script | Write step-by-step script for Avi to execute final acceptance on Papyrus. Steps: install extension, open Papyrus, create session, record 3+ pages, take 2 screenshots, log 1 bug + 1 feature, stop, generate report, watch replay, export Playwright, export ZIP, delete session. Each step has expected outcome. | `docs/sprints/sprint_02/reviews/acceptance_script.md` | ☐ |
-| Q211 | Sprint report | Document: all specs written, issues found, regressions (if any), generated output quality assessment, ship recommendation. | `reports/sprint_02_team_qa_report.md` | ☐ |
+| Q209 | **Full regression** | All Sprint 00 + 01 + 02 E2E specs pass: extension-loads, content-script-injects, target-app-navigation, session-create, recording-flow, screenshot-capture, bug-editor, cross-page-recording, session-report, session-management, export-playwright, export-zip, keyboard-shortcuts. | all specs | ☐ |
+| Q210 | **Full suite green** | `npx playwright test` — all pass in headed Chrome | — | ☐ |
+| Q211 | **Update `docs/04_TESTING.md`** | Add Sprint 02 patterns: export testing, download verification, generated spec validation. Final testing doc for v1.0. | `docs/04_TESTING.md` (append) | ☐ |
+| Q212 | **QA sprint report** | Document: all tests, issues found, coverage assessment, v1.0 readiness statement. | `reports/sprint_02_team_qa_report.md` | ☐ |
+| Q213 | **Support FOUNDER acceptance** | Assist Avi during final acceptance test on Papyrus. Verify exported spec. Document any issues found during acceptance. | — | ☐ |
+
+---
+
+## E2E Test Patterns (Sprint 02 specific)
+
+### Testing downloads
+```typescript
+// Playwright can intercept downloads
+const [download] = await Promise.all([
+  page.waitForEvent('download'),
+  page.click('[data-testid="export-zip"]'),
+]);
+expect(download.suggestedFilename()).toMatch(/^refine-.*\.zip$/);
+```
+
+### Testing keyboard shortcuts
+```typescript
+// Shortcuts registered via chrome.commands — use page.keyboard
+await page.keyboard.press('Control+Shift+KeyS'); // Screenshot
+// Verify via popup screenshot count or console message
+```
+
+### Testing generated spec validity (stretch goal)
+```typescript
+// Write exported spec to temp file → run npx playwright test on it
+import { writeFile } from 'fs/promises';
+const specContent = await getExportedSpec(/* ... */);
+await writeFile('/tmp/test-generated.spec.ts', specContent);
+// This is complex — may be manual verification for v1.0
+```
 
 ---
 
 ## Critical Rules
 
-1. **Import from fixture.** All specs use `import { test, expect } from './fixtures/extension.fixture'`.
-2. **E2E tests must verify OUTPUTS, not just UI.** Report test: verify downloaded file content. Playwright test: verify generated syntax. ZIP test: verify file list.
-3. **Shadow DOM awareness.** Control bar and bug editor are in Shadow DOM — use appropriate Playwright selectors.
-4. **Full regression is mandatory.** Every Sprint 00 and 01 spec must still pass. If a regression is found, it's a P0 blocker.
-5. **Acceptance script must be FOUNDER-friendly.** No technical jargon. Step 1: "Click the Refine icon in your Chrome toolbar." Not: "Navigate to chrome-extension://..."
-
----
-
-## Dependency
-
-QA E2E work is **blocked on DEV delivering working export features.** Write spec skeletons with `test.skip()` early. Flip to `test()` as features land.
-
-For session management E2E (Q201): can start as soon as DEV delivers D201-D204.
-For export E2E (Q202-Q206): blocked on respective DEV deliverables.
-
----
+1. **Use the fixture.** Always import from `./fixtures/extension.fixture.ts`.
+2. **Download assertions.** Use Playwright's download event interception — don't check filesystem directly.
+3. **No source code changes.** QA owns `tests/`, `demos/`, `docs/04_TESTING.md`.
+4. **Regression is non-negotiable.** Every Sprint 00 and 01 test must still pass. If a test breaks, report as P0 bug.
+5. **Q208 (generated spec runs) is a stretch goal.** Get Q203-Q207 + regression green first. If time permits, attempt the full-loop test.
 
 ## Definition of Done (QA)
 
 ```
-✅ 6 new E2E specs written and passing (Q201-Q206)
-✅ Sprint 00 regression: 3 specs pass (Q207)
-✅ Sprint 01 regression: 5 specs pass (Q208)
-✅ npx playwright test — ALL green (14+ total specs)
-✅ FOUNDER acceptance script written and reviewed
-✅ Sprint report written with ship recommendation
-✅ No changes to src/ code
+✅ 5+ new E2E specs written (report, management, playwright, zip, shortcuts)
+✅ Full regression: all Sprint 00 + 01 + 02 specs pass
+✅ npx playwright test — full suite green
+✅ docs/04_TESTING.md updated with Sprint 02 patterns
+✅ QA sprint report written with v1.0 readiness statement
+✅ FOUNDER acceptance supported
 ```
+
+## Risks / Blockers
+
+- **Download testing complexity:** Playwright download interception works differently in persistent context. May need workaround for extension-initiated downloads via chrome.downloads API.
+- **Keyboard shortcut testing:** `chrome.commands` shortcuts may not fire via `page.keyboard` — they're browser-level, not page-level. May need alternative verification (check side effects instead of keypress).
+- **Generated spec validation (Q208):** Running an exported spec inside a Playwright test is meta-testing. Complex to set up. Acceptable as stretch goal or manual verification.
+- **DEV dependency:** E2E specs Q203-Q208 blocked on DEV's export pipeline. Start with Q201-Q202 and regression prep immediately.

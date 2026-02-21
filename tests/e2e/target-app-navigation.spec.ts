@@ -17,13 +17,13 @@ test('extension stays active across target app page navigations', async ({ conte
   // Navigate to About
   await page.getByTestId('nav-about').click();
   await page.waitForLoadState('networkidle');
-  await expect(page).toHaveURL(/about\.html/);
-  await expect(page.getByTestId('nav-home')).toBeVisible();
+  await expect(page).toHaveURL(/\/about/);
+  await expect(page.getByTestId('nav-home').first()).toBeVisible();
 
   // Navigate to Form
   await page.getByTestId('nav-form').click();
   await page.waitForLoadState('networkidle');
-  await expect(page).toHaveURL(/form\.html/);
+  await expect(page).toHaveURL(/\/form/);
   await expect(page.getByTestId('btn-submit')).toBeVisible();
 
   // Navigate back to Home

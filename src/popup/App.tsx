@@ -7,8 +7,8 @@ import React from 'react';
 import { PlayCircle } from 'lucide-react';
 
 const App: React.FC = () => {
-  // Fetch manifest version for display
-  const version = chrome.runtime.getManifest().version;
+  // Fetch manifest version for display (fallback for test/non-extension context)
+  const version = chrome?.runtime?.getManifest?.()?.version ?? '0.1.0';
 
   return (
     <div className="w-[350px] min-h-[400px] flex flex-col items-center justify-center p-6 bg-white shadow-xl rounded-lg">
