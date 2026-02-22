@@ -65,6 +65,25 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     onBack();
   };
 
+  const handleBugStatusToggle = async (bugId: string, currentStatus: string) => {
+    const statuses: Array<Bug['status']> = ['open', 'in_progress', 'resolved', 'wontfix'];
+    const nextIdx = (statuses.indexOf(currentStatus as Bug['status']) + 1) % statuses.length;
+    const nextStatus = statuses[nextIdx];
+    
+    await import('@core/db').then(m => m.updateBugStatus(bugId, nextStatus));
+    setBugs(bugs.map(b => b.id === bugId ? { ...b, status: nextStatus } : b));
+  };
+
+  const getBugStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-red-900/40 text-red-400 border-red-800';
+      case 'in_progress': return 'bg-amber-900/40 text-amber-400 border-amber-800';
+      case 'resolved': return 'bg-green-900/40 text-green-400 border-green-800';
+      case 'wontfix': return 'bg-gray-800 text-gray-400 border-gray-700';
+      default: return 'bg-gray-800 text-gray-400 border-gray-700';
+    }
+  };
+
   const handleExport = async (type: string) => {
     setExportLoading(type);
     setExportError(null);
@@ -235,7 +254,14 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
                   <span className={`shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-bold ${PRIORITY_COLORS[bug.priority] ?? PRIORITY_COLORS.P3}`}>
                     {bug.priority}
                   </span>
-                  <span className="text-gray-200 truncate">{bug.title}</span>
+                  <span 
+                    onClick={() => handleBugStatusToggle(bug.id, bug.status)}
+                    className={`shrink-0 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[10px] font-bold transition-colors ${getBugStatusColor(bug.status)}`}
+                    title="Click to cycle status"
+                  >
+                    {bug.status.replace('_', ' ').toUpperCase()}
+                  </span>
+                  <span className="text-gray-200 truncate" title={bug.title}>{bug.title}</span>
                 </div>
               ))}
             </div>
