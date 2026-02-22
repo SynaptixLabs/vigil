@@ -19,7 +19,7 @@ class RefineDatabase extends Dexie {
   constructor() {
     super(DB_NAME);
     this.version(1).stores({
-      sessions:    '&id, status, startedAt',
+      sessions:    '&id, status, startedAt, project', // R025: added project
       recordings:  '++id, sessionId, chunkIndex',
       bugs:        '&id, sessionId, timestamp',
       features:    '&id, sessionId, timestamp',
@@ -40,6 +40,10 @@ export async function createSession(session: Session): Promise<string> {
 
 export async function getSession(id: string): Promise<Session | undefined> {
   return db.sessions.get(id);
+}
+
+export async function getSessionsByProject(project: string): Promise<Session[]> {
+  return db.sessions.where('project').equals(project).reverse().sortBy('startedAt');
 }
 
 export async function updateSession(id: string, changes: Partial<Session>): Promise<void> {
@@ -102,6 +106,10 @@ export async function getBugsBySession(sessionId: string): Promise<Bug[]> {
   return db.bugs.where('sessionId').equals(sessionId).sortBy('timestamp');
 }
 
+export async function updateBugStatus(id: string, status: Bug['status']): Promise<void> {
+  await db.bugs.update(id, { status });
+}
+
 // ── Features ──────────────────────────────────────────────────────────────────
 
 export async function addFeature(feature: Feature): Promise<string> {
@@ -111,6 +119,10 @@ export async function addFeature(feature: Feature): Promise<string> {
 
 export async function getFeaturesBySession(sessionId: string): Promise<Feature[]> {
   return db.features.where('sessionId').equals(sessionId).sortBy('timestamp');
+}
+
+export async function updateFeature(id: string, patch: Partial<Feature>): Promise<void> {
+  await db.features.update(id, patch);
 }
 
 // ── Atomic counters (race-safe via Dexie .modify()) ─────────────────────────

@@ -29,6 +29,7 @@ describe('Export Pipeline Integration', () => {
       featureCount: 1,
       screenshotCount: 1,
       pages: ['https://example.com'],
+      tags: [],
     };
 
     bugs = [
@@ -39,6 +40,7 @@ describe('Export Pipeline Integration', () => {
         title: 'Test Bug',
         description: 'Test bug description',
         priority: BugPriority.P1,
+        status: 'open',
         url: 'https://example.com',
         timestamp: now - 30000,
       }
@@ -52,6 +54,7 @@ describe('Export Pipeline Integration', () => {
         title: 'Test Feature',
         description: 'Test feature description',
         featureType: FeatureType.ENHANCEMENT,
+        status: 'open',
         url: 'https://example.com',
         timestamp: now - 20000,
       }

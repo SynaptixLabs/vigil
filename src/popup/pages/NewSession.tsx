@@ -15,6 +15,8 @@ interface NewSessionProps {
 const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [project, setProject] = useState(''); // R025
+  const [tagsInput, setTagsInput] = useState(''); // R020
   const [activeTabUrl, setActiveTabUrl] = useState('');
   const [activeTabId, setActiveTabId] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
@@ -38,12 +40,16 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
     setLoading(true);
     setError(null);
 
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
+
     chrome.runtime.sendMessage(
       {
         type: MessageType.CREATE_SESSION,
         payload: {
           name: name.trim(),
           description: description.trim(),
+          project: project.trim() || undefined,
+          tags,
           url: activeTabUrl,
           tabId: activeTabId,
         },
@@ -95,15 +101,41 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-            Description
+          <label className="block text-xs font-semibold text-gray-400 mb-1">
+            Description <span className="text-gray-600 font-normal">(optional)</span>
           </label>
           <textarea
+            className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors resize-none"
+            placeholder="What are you testing?"
+            rows={2}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="What are you testing?"
-            rows={3}
-            className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500 transition-colors resize-none"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-gray-400 mb-1">
+            Project <span className="text-gray-600 font-normal">(optional)</span>
+          </label>
+          <input
+            type="text"
+            className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+            placeholder="e.g. internal-dashboard"
+            value={project}
+            onChange={(e) => setProject(e.target.value)}
+          />
+        </div>
+
+        <div className="mb-5">
+          <label className="block text-xs font-semibold text-gray-400 mb-1">
+            Tags <span className="text-gray-600 font-normal">(comma-separated)</span>
+          </label>
+          <input
+            type="text"
+            className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+            placeholder="e.g. smoke-test, checkout, mobile"
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
           />
         </div>
 
@@ -111,7 +143,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
           <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
             Starting URL
           </label>
-          <div className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-2 text-xs text-gray-500 truncate">
+          <div className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-gray-500 truncate">
             {activeTabUrl || 'Loading…'}
           </div>
         </div>

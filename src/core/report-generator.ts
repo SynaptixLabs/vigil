@@ -34,6 +34,9 @@ export interface JsonReport {
     endTime: string;
     duration: number;
     durationFormatted: string;
+    project?: string;
+    status: string;
+    tags: string[];
   };
   pages: PageStat[];
   timeline: TimelineEntry[];
@@ -41,6 +44,7 @@ export interface JsonReport {
     id: string;
     title: string;
     priority: string;
+    status: string;
     url: string;
     selector?: string;
     screenshotId?: string;
@@ -51,6 +55,8 @@ export interface JsonReport {
     id: string;
     title: string;
     type: string;
+    status: string;
+    sprintRef?: string;
     description: string;
     timestamp: number;
   }>;
@@ -155,6 +161,9 @@ export function generateJsonReport(
       endTime: session.stoppedAt ? formatTs(session.stoppedAt) : '',
       duration: session.duration,
       durationFormatted: formatDuration(session.duration),
+      project: session.project,
+      status: session.status,
+      tags: session.tags,
     },
     pages,
     timeline,
@@ -162,6 +171,7 @@ export function generateJsonReport(
       id: b.id,
       title: b.title,
       priority: b.priority,
+      status: b.status,
       url: b.url,
       selector: b.elementSelector,
       screenshotId: b.screenshotId,
@@ -172,6 +182,8 @@ export function generateJsonReport(
       id: f.id,
       title: f.title,
       type: f.featureType,
+      status: f.status,
+      sprintRef: f.sprintRef,
       description: f.description,
       timestamp: f.timestamp,
     })),

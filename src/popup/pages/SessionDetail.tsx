@@ -77,6 +77,18 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
 
       if (!session) return;
 
+      if (type === 'publish') {
+        const { publishSession } = await import('@core/publish');
+        const [actions, features, screenshots, chunks] = await Promise.all([
+          getActionsBySession(sessionId),
+          getFeaturesBySession(sessionId),
+          getScreenshotsBySession(sessionId),
+          getRecordingChunks(sessionId),
+        ]);
+        await publishSession(session, bugs, features, actions, screenshots, chunks);
+        return;
+      }
+
       if (type === 'report') {
         const [actions, features, screenshots] = await Promise.all([
           getActionsBySession(sessionId),
@@ -144,16 +156,23 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
   return (
     <div data-testid="session-detail-container" className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-800">
-        <button
-          data-testid="btn-back"
-          onClick={onBack}
-          className="text-gray-400 hover:text-white transition-colors text-sm"
-          aria-label="Back to session list"
-        >
-          ← Back
-        </button>
-        <span className="text-sm font-semibold text-white truncate flex-1">{session.name}</span>
+      <div className="flex flex-col gap-1 px-4 py-3 border-b border-gray-800">
+        <div className="flex items-center gap-2">
+          <button
+            data-testid="btn-back"
+            onClick={onBack}
+            className="text-gray-400 hover:text-white transition-colors text-sm"
+            aria-label="Back to session list"
+          >
+            ← Back
+          </button>
+          <span className="text-sm font-semibold text-white truncate flex-1">{session.name}</span>
+        </div>
+        {session.project && (
+          <div className="text-[10px] text-gray-500 pl-8 truncate" title={session.outputPath}>
+            📁 {session.project} {session.outputPath ? `(${session.outputPath})` : ''}
+          </div>
+        )}
       </div>
 
       {/* Scrollable content */}

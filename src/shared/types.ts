@@ -65,6 +65,7 @@ export interface Action {
   selectorStrategy?: 'data-testid' | 'aria-label' | 'id' | 'css' | 'playwright';
   selectorConfidence?: 'high' | 'medium' | 'low';
   value?: string;
+  note?: string; // R022: Optional annotation
 }
 
 /**
@@ -75,6 +76,7 @@ export interface Bug {
   sessionId: string;
   type: 'bug';
   priority: BugPriority;
+  status: 'open' | 'in_progress' | 'resolved' | 'wontfix'; // R026
   title: string;
   description: string;
   url: string;
@@ -91,6 +93,8 @@ export interface Feature {
   sessionId: string;
   type: 'feature';
   featureType: FeatureType;
+  status: 'open' | 'planned' | 'in_sprint' | 'done'; // R027
+  sprintRef?: string; // R027: E.g., 'Sprint 04'
   title: string;
   description: string;
   url: string;
@@ -107,6 +111,9 @@ export interface Session {
   name: string;
   description: string;
   status: SessionStatus;
+  project?: string;         // R025: Project association
+  outputPath?: string;      // R025: Local filesystem export destination
+  tags: string[];           // R020: Session tags
   startedAt: number;        // Unix ms
   stoppedAt?: number;
   duration: number;         // ms (excludes paused time)

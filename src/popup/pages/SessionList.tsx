@@ -27,6 +27,8 @@ const STATUS_COLORS: Partial<Record<SessionStatus, string>> = {
 const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession }) => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('');
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -42,10 +44,18 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
     loadSessions();
   }, [loadSessions]);
 
-  const activeSessions = sessions.filter(
+  const uniqueProjects = Array.from(new Set(sessions.map(s => s.project).filter(Boolean))) as string[];
+
+  const filteredSessions = sessions.filter(s => {
+    if (projectFilter !== 'all' && s.project !== projectFilter) return false;
+    if (tagFilter && !s.tags?.some(t => t.toLowerCase().includes(tagFilter.toLowerCase()))) return false;
+    return true;
+  });
+
+  const activeSessions = filteredSessions.filter(
     (s) => s.status === SessionStatus.RECORDING || s.status === SessionStatus.PAUSED
   );
-  const pastSessions = sessions.filter(
+  const pastSessions = filteredSessions.filter(
     (s) => s.status !== SessionStatus.RECORDING && s.status !== SessionStatus.PAUSED
   );
 
@@ -64,6 +74,27 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
         >
           + New Session
         </button>
+      </div>
+
+      {/* Filters (R025 / R020) */}
+      <div className="flex gap-2 px-4 py-2 border-b border-gray-800 bg-gray-900/30">
+        <select
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+        >
+          <option value="all">All Projects</option>
+          {uniqueProjects.map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          placeholder="Filter by tag..."
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+          className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+        />
       </div>
 
       {/* Content */}
