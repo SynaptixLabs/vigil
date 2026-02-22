@@ -6,8 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { SessionStatus } from '@shared/types';
-import type { Session, Bug } from '@shared/types';
-import { getSession, getBugsBySession, deleteSession } from '@core/db';
+import type { Session, Bug, Feature } from '@shared/types';
+import { getSession, deleteSession, getBugsBySession } from '@core/db';
 import { formatDuration } from '@shared/utils';
 
 interface SessionDetailProps {
@@ -35,6 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
 const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [bugs, setBugs] = useState<Bug[]>([]);
+  const [features, setFeatures] = useState<Feature[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -45,13 +46,16 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const [s, b] = await Promise.all([
+      const { getFeaturesBySession } = await import('@core/db');
+      const [s, b, f] = await Promise.all([
         getSession(sessionId),
         getBugsBySession(sessionId),
+        getFeaturesBySession(sessionId),
       ]);
       if (!cancelled) {
         setSession(s ?? null);
         setBugs(b);
+        setFeatures(f);
         setLoading(false);
       }
     };
@@ -72,6 +76,11 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     
     await import('@core/db').then(m => m.updateBugStatus(bugId, nextStatus));
     setBugs(bugs.map(b => b.id === bugId ? { ...b, status: nextStatus } : b));
+  };
+
+  const handleFeatureSprintUpdate = async (featureId: string, sprintRef: string) => {
+    await import('@core/db').then(m => m.updateFeature(featureId, { sprintRef }));
+    setFeatures(features.map(f => f.id === featureId ? { ...f, sprintRef } : f));
   };
 
   const getBugStatusColor = (status: string) => {
@@ -262,6 +271,35 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
                     {bug.status.replace('_', ' ').toUpperCase()}
                   </span>
                   <span className="text-gray-200 truncate" title={bug.title}>{bug.title}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Features list */}
+        {features.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Features</p>
+            <div className="flex flex-col gap-1.5">
+              {features.map((feature) => (
+                <div key={feature.id} className="flex flex-col gap-1.5 rounded-lg bg-gray-800/40 p-2 text-xs">
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-bold bg-blue-900/40 text-blue-400 border-blue-800">
+                      {feature.featureType}
+                    </span>
+                    <span className="text-gray-200 truncate flex-1" title={feature.title}>{feature.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-gray-500 text-[10px] uppercase">Sprint:</span>
+                    <input
+                      type="text"
+                      className="flex-1 bg-gray-900/50 border border-gray-700/50 rounded px-1.5 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="e.g. Sprint 04"
+                      value={feature.sprintRef || ''}
+                      onChange={(e) => handleFeatureSprintUpdate(feature.id, e.target.value)}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
