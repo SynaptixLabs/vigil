@@ -30,6 +30,15 @@
   --refine-divider: rgba(0, 0, 0, 0.15);
 }
 
+:host([data-theme="light"]) .refine-select {
+  color-scheme: light;
+}
+
+:host([data-theme="light"]) .refine-select option {
+  background: #ffffff;
+  color: #111111;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -274,8 +283,13 @@
   min-height: 64px;
 }
 
+.refine-select {
+  color-scheme: dark;
+}
+
 .refine-select option {
   background: #1a1a2e;
+  color: #f1f5f9;
 }
 
 .refine-priority-row {
