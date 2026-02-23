@@ -29,13 +29,15 @@
       "@core/*": ["src/core/*"],
       "@background/*": ["src/background/*"],
       "@content/*": ["src/content/*"],
-      "@popup/*": ["src/popup/*"]
+      "@popup/*": ["src/popup/*"],
+      "@reporter/*": ["src/reporter/*"],
+      "@changelog": ["CHANGELOG.md"]
     },
 
     /* Chrome Extension types */
     "types": ["chrome"]
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "tests"],
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "dist"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

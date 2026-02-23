@@ -13,6 +13,8 @@ import {
   recordCrossPageNavigation,
 } from './recorder';
 import { mountOverlay, unmountOverlay } from './overlay/mount';
+import './inspector'; // R023: registers refine:toggle-inspector listener
+import { SHORTCUT_MAP } from '@shared/constants';
 
 console.log(`[Refine] Content script loaded on: ${window.location.href}`);
 
@@ -24,7 +26,8 @@ chrome.runtime.sendMessage(
     if (chrome.runtime.lastError) return;
     if (response?.ok && response.data?.isRecording && response.data?.sessionId) {
       const sid = response.data.sessionId as string;
-      startRecording(sid);
+      const rmm = (response.data.recordMouseMove as boolean | undefined) ?? false;
+      startRecording(sid, rmm);
       mountOverlay(sid);
       // DR-04: use background-tracked lastPageUrl — more reliable than document.referrer
       const fromUrl = response.data.lastPageUrl as string | null;
@@ -48,8 +51,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   switch (type) {
     case 'START_RECORDING': {
-      const { sessionId } = payload as { sessionId: string };
-      startRecording(sessionId);
+      const { sessionId, recordMouseMove } = payload as { sessionId: string; recordMouseMove?: boolean };
+      startRecording(sessionId, recordMouseMove ?? false);
       mountOverlay(sessionId);
       sendResponse({ ok: true });
       break;
@@ -108,17 +111,19 @@ function getShadowRoot(): ShadowRoot | null {
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (!e.ctrlKey || !e.shiftKey) return;
 
+  const command = SHORTCUT_MAP[e.key as keyof typeof SHORTCUT_MAP];
+  if (!command) return;
+
   const root = getShadowRoot();
   if (!root) return;
 
-  if (e.key === 'S') {
-    e.preventDefault();
+  e.preventDefault();
+
+  if (command === 'capture-screenshot') {
     (root.querySelector('[data-testid="btn-screenshot"]') as HTMLButtonElement | null)?.click();
-  } else if (e.key === 'B') {
-    e.preventDefault();
+  } else if (command === 'open-bug-editor') {
     (root.querySelector('[data-testid="btn-bug"]') as HTMLButtonElement | null)?.click();
-  } else if (e.key === 'R') {
-    e.preventDefault();
+  } else if (command === 'toggle-recording') {
     const btnPause = root.querySelector('[data-testid="btn-pause"]') as HTMLButtonElement | null;
     const btnResume = root.querySelector('[data-testid="btn-resume"]') as HTMLButtonElement | null;
     (btnPause ?? btnResume)?.click();

@@ -35,7 +35,3 @@ export type MessageHandler<T = unknown> = (
   sender: chrome.runtime.MessageSender,
   sendResponse: (response: ChromeResponse<T>) => void
 ) => boolean | void;
-
-// TODO (Sprint 01): sendMessage() and onMessage() helper implementations
-// move to src/background/messaging.ts and src/content/messaging.ts
-// respectively, where chrome.runtime is in scope.

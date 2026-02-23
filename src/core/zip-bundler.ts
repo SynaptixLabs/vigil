@@ -23,7 +23,7 @@ export async function generateZipBundle(
   features: Feature[],
   actions: Action[],
   screenshots: Screenshot[],
-  recordings: RecordingChunk[]
+  chunks: RecordingChunk[]
 ): Promise<Blob> {
   const zip = new JSZip();
   const folder = zip.folder(`refine-${session.id}`)!;
@@ -31,16 +31,25 @@ export async function generateZipBundle(
   // Report files
   const jsonReport = generateJsonReport(session, bugs, features, actions, screenshots);
   folder.file('report.json', JSON.stringify(jsonReport, null, 2));
-  folder.file('report.md', generateMarkdownReport(session, bugs, features, actions, screenshots));
+  const mdReport = generateMarkdownReport(session, bugs, features, actions, screenshots);
+  folder.file('report.md', mdReport);
 
   // Replay HTML
-  const events = recordings.flatMap((c) => c.events);
-  folder.file('replay.html', generateReplayHtml(session, events));
+  const replayHtml = await generateReplayHtml(session, chunks);
+  folder.file('replay.html', replayHtml);
 
   // Playwright spec + companion tsconfig so consumers can run `tsc --noEmit` on the bundle
-  folder.file('regression.spec.ts', generatePlaywrightSpec(session, actions, bugs));
-  folder.file('tsconfig.json', JSON.stringify({
-    compilerOptions: { strict: true, module: 'commonjs', target: 'ES2020', skipLibCheck: true },
+  const playwrightSpec = generatePlaywrightSpec(session, actions, bugs);
+  folder.file('regression.spec.ts', playwrightSpec);
+  folder.file('playwright.tsconfig.json', JSON.stringify({
+    compilerOptions: {
+      strict: true,
+      target: 'ES2020',
+      module: 'CommonJS',
+      moduleResolution: 'node',
+      esModuleInterop: true,
+      skipLibCheck: true,
+    },
     include: ['*.spec.ts'],
   }, null, 2));
 

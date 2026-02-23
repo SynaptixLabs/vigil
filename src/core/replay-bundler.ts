@@ -4,8 +4,10 @@
  * Inlines rrweb-player UMD + CSS so the file is portable with no CDN deps.
  */
 
-import type { Session } from '@shared/types';
+import type { Session, RecordingChunk } from '@shared/types';
 import { formatDuration } from '@shared/utils';
+import { decompressEvents } from './compression';
+
 // Relative path bypasses the rrweb-player package exports map.
 // Vite inlines these as raw strings at build time.
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -29,7 +31,18 @@ function safeJson(obj: unknown): string {
     .replace(/\//g, '\\u002f');
 }
 
-export function generateReplayHtml(session: Session, events: unknown[]): string {
+export async function generateReplayHtml(session: Session, chunks: RecordingChunk[]): Promise<string> {
+  const decompressedChunks = await Promise.all(
+    chunks.map(async (chunk) => {
+      if (chunk.compressed && chunk.data) {
+        return await decompressEvents(chunk.data);
+      }
+      return chunk.events;
+    })
+  );
+  
+  const events = decompressedChunks.flat();
+
   const sessionJson = safeJson({
     id: session.id,
     name: session.name,

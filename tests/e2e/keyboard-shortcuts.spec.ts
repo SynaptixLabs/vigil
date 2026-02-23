@@ -102,7 +102,7 @@ test('Ctrl+Shift+R toggles recording: RECORDING → PAUSED → RECORDING', async
   await page.getByTestId('btn-stop').click();
 });
 
-test('shortcuts are no-ops when no session is active', async ({ context, extensionId }) => {
+test('shortcuts are no-ops when no session is active', async ({ context }) => {
   // Open target app without starting a session
   const page = await context.newPage();
   await page.goto('http://localhost:38470');

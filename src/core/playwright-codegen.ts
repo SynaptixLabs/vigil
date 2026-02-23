@@ -14,17 +14,21 @@ function elapsedSec(start: number, ts: number): string {
   return ((ts - start) / 1000).toFixed(1) + 's';
 }
 
+function notePrefix(action: Action): string {
+  return action.note ? `  // NOTE: ${action.note}\n` : '';
+}
+
 function actionToPlaywright(action: Action): string | null {
   switch (action.type) {
     case 'navigation':
       if (!action.value) return null; // skip malformed navigation actions (no destination URL)
-      return `  await page.goto('${escapeStr(action.value)}');`;
+      return `${notePrefix(action)}  await page.goto('${escapeStr(action.value)}');`;
     case 'click':
       if (!action.selector) return null;
-      return `${action.selectorConfidence === 'low' ? '  // TODO: low-confidence selector — verify before committing\n' : ''}  await page.locator(${selectorStr(action)}).click();`;
+      return `${notePrefix(action)}${action.selectorConfidence === 'low' ? '  // TODO: low-confidence selector — verify before committing\n' : ''}  await page.locator(${selectorStr(action)}).click();`;
     case 'input':
       if (!action.selector) return null;
-      return `${action.selectorConfidence === 'low' ? '  // TODO: low-confidence selector — verify before committing\n' : ''}  await page.locator(${selectorStr(action)}).fill('${escapeStr(action.value || '')}');`;
+      return `${notePrefix(action)}${action.selectorConfidence === 'low' ? '  // TODO: low-confidence selector — verify before committing\n' : ''}  await page.locator(${selectorStr(action)}).fill('${escapeStr(action.value || '')}');`;
     case 'scroll':
       return null; // scroll actions omitted — too noisy and not reproducible
     default:

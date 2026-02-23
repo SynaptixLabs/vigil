@@ -565,4 +565,107 @@ All specs are **contract-first** — written before DEV delivery. Will pass once
 
 ---
 
-*Last updated: 2026-02-22*
+## Sprint 03–05 E2E Patterns
+
+> **QA Team Reference.** Added Sprint 05.
+
+### data-testid Contract — Sprint 03–05
+
+#### NewSession Form
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `input-project-name` | Text input | Project name (autocomplete from existing projects) |
+| `toggle-record-mouse-move` | Checkbox | Mouse movement recording preference (default: unchecked) |
+
+#### SessionList
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `select-project-filter` | `<select>` | Project filter dropdown |
+| `btn-project-settings` | Button | Gear icon — only visible when a specific project is selected |
+| `input-tag-filter` | Text input | Tag filter input |
+| `btn-whats-new` | Button | Opens changelog modal |
+
+#### ProjectSettings Page
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `project-settings-container` | Root container | Entire ProjectSettings page |
+| `btn-export-config` | Button | Downloads `refine.project.json` |
+| `btn-refresh-dashboard` | Button | Regenerates `index.html` dashboard |
+
+#### SessionDetail Page (Sprint 03 additions)
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `btn-export-bugs-features` | Button | Downloads `bugs-features-<id>.md` |
+| `btn-publish` | Button | Only visible when `session.outputPath` is set |
+
+#### BugEditor (Shadow DOM — Sprint 03 additions)
+
+| `data-testid` | Element | Notes |
+|---|---|---|
+| `btn-type-bug` | Button | Switches editor to Bug mode |
+| `btn-type-feature` | Button | Switches editor to Feature mode |
+
+---
+
+### E2E Test Specs — Sprint 03–05
+
+| Spec | File | Tests | Key pattern |
+|---|---|---|---|
+| Bugs & Features Export | `tests/e2e/bugs-features-export.spec.ts` | 2 | `waitForDownload`, MD content assertions |
+| Changelog Viewer | `tests/e2e/changelog-viewer.spec.ts` | 2 | Modal open/close, badge state |
+| Mouse Tracking Pref | `tests/e2e/mouse-tracking-pref.spec.ts` | 3 | Checkbox default, toggle, IndexedDB verify |
+| Bug Status | `tests/e2e/bug-status.spec.ts` | 2 | `<select>` status change, persist on reload |
+| Project Association | `tests/e2e/project-association.spec.ts` | 3 | Filter, gear→settings, `btn-publish` via storage |
+
+### Q505 Pattern — Setting chrome.storage before session creation
+
+When a test needs `btn-publish` to be visible, set `refineOutputPath` in `chrome.storage.local` **before** calling `createSession`. The background reads this value at `CREATE_SESSION` time and stores it on the `Session` record:
+
+```typescript
+await popupPage.evaluate((outputPath) => {
+  return new Promise<void>((resolve) => {
+    chrome.storage.local.set({ refineOutputPath: outputPath }, () => resolve());
+  });
+}, '/tmp/test-output');
+
+// Now create session — outputPath will be attached automatically
+await popupPage.getByTestId('btn-new-session').first().click();
+// ...
+```
+
+---
+
+### Full E2E Suite Summary (Sprint 05 baseline)
+
+| Spec file | Tests | Sprint |
+|---|---|---|
+| `extension-loads.spec.ts` | 1 | S00 |
+| `content-script-injects.spec.ts` | 1 | S00 |
+| `target-app-navigation.spec.ts` | 1 | S00 |
+| `session-create.spec.ts` | 2 | S01 |
+| `control-bar.spec.ts` | 1 | S01 |
+| `screenshot-capture.spec.ts` | 2 | S01 |
+| `bug-editor.spec.ts` | 2 | S01 |
+| `session-lifecycle.spec.ts` | 1 | S01 |
+| `report-export.spec.ts` | 2 | S02 |
+| `replay-viewer.spec.ts` | 1 | S02 |
+| `playwright-export.spec.ts` | 2 | S02 |
+| `zip-export.spec.ts` | 3 | S02 |
+| `session-delete.spec.ts` | 3 | S02 |
+| `keyboard-shortcuts.spec.ts` | 4 | S02 |
+| `bugs-features-export.spec.ts` | 2 | S05 |
+| `changelog-viewer.spec.ts` | 2 | S05 |
+| `mouse-tracking-pref.spec.ts` | 3 | S05 |
+| `bug-status.spec.ts` | 2 | S05 |
+| `project-association.spec.ts` | 3 | S05 |
+| **Total** | **36** | |
+
+> Note: Sprint 05 target is 29/29 (pre-existing specs only). New S05 specs bring the full suite to 36 tests.
+
+---
+
+*Last updated: 2026-02-23 (v1.2.0 — Sprint 05 closure)*

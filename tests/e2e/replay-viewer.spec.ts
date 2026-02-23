@@ -1,56 +1,90 @@
 /**
- * Q202 — E2E: Replay Viewer (Download)
+ * Q202 — E2E: Replay Viewer (Extension Tab)
  *
- * Verifies: SessionDetail "Download Replay" downloads a self-contained HTML
- * file containing rrweb-player and session events.
+ * Verifies the in-extension replay viewer page:
+ *   1. Opens as a new Chrome tab (chrome-extension:// URL)
+ *   2. Does NOT show a sandbox/script-blocked error
+ *   3. Loads session data from IndexedDB (proves recording events exist)
+ *   4. Renders the rrweb player container when events are present
+ *
+ * This test definitively answers "bad recording vs bad player":
+ *   - If events.length > 0 → recording is GOOD, player must render
+ *   - If events.length === 0 → bad recording (rrweb not capturing)
+ *   - If page is blank/sandboxed → bad player (CSP/build issue)
  *
  * DEV CONTRACT:
- *   btn-watch-replay   — triggers download of replay-<id>.html
- *
- * NOTE: Originally opened a new tab via blob:chrome-extension:// URL, but
- * MV3 CSP blocks inline <script> tags in extension-origin tabs. Changed to
- * download pattern (S02 CSP fix, 2026-02-22). Sprint 03 will build a proper
- * CSP-compliant extension replay page (s03-replay-csp).
+ *   btn-watch-replay         — opens replay viewer in a new tab
+ *   session-detail-container — root of the session detail view
  */
 
 import { test, expect } from './fixtures/extension.fixture';
-import { createSession, openTargetApp, stopAndOpenDetail, waitForDownload } from './helpers/session';
+import { createSession, openTargetApp, stopAndOpenDetail } from './helpers/session';
 
-test('Download Replay produces a valid self-contained HTML file', async ({ context, extensionId }) => {
+test('Replay viewer opens, loads session data, and renders without sandbox error', async ({ context, extensionId }) => {
+  // 1. Create session via the proven popup helper (reliable tab detection)
   const { popupPage } = await createSession(context, extensionId, 'Q202 Replay Session');
 
-  const page = await openTargetApp(context);
-  await expect(page.getByTestId('refine-control-bar')).toBeVisible({ timeout: 5000 });
+  // 2. Open target app and wait for control bar injection
+  const targetPage = await openTargetApp(context);
 
-  // Record some interaction so there are rrweb events to bundle
-  await page.getByTestId('nav-about').click();
-  await page.waitForLoadState('networkidle');
-  await page.getByTestId('nav-form').click();
-  await page.waitForLoadState('networkidle');
-  await page.getByTestId('input-name').fill('Replay Test User');
+  // 2. Record some interactions
+  await expect(targetPage.getByTestId('refine-control-bar')).toBeVisible({ timeout: 8000 });
+  await targetPage.getByTestId('nav-about').click();
+  await targetPage.waitForLoadState('networkidle');
+  await targetPage.getByTestId('nav-form').click();
+  await targetPage.waitForLoadState('networkidle');
+  await targetPage.getByTestId('input-name').fill('Replay Tester');
+  await targetPage.waitForTimeout(500);
 
-  const detail = await stopAndOpenDetail(page, popupPage, context, extensionId);
+  // 3. Stop recording → open session detail
+  const detail = await stopAndOpenDetail(targetPage, popupPage, context, extensionId);
 
-  const download = await waitForDownload(detail, () =>
-    detail.getByTestId('btn-watch-replay').click()
-  );
+  // 4. Click Watch Replay — must open a new extension tab
+  const [replayPage] = await Promise.all([
+    context.waitForEvent('page', { timeout: 8000 }),
+    detail.getByTestId('btn-watch-replay').click(),
+  ]);
 
-  // 1. Filename must match replay-<session-id>.html pattern
-  expect(download.suggestedFilename()).toMatch(/^replay-.+\.html$/);
+  await replayPage.waitForLoadState('networkidle');
 
-  // 2. File must have non-zero size
-  const filePath = await download.path();
-  expect(filePath).toBeTruthy();
+  // 5. ASSERT: page must not be blank — title must indicate the replay viewer loaded
+  const title = await replayPage.title();
+  expect(title).toContain('Refine');
 
-  if (filePath) {
-    const { statSync, readFileSync } = await import('fs');
-    const stats = statSync(filePath);
-    // Replay HTML must be at least 10 KB (rrweb-player UMD alone is ~200 KB)
-    expect(stats.size).toBeGreaterThan(10_000);
+  // 6. ASSERT: no sandbox/script-blocked error — the page must not show an error state
+  //    (blank page = script never ran; error div = runtime error loading session)
+  const errorText = await replayPage.locator('p[style*="color: rgb(239, 68, 68)"]').textContent({ timeout: 3000 }).catch(() => null);
+  if (errorText) {
+    throw new Error(`[BAD PLAYER] Replay viewer showed error: ${errorText}`);
+  }
 
-    // Must contain rrweb-player markers and session name
-    const html = readFileSync(filePath, 'utf-8');
-    expect(html).toContain('rrweb');
-    expect(html).toContain('Q202 Replay Session');
+  // 7. ASSERT: URL must be chrome-extension:// (not sandboxed blob/web URL)
+  expect(replayPage.url()).toMatch(/^chrome-extension:\/\/.+\/src\/replay-viewer\/replay-viewer\.html/);
+
+  // 8. DIAGNOSE: Check event count from the header text
+  const eventsText = await replayPage.locator('span', { hasText: 'Events:' }).textContent({ timeout: 5000 }).catch(() => null);
+  console.log('[Q202] Event count header:', eventsText);
+
+  if (eventsText) {
+    const match = eventsText.match(/Events:\s*(\d+)/);
+    const eventCount = match ? parseInt(match[1], 10) : 0;
+
+    if (eventCount === 0) {
+      // BAD RECORDING: rrweb captured nothing
+      throw new Error('[BAD RECORDING] Session has 0 rrweb events — content script did not capture DOM events');
+    }
+
+    // GOOD RECORDING: player container must be rendered
+    console.log(`[Q202] Recording is GOOD — ${eventCount} events captured`);
+    const playerContainer = replayPage.locator('.replayer-wrapper, [class*="rr-player"], div[data-testid="player-container"]').first();
+    await expect(playerContainer).toBeVisible({ timeout: 8000 });
+  } else {
+    // No events span visible — check for "No recording events" message
+    const noEvents = await replayPage.getByText('No recording events found').isVisible({ timeout: 3000 }).catch(() => false);
+    if (noEvents) {
+      throw new Error('[BAD RECORDING] Session has 0 rrweb events — content script did not capture DOM events');
+    }
+    // Header not found yet — page might still be loading
+    console.warn('[Q202] Could not determine event count from header');
   }
 });

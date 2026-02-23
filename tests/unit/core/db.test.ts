@@ -35,6 +35,8 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     bugCount: 0,
     featureCount: 0,
     screenshotCount: 0,
+    tags: [],
+    recordMouseMove: false,
     ...overrides,
   };
 }
@@ -60,9 +62,9 @@ describe('Sessions', () => {
   it('updates session fields', async () => {
     const session = makeSession();
     await createSession(session);
-    await updateSession(session.id, { status: SessionStatus.STOPPED, duration: 5000 });
+    await updateSession(session.id, { status: SessionStatus.COMPLETED, duration: 5000 });
     const updated = await getSession(session.id);
-    expect(updated?.status).toBe(SessionStatus.STOPPED);
+    expect(updated?.status).toBe(SessionStatus.COMPLETED);
     expect(updated?.duration).toBe(5000);
   });
 
@@ -89,6 +91,7 @@ describe('Bugs', () => {
       sessionId: 'ats-2026-02-22-001',
       type: 'bug',
       priority: BugPriority.P1,
+      status: 'open',
       title: 'Login broken',
       description: 'Cannot log in with valid credentials',
       url: 'http://localhost:38470/login',
@@ -101,8 +104,8 @@ describe('Bugs', () => {
   });
 
   it('isolates bugs by sessionId', async () => {
-    await addBug({ id: 'bug-1', sessionId: 'session-A', type: 'bug', priority: BugPriority.P2, title: 'A', description: '', url: '', timestamp: 1 });
-    await addBug({ id: 'bug-2', sessionId: 'session-B', type: 'bug', priority: BugPriority.P3, title: 'B', description: '', url: '', timestamp: 2 });
+    await addBug({ id: 'bug-1', sessionId: 'session-A', type: 'bug', priority: BugPriority.P2, status: 'open', title: 'A', description: '', url: '', timestamp: 1 });
+    await addBug({ id: 'bug-2', sessionId: 'session-B', type: 'bug', priority: BugPriority.P3, status: 'open', title: 'B', description: '', url: '', timestamp: 2 });
     const bugsA = await getBugsBySession('session-A');
     expect(bugsA).toHaveLength(1);
     expect(bugsA[0].id).toBe('bug-1');
@@ -116,6 +119,7 @@ describe('Features', () => {
       sessionId: 'ats-2026-02-22-001',
       type: 'feature',
       featureType: FeatureType.ENHANCEMENT,
+      status: 'open',
       title: 'Add dark mode',
       description: '',
       url: 'http://localhost:38470',
@@ -150,6 +154,7 @@ describe('RecordingChunks', () => {
   it('adds and retrieves chunks sorted by chunkIndex', async () => {
     const base: RecordingChunk = {
       sessionId: 'ats-2026-02-22-001',
+      chunkIndex: 0,
       pageUrl: 'http://localhost:38470',
       events: [{ type: 3, timestamp: 1000, data: {} }],
       createdAt: Date.now(),

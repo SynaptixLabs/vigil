@@ -10,11 +10,14 @@
 
 | Module | Path | Tag | Status | Capabilities |
 |--------|------|-----|--------|-------------|
-| Background | `src/background/` | `[DEV:background]` | 🟡 WIP | Service worker, session lifecycle, message hub |
-| Content | `src/content/` | `[DEV:content]` | 🟡 WIP | Content script, rrweb recording, control bar, bug editor |
-| Popup | `src/popup/` | `[DEV:popup]` | 🟡 WIP | Extension popup UI, session list, new session form |
-| Core | `src/core/` | `[DEV:core]` | 🟡 WIP | Storage (Dexie), report gen, Playwright codegen |
-| Shared | `src/shared/` | `[DEV:shared]` | 🟡 WIP | Types, constants, message protocol, utilities |
+| Background | `src/background/` | `[DEV:background]` | � Active | Service worker, session lifecycle, message hub, silence compression daemon |
+| Content | `src/content/` | `[DEV:content]` | � Active | Content script, rrweb recording, control bar, bug editor, inspector, action tracker |
+| Popup | `src/popup/` | `[DEV:popup]` | � Active | Session list, new session form, session detail, project settings, changelog modal |
+| Core | `src/core/` | `[DEV:core]` | � Active | Storage (Dexie), report gen, Playwright codegen, replay bundler, ZIP bundler, dashboard generator, compression |
+| Shared | `src/shared/` | `[DEV:shared]` | � Active | Types, constants, message protocol, utilities |
+| Reporter | `src/reporter/` | `[DEV:reporter]` | 🟢 Active | Playwright CI reporter — maps test results to Refine session artifacts |
+| Options | `src/options/` | `[DEV:options]` | 🟢 Active | Global settings page (output path configuration) |
+| Replay Viewer | `src/replay-viewer/` | `[DEV:content]` | 🟢 Active | CSP-compliant extension tab for rrweb session replay |
 
 **Status Key:** 🟢 Active | 🟡 WIP | 🔴 Deprecated | 📘 Reference
 
@@ -55,9 +58,12 @@
 
 | Capability | Provides | Do NOT Re-implement |
 |------------|----------|---------------------|
-| Session List | View all sessions with metadata | Background-based session browser |
-| New Session Form | Create session with name + description | Content-script-based session creation |
-| Session Actions | Delete, export, view replay | Direct IndexedDB access from popup |
+| Session List | View all sessions with project/tag filtering | Background-based session browser |
+| New Session Form | Create session with name, project, tags, mouse pref | Content-script-based session creation |
+| Session Detail | Full session view with export actions, bug lifecycle, feature sprint | Direct IndexedDB access from popup |
+| Project Settings | Per-project config export + dashboard refresh | Separate settings page per session |
+| Changelog Modal | In-app "What's New" viewer from CHANGELOG.md | External changelog URL |
+| Storage Indicator | `navigator.storage.estimate()` usage bar | Manual storage queries |
 
 ### Core Module (`src/core/`)
 
@@ -67,6 +73,16 @@
 | Report Generator | JSON + Markdown report from session data | Ad-hoc report formatting |
 | Playwright Codegen | Action log → .spec.ts transformer | Manual test script writing |
 | ZIP Bundler | Package replay + report + screenshots + spec | Multiple separate downloads |
+| Replay Bundler | rrweb chunks → self-contained HTML (decompresses on-the-fly) | Inline event arrays |
+| Dashboard Generator | Project `index.html` with session table + inline reports | Per-session HTML pages |
+| Compression | `CompressionStream` gzip encode/decode for rrweb chunks | Third-party compression libs |
+| Publish | Multi-file `chrome.downloads` export to project folder | Per-artifact download triggers |
+
+### Reporter Module (`src/reporter/`)
+
+| Capability | Provides | Do NOT Re-implement |
+|------------|----------|---------------------|
+| Playwright CI Reporter | `onStepEnd`→Action, `onTestEnd`→Bug, `onEnd`→artifacts + dashboard | Custom Playwright reporter |
 
 ---
 

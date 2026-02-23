@@ -50,6 +50,9 @@ export enum MessageType {
   CAPTURE_SCREENSHOT = 'CAPTURE_SCREENSHOT',
   SESSION_STATUS_UPDATE = 'SESSION_STATUS_UPDATE',
   GET_SESSION_STATUS = 'GET_SESSION_STATUS',
+  ANNOTATE_ACTION = 'ANNOTATE_ACTION',  // R022: Attach a note to the last recorded action
+  LOG_INSPECTOR_ELEMENT = 'LOG_INSPECTOR_ELEMENT',  // R023: Log element captured by inspector
+  OPEN_SIDE_PANEL = 'OPEN_SIDE_PANEL',  // Request background to open/focus the side panel
 }
 
 /**
@@ -122,6 +125,20 @@ export interface Session {
   bugCount: number;
   featureCount: number;
   screenshotCount: number;
+  recordMouseMove: boolean;  // Mouse Tracking Preference: if false, rrweb skips mousemove events
+}
+
+/**
+ * Configuration schema for an AI-native Refine project.
+ */
+export interface RefineProjectConfig {
+  name: string;
+  displayName: string;
+  baseUrl: string;
+  outputPath: string;
+  description?: string;
+  created: string;
+  version: string;
 }
 
 /**
@@ -134,6 +151,20 @@ export interface RecordingChunk {
   pageUrl: string;
   events: unknown[];        // rrweb serialized events
   createdAt: number;
+  compressed?: boolean;     // R015: True if events array is empty and data contains gzip base64
+  data?: string;            // R015: Compressed events
+}
+
+/**
+ * An element captured by the inspector tool during a session.
+ */
+export interface InspectedElement {
+  id: string;               // insp-XXXXXXXX
+  sessionId: string;
+  selector: string;
+  url: string;
+  tagName: string;
+  timestamp: number;
 }
 
 /**

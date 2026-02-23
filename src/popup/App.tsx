@@ -25,7 +25,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-[360px] h-[520px] bg-gray-950 text-white flex flex-col overflow-hidden">
+    <div className="w-full h-screen bg-gray-950 text-white flex flex-col overflow-hidden">
       {page === 'list' && (
         <SessionList
           onNewSession={() => setPage('new')}

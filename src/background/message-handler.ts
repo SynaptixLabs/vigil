@@ -6,7 +6,7 @@
 
 import { MessageType } from '@shared/types';
 import type { ChromeMessage, ChromeResponse } from '@shared/messages';
-import type { Bug, Feature, RecordingChunk } from '@shared/types';
+import type { Bug, Feature, RecordingChunk, InspectedElement } from '@shared/types';
 import { sessionManager } from './session-manager';
 import { captureScreenshot } from './screenshot';
 import {
@@ -14,7 +14,10 @@ import {
   addFeature,
   addRecordingChunk,
   addAction,
+  addInspectedElement,
   getSession,
+  getLastActionBySession,
+  updateActionNote,
   incrementSessionActionCount,
   incrementSessionBugCount,
   incrementSessionFeatureCount,
@@ -33,19 +36,55 @@ export function handleMessage(
       return false;
 
     case MessageType.CREATE_SESSION: {
-      const { name, description, url, tabId: payloadTabId } = message.payload as {
+      const { name, description, url, tabId: payloadTabId, recordMouseMove, tags, project } = message.payload as {
         name: string;
         description: string;
         url: string;
         tabId?: number;
+        recordMouseMove?: boolean;
+        tags?: string[];
+        project?: string;
       };
+      
+      const startSession = (finalTabId?: number) => {
+        chrome.storage.local.get(['refineOutputPath'], (res) => {
+          const outputPath = res.refineOutputPath as string | undefined;
+          sessionManager
+            .createSession(name, description ?? '', url, finalTabId, recordMouseMove ?? false, tags ?? [], project, outputPath)
+            .then((session) => sendResponse({ ok: true, data: session }))
+            .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+        });
+      };
+
       // popup sender.tab is undefined — use tabId sent explicitly in the payload
-      const targetTabId = payloadTabId ?? tabId;
-      sessionManager
-        .createSession(name, description ?? '', url, targetTabId)
-        .then((session) => sendResponse({ ok: true, data: session }))
-        .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
-      return true;
+      let targetTabId = payloadTabId ?? tabId;
+
+      if (!targetTabId) {
+        // Fallback: query active tab if missing (e.g. from side panel)
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+          const target = tabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+          if (target?.id) {
+             console.log('[Refine] Auto-detected target tab:', target.id);
+             startSession(target.id);
+          } else {
+             // Try getting ANY active tab in any window that is a valid page
+             chrome.tabs.query({ active: true }, (allTabs) => {
+               const anyTarget = allTabs.find(t => t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+               if (anyTarget?.id) {
+                 console.log('[Refine] Auto-detected target tab (fallback):', anyTarget.id);
+                 startSession(anyTarget.id);
+               } else {
+                 console.warn('[Refine] No target tab found for session');
+                 startSession(undefined); // Start without a tab (will record but no overlay)
+               }
+             });
+          }
+        });
+        return true;
+      }
+
+      startSession(targetTabId);
+      return true; // async response
     }
 
     case MessageType.PAUSE_RECORDING:
@@ -65,7 +104,11 @@ export function handleMessage(
     case MessageType.STOP_RECORDING:
       sessionManager
         .stopSession()
-        .then((session) => sendResponse({ ok: true, data: session }))
+        .then((session) => {
+          // Notify all extension pages (popup, sidepanel) to refresh their session list
+          chrome.runtime.sendMessage({ type: 'SESSION_COMPLETED', payload: { sessionId: session.id } }).catch(() => {});
+          sendResponse({ ok: true, data: session });
+        })
         .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
       return true;
 
@@ -129,6 +172,7 @@ export function handleMessage(
               isRecording: sessionManager.isRecording(),
               startedAt: session?.startedAt ?? null,
               lastPageUrl: session?.pages[session.pages.length - 1] ?? null,
+              recordMouseMove: session?.recordMouseMove ?? false,
             },
           }))
           .catch(() => sendResponse({ ok: true, data: { sessionId: activeId, status: sessionManager.getStatus(), isRecording: sessionManager.isRecording(), startedAt: null, lastPageUrl: null } }));
@@ -141,8 +185,43 @@ export function handleMessage(
     case MessageType.SESSION_STATUS_UPDATE: {
       const { url } = message.payload as { url: string };
       if (url) sessionManager.addPage(url);
+      // Update tabId if content script auto-resumed on a different tab
+      if (tabId) sessionManager.setTabId(tabId);
       sendResponse({ ok: true });
       return false;
+    }
+
+    case MessageType.LOG_INSPECTOR_ELEMENT: {
+      const el = message.payload as InspectedElement;
+      addInspectedElement(el)
+        .then(() => sendResponse({ ok: true, data: { id: el.id } }))
+        .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+      return true;
+    }
+
+    case MessageType.ANNOTATE_ACTION: {
+      const { sessionId, note } = message.payload as { sessionId: string; note: string };
+      getLastActionBySession(sessionId)
+        .then((action) => {
+          if (!action) return sendResponse({ ok: false, error: 'No actions to annotate' });
+          return updateActionNote(action.id, note).then(() => sendResponse({ ok: true, data: { id: action.id } }));
+        })
+        .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+      return true;
+    }
+
+    case MessageType.OPEN_SIDE_PANEL: {
+      // Open side panel on the window of the sender tab, or last focused window
+      const windowId = sender.tab?.windowId;
+      if (windowId) {
+        chrome.sidePanel.open({ windowId }, () => sendResponse({ ok: true }));
+      } else {
+        chrome.windows.getLastFocused((win) => {
+          if (win?.id) chrome.sidePanel.open({ windowId: win.id }, () => sendResponse({ ok: true }));
+          else sendResponse({ ok: false, error: 'No window found' });
+        });
+      }
+      return true;
     }
 
     default:

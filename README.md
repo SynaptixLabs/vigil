@@ -1,6 +1,6 @@
 # SynaptixLabs Refine — Acceptance Test Recorder
 
-> Chrome Extension for manual acceptance test recording with Playwright export — v1.0.0
+> Chrome Extension for AI-native acceptance testing with Playwright export — v1.1.0
 
 ---
 
@@ -14,6 +14,10 @@ Refine bridges the gap between manual exploratory testing and automated QA. It l
 - Generate session reports (JSON + Markdown) for DEV teams
 - Export Playwright `.spec.ts` regression test scripts for QA teams
 - Visual replay via self-contained rrweb-player HTML files
+- Project dashboard (`index.html`) auto-generated on publish
+- Silence compression daemon compresses old rrweb chunks in the background
+- Playwright CI reporter (`refine-reporter`) maps test results to Refine session artifacts
+- Windsurf AI workflows (`/refine-record`, `/refine-review`) for AI-driven acceptance testing
 
 ## Stack
 
@@ -89,6 +93,9 @@ project-refiner/
 │   ├── content/             # Content script (rrweb, control bar, bug editor)
 │   ├── popup/               # Extension popup (session list, management)
 │   ├── core/                # Business logic (storage, reports, codegen)
+│   ├── reporter/            # Playwright CI reporter (RefineReporter)
+│   ├── options/             # Global settings page
+│   ├── replay-viewer/       # CSP-compliant extension replay page
 │   └── shared/              # Shared types, constants, utilities
 ├── tests/
 │   ├── unit/                # Unit tests (Vitest) — owned by DEV
@@ -128,8 +135,9 @@ Start here: [`docs/00_INDEX.md`](docs/00_INDEX.md)
 | Sprint 00 | Repo setup, scaffold, hello-world extension | ✅ Done |
 | Sprint 01 | P0 MVP: Session recording, control bar, screenshots, bug editor (R001–R005) | ✅ Done |
 | Sprint 02 | Reports, replay, Playwright export, ZIP, shortcuts (R006–R007, R010–R013) | ✅ Done |
-| Sprint 03 | P2 features, infra fixes, project folder, bug/feature workflow | 🔄 In Progress |
-| Sprint 04 | AI recording via Windsurf/Claude, project dashboard | Planned |
+| Sprint 03 | P2 features, infra fixes, project folder, bug/feature workflow (R020–R027) | ✅ Done |
+| Sprint 04 | AI workflows, project dashboard, silence compression, Playwright reporter | ✅ Done |
+| Sprint 05 | Full design review, bug fixes, codebase hardening | ✅ Done |
 
 ---
 

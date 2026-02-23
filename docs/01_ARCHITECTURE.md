@@ -173,10 +173,24 @@ src/
 │   ├── db.ts                       # Dexie.js schema + database instance
 │   ├── playwright-codegen.ts       # Action log → Playwright .spec.ts
 │   ├── report-generator.ts         # Session → JSON + Markdown report
-│   └── replay-bundler.ts           # rrweb events → self-contained HTML
+│   ├── replay-bundler.ts           # rrweb chunks → self-contained HTML (decompresses on-the-fly)
+│   ├── zip-bundler.ts              # ZIP bundle export
+│   ├── dashboard-generator.ts      # Project index.html dashboard
+│   ├── compression.ts              # CompressionStream gzip encode/decode
+│   └── publish.ts                  # Multi-file chrome.downloads export
+│
+├── reporter/                       # Playwright CI reporter (Node.js, not extension)
+│   └── refine-reporter.ts          # Reporter interface implementation
+│
+├── options/
+│   ├── options.html                # Options page entry HTML
+│   └── options.tsx                 # Global settings (output path)
+│
+├── replay-viewer/
+│   ├── replay-viewer.html          # Replay viewer entry HTML
+│   └── replay-viewer.tsx           # CSP-compliant rrweb-player page
 │
 └── shared/                         # Types, constants, utilities (leaf module)
-    ├── index.ts                    # Barrel export
     ├── types.ts                    # All TypeScript interfaces + enums
     ├── constants.ts                # Extension-wide constants
     ├── messages.ts                 # Chrome message type definitions + helpers
@@ -258,14 +272,16 @@ File saved to user's Downloads folder
 ## Data Model (IndexedDB via Dexie.js)
 
 ```typescript
-// Database schema
-const db = new Dexie('SynaptixRefine')
+// Database schema (Dexie v4, db name: 'refine-db')
+const db = new Dexie('refine-db')
 db.version(1).stores({
-  sessions: '&id, name, status, startedAt, projectUrl',
-  events: '++id, sessionId, timestamp, type',
-  recordings: '++id, sessionId, chunkIndex',
-  screenshots: '++id, sessionId, timestamp',
-  issues: '++id, sessionId, timestamp, type, priority',
+  sessions:        '&id, name, status, startedAt, project',
+  actions:         '++id, sessionId, timestamp, type',
+  recordingChunks: '++id, sessionId, chunkIndex',  // compressed?: boolean, data?: string
+  screenshots:     '++id, sessionId, timestamp',
+  bugs:            '++id, sessionId, timestamp, type, priority, bugStatus',
+  features:        '++id, sessionId, timestamp, featureType',
+  inspectedElements: '++id, sessionId, timestamp',
 })
 ```
 
@@ -410,9 +426,9 @@ Note: `host_permissions` can be expanded by the user in extension settings. Defa
 
 | Layer | Tool | Scope |
 |---|---|---|
-| Unit | Vitest | `core/` modules: playwright-codegen, report-generator, selector-engine, action-extractor. `shared/` utilities |
-| Integration | Vitest + fake-indexeddb | Storage layer, session lifecycle, report generation from realistic data |
-| E2E | Playwright (ADR-008) | Full extension flows via `chromium.launchPersistentContext()` with `--load-extension` |
+| Unit | Vitest | `core/` modules: playwright-codegen, report-generator, selector-engine, compression, dashboard-generator. `shared/` utilities. `reporter/` CI reporter |
+| Integration | Vitest + fake-indexeddb | Storage layer, session lifecycle, export pipeline (ZIP + replay + report) |
+| E2E | Playwright (ADR-008) | Full extension flows via `chromium.launchPersistentContext()` with `--load-extension`. 29 specs across 10 spec files |
 
 ### Testing the extension during development
 ```bash
@@ -453,4 +469,4 @@ Major architectural decisions for this project logged in [0l_DECISIONS.md](0l_DE
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-23 (v1.2.0 — Sprint 05 closure)*

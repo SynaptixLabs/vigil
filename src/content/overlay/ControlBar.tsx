@@ -4,8 +4,9 @@
  * Shows recording status, timer, and action buttons.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageType } from '@shared/types';
+import { stopRecording } from '../recorder';
 import BugEditor from './BugEditor';
 
 interface ControlBarProps {
@@ -16,6 +17,16 @@ interface ControlBarProps {
 
 type RecordingState = 'recording' | 'paused';
 
+function applyThemeToHost(theme: 'dark' | 'light'): void {
+  const host = document.getElementById('refine-root');
+  if (!host) return;
+  if (theme === 'light') {
+    host.setAttribute('data-theme', 'light');
+  } else {
+    host.removeAttribute('data-theme');
+  }
+}
+
 const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop }) => {
   const [recordingState, setRecordingState] = useState<RecordingState>('recording');
   const [elapsed, setElapsed] = useState(0);
@@ -24,7 +35,23 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
   const [totalPaused, setTotalPaused] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [showBugEditor, setShowBugEditor] = useState(false);
+  const [showSizeWarning, setShowSizeWarning] = useState(false);
+  const sizeWarningFiredRef = useRef(false);
   const [lastClickedSelector, setLastClickedSelector] = useState<string | undefined>(undefined);
+  const [noteInput, setNoteInput] = useState<string | null>(null);
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteInputRef = useRef<HTMLInputElement>(null);
+
+  // R024: Load stored theme on mount and apply to host element
+  useEffect(() => {
+    chrome.storage.local.get('refineTheme', (result) => {
+      const stored = (result.refineTheme as 'dark' | 'light') ?? 'dark';
+      setTheme(stored);
+      applyThemeToHost(stored);
+    });
+  }, []);
 
   // B15: Sync startTime from background so timer survives cross-page navigation
   useEffect(() => {
@@ -38,11 +65,16 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
     );
   }, []);
 
-  // Track elapsed time
+  // Track elapsed time + 30-min size warning (PRD §Risks)
   useEffect(() => {
     const id = setInterval(() => {
       if (recordingState === 'recording') {
-        setElapsed(Date.now() - startTime - totalPaused);
+        const next = Date.now() - startTime - totalPaused;
+        setElapsed(next);
+        if (!sizeWarningFiredRef.current && next >= 30 * 60 * 1000) {
+          sizeWarningFiredRef.current = true;
+          setShowSizeWarning(true);
+        }
       }
     }, 1000);
     return () => clearInterval(id);
@@ -81,13 +113,66 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
   };
 
   const handleStop = () => {
+    stopRecording(); // flush rrweb buffer locally — works even if background tabId is stale
     chrome.runtime.sendMessage({ type: MessageType.STOP_RECORDING, source: 'content' }, () => {
       if (chrome.runtime.lastError) {
         console.error('[Refine] Stop recording failed:', chrome.runtime.lastError.message);
       }
+      // Open side panel so the user can see the session results
+      chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
       onStop?.();
     });
   };
+
+  const handleOpenPanel = () => {
+    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
+  };
+
+  const handleToggleTheme = () => {
+    const next: 'dark' | 'light' = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    applyThemeToHost(next);
+    chrome.storage.local.set({ refineTheme: next });
+    showToast(next === 'light' ? '☀️ Light mode' : '🌙 Dark mode');
+  };
+
+  const handleToggleInspector = () => {
+    const next = !isInspecting;
+    setIsInspecting(next);
+    window.dispatchEvent(
+      new CustomEvent('refine:toggle-inspector', { detail: { active: next, sessionId } })
+    );
+    showToast(next ? '🔍 Inspector ON' : '🔍 Inspector OFF');
+  };
+
+  const handleNoteLongPressStart = () => {
+    longPressTimer.current = setTimeout(() => {
+      setNoteInput('');
+    }, 500);
+  };
+
+  const handleNoteLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleNoteSubmit = () => {
+    if (noteInput === null) return;
+    const trimmed = noteInput.trim();
+    if (trimmed) {
+      chrome.runtime.sendMessage(
+        { type: MessageType.ANNOTATE_ACTION, payload: { sessionId, note: trimmed }, source: 'content' },
+        () => showToast('✓ Note added')
+      );
+    }
+    setNoteInput(null);
+  };
+
+  useEffect(() => {
+    if (noteInput !== null) noteInputRef.current?.focus();
+  }, [noteInput]);
 
   const handleScreenshot = () => {
     chrome.runtime.sendMessage(
@@ -106,6 +191,29 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
   return (
     <>
+      {showSizeWarning && (
+        <div className="refine-size-warning" role="alertdialog" aria-modal="true" aria-labelledby="refine-size-warning-title">
+          <p id="refine-size-warning-title" className="refine-size-warning__title">⚠️ 30-minute recording</p>
+          <p className="refine-size-warning__body">Large sessions use significant storage. Consider stopping and starting a new session to keep recordings manageable.</p>
+          <div className="refine-size-warning__actions">
+            <button
+              className="refine-btn--save"
+              onClick={() => {
+                setShowSizeWarning(false);
+                handleStop();
+              }}
+            >
+              Stop &amp; Save
+            </button>
+            <button
+              className="refine-btn--cancel"
+              onClick={() => setShowSizeWarning(false)}
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      )}
       {showBugEditor && (
         <BugEditor
           sessionId={sessionId}
@@ -115,7 +223,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
         />
       )}
 
-      <div className="refine-control-bar" data-testid="refine-control-bar">
+      <div className="refine-control-bar" data-testid="refine-control-bar" role="toolbar" aria-label="Refine recording controls">
         <div className="refine-indicator-wrapper" data-testid="recording-indicator">
           <div
             className={`refine-recording-dot ${recordingState === 'paused' ? 'refine-recording-dot--paused' : ''}`}
@@ -139,6 +247,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
             title="Pause (Ctrl+Shift+R)"
             aria-label="Pause recording"
             data-testid="btn-pause"
+            tabIndex={0}
             onClick={handlePauseResume}
           >
             ⏸
@@ -150,6 +259,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
             title="Resume (Ctrl+Shift+R)"
             aria-label="Resume recording"
             data-testid="btn-resume"
+            tabIndex={0}
             onClick={handlePauseResume}
           >
             ▶
@@ -161,6 +271,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
           title="Stop recording"
           aria-label="Stop recording"
           data-testid="btn-stop"
+          tabIndex={0}
           onClick={handleStop}
         >
           ⏹
@@ -171,6 +282,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
           title="Take screenshot (Ctrl+Shift+S)"
           aria-label="Take screenshot"
           data-testid="btn-screenshot"
+          tabIndex={0}
           onClick={handleScreenshot}
         >
           📷
@@ -181,12 +293,88 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
           title="Log Bug / Feature (Ctrl+Shift+B)"
           aria-label="Log Bug or Feature"
           data-testid="btn-bug"
+          tabIndex={0}
           onClick={() => setShowBugEditor(true)}
         >
           🐛
         </button>
 
+        <button
+          className="refine-btn"
+          title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-label="Toggle theme"
+          data-testid="btn-theme"
+          tabIndex={0}
+          onClick={handleToggleTheme}
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+
+        <button
+          className={`refine-btn${isInspecting ? ' refine-btn--inspect-active' : ''}`}
+          title="Toggle element inspector (R023)"
+          aria-label="Toggle element inspector"
+          data-testid="btn-inspect"
+          tabIndex={0}
+          onClick={handleToggleInspector}
+        >
+          🔍
+        </button>
+
+        <button
+          className="refine-btn"
+          title="Annotate last action (long-press)"
+          aria-label="Add annotation note"
+          data-testid="btn-annotate"
+          tabIndex={0}
+          onMouseDown={handleNoteLongPressStart}
+          onMouseUp={handleNoteLongPressEnd}
+          onMouseLeave={handleNoteLongPressEnd}
+          onTouchStart={handleNoteLongPressStart}
+          onTouchEnd={handleNoteLongPressEnd}
+        >
+          📝
+        </button>
+
+        {noteInput !== null && (
+          <div className="refine-note-input-wrapper" data-testid="note-input-overlay">
+            <input
+              ref={noteInputRef}
+              type="text"
+              className="refine-note-input"
+              placeholder="Add note…"
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleNoteSubmit();
+                if (e.key === 'Escape') setNoteInput(null);
+              }}
+              data-testid="note-input"
+            />
+            <button
+              className="refine-btn refine-btn--sm"
+              onClick={handleNoteSubmit}
+              data-testid="btn-note-submit"
+            >
+              ✓
+            </button>
+          </div>
+        )}
+
         {toast && <span className="refine-toast">{toast}</span>}
+
+        <div className="refine-divider" />
+
+        <button
+          className="refine-btn"
+          title="Open Refine panel"
+          aria-label="Open Refine panel"
+          data-testid="btn-open-panel"
+          tabIndex={0}
+          onClick={handleOpenPanel}
+        >
+          ◀
+        </button>
       </div>
     </>
   );

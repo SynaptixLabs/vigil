@@ -30,6 +30,7 @@ describe('Export Pipeline Integration', () => {
       screenshotCount: 1,
       pages: ['https://example.com'],
       tags: [],
+      recordMouseMove: false,
     };
 
     bugs = [
@@ -87,7 +88,9 @@ describe('Export Pipeline Integration', () => {
         sessionId: session.id,
         dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
         timestamp: now - 35000,
-        pageUrl: 'https://example.com',
+        url: 'https://example.com',
+        width: 1280,
+        height: 720,
       }
     ];
 
@@ -129,8 +132,8 @@ describe('Export Pipeline Integration', () => {
     expect(spec).toContain('// BUG: P1 — "Test Bug"');
   });
 
-  it('generates a valid Replay HTML', () => {
-    const html = generateReplayHtml(session, chunks.flatMap(c => c.events));
+  it('generates a valid Replay HTML', async () => {
+    const html = await generateReplayHtml(session, chunks);
     expect(html).toContain('<!DOCTYPE html>');
     // The playerJs/playerCss imports resolve to undefined in Vitest Node environment
     // due to the ?raw query param, so we just check for the player init code

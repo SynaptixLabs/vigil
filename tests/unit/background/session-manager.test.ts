@@ -4,7 +4,7 @@
  */
 
 import 'fake-indexeddb/auto';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // ── Chrome API mocks ──────────────────────────────────────────────────────────
 
@@ -45,6 +45,12 @@ beforeEach(() => {
   mockRuntime.lastError = null;
 });
 
+afterEach(async () => {
+  if (sessionManager.getActiveSessionId()) {
+    try { await sessionManager.stopSession(); } catch { /* already stopped */ }
+  }
+});
+
 describe('sessionManager.createSession', () => {
   it('creates a session and returns it with RECORDING status', async () => {
     const session = await createTestSession('Login flow');
@@ -66,7 +72,10 @@ describe('sessionManager.createSession', () => {
     const session = await sessionManager.createSession('Nav test', '', 'http://x.com', 42);
     expect(mockTabs.sendMessage).toHaveBeenCalledWith(
       42,
-      expect.objectContaining({ type: 'START_RECORDING', payload: { sessionId: session.id } }),
+      expect.objectContaining({
+        type: 'START_RECORDING',
+        payload: expect.objectContaining({ sessionId: session.id }),
+      }),
       expect.any(Function)
     );
   });

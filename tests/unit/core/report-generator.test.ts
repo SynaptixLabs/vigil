@@ -12,10 +12,12 @@ const baseSession: Session = {
   stoppedAt: 1_700_000_060_000,
   duration: 60_000,
   pages: ['http://localhost:38470/', 'http://localhost:38470/form'],
+  tags: [],
   actionCount: 2,
   bugCount: 1,
   featureCount: 1,
   screenshotCount: 1,
+  recordMouseMove: false,
 };
 
 const bug: Bug = {
@@ -23,6 +25,7 @@ const bug: Bug = {
   sessionId: baseSession.id,
   type: 'bug',
   priority: BugPriority.P1,
+  status: 'open',
   title: 'Submit button misaligned',
   description: 'The button shifts on mobile',
   url: 'http://localhost:38470/form',
@@ -35,6 +38,7 @@ const feature: Feature = {
   sessionId: baseSession.id,
   type: 'feature',
   featureType: FeatureType.ENHANCEMENT,
+  status: 'open',
   title: 'Add dark mode',
   description: 'Support dark mode toggle',
   url: 'http://localhost:38470/',
@@ -66,7 +70,7 @@ describe('generateJsonReport', () => {
   it('returns correct meta fields', () => {
     const report = generateJsonReport(baseSession, [bug], [feature], [action], [screenshot]);
     expect(report.meta.sessionId).toBe(baseSession.id);
-    expect(report.meta.refineVersion).toBe('1.0.0');
+    expect(report.meta.refineVersion).toMatch(/^\d+\.\d+\.\d+$/);
     expect(report.meta.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 

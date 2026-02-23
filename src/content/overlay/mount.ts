@@ -21,7 +21,7 @@ export function mountOverlay(sessionId: string, options: OverlayOptions = {}): v
 
   hostElement = document.createElement('div');
   hostElement.id = 'refine-root';
-  hostElement.style.cssText = 'all: initial; position: fixed; z-index: 2147483647;';
+  hostElement.style.cssText = 'all: initial; position: fixed; z-index: 2147483647; pointer-events: none;';
 
   const shadow = hostElement.attachShadow({ mode: 'open' });
 

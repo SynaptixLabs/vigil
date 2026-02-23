@@ -9,12 +9,13 @@
     "storage",
     "tabs",
     "alarms",
-    "downloads"
+    "downloads",
+    "sidePanel",
+    "scripting"
   ],
 
   "host_permissions": [
-    "http://localhost:*/*",
-    "https://*.synaptixlabs.com/*"
+    "<all_urls>"
   ],
 
   "background": {
@@ -24,14 +25,17 @@
 
   "content_scripts": [
     {
-      "matches": ["http://localhost:*/*", "https://*.synaptixlabs.com/*"],
+      "matches": ["<all_urls>"],
       "js": ["src/content/content-script.ts"],
       "run_at": "document_idle"
     }
   ],
 
+  "side_panel": {
+    "default_path": "src/sidepanel/sidepanel.html"
+  },
+
   "action": {
-    "default_popup": "src/popup/popup.html",
     "default_title": "SynaptixLabs Refine",
     "default_icon": {
       "16": "icons/icon-16.png",
@@ -40,6 +44,8 @@
       "128": "icons/icon-128.png"
     }
   },
+
+  "options_page": "src/options/options.html",
 
   "commands": {
     "toggle-recording": {
@@ -55,6 +61,15 @@
       "description": "Open bug editor"
     }
   },
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/new-session/new-session.html"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
 
   "icons": {
     "16": "icons/icon-16.png",

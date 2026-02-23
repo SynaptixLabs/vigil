@@ -12,10 +12,12 @@ const baseSession: Session = {
   stoppedAt: 1_700_000_060_000,
   duration: 60_000,
   pages: ['http://localhost:38470/'],
+  tags: [],
   actionCount: 3,
   bugCount: 1,
   featureCount: 0,
   screenshotCount: 0,
+  recordMouseMove: false,
 };
 
 const navAction: Action = {
@@ -24,6 +26,7 @@ const navAction: Action = {
   timestamp: 1_700_000_005_000,
   type: 'navigation',
   pageUrl: 'http://localhost:38470/',
+  value: 'http://localhost:38470/',
   selectorStrategy: 'data-testid',
 };
 
@@ -55,6 +58,7 @@ const bug: Bug = {
   sessionId: baseSession.id,
   type: 'bug',
   priority: BugPriority.P1,
+  status: 'open',
   title: 'Submit hangs on slow connection',
   description: '',
   url: 'http://localhost:38470/',
@@ -77,23 +81,22 @@ describe('generatePlaywrightSpec', () => {
     expect(spec).toContain(`await page.goto('http://localhost:38470/')`);
   });
 
-  it('maps click to page.click with CSS attribute selector for data-testid', () => {
+  it('maps click to page.locator().click() with CSS attribute selector for data-testid', () => {
     const spec = generatePlaywrightSpec(baseSession, [clickAction], []);
     expect(spec).toContain(`'[data-testid="btn-submit"]'`);
-    expect(spec).toContain('await page.click(');
+    expect(spec).toContain('.click()');
   });
 
-  it('maps input to page.fill with value', () => {
+  it('maps input to page.locator().fill() with value', () => {
     const spec = generatePlaywrightSpec(baseSession, [fillAction], []);
-    expect(spec).toContain(`await page.fill(`);
-    expect(spec).toContain(`'Alice'`);
+    expect(spec).toContain(`.fill('Alice')`);
     expect(spec).toContain(`'[data-testid="input-name"]'`);
   });
 
   it('inserts BUG comment at correct position between actions', () => {
     const spec = generatePlaywrightSpec(baseSession, [clickAction, fillAction], [bug]);
     const bugLine = spec.indexOf('// BUG:');
-    const fillLine = spec.indexOf('await page.fill(');
+    const fillLine = spec.indexOf('.fill(');
     // BUG comment should appear before the fill action
     expect(bugLine).toBeGreaterThan(-1);
     expect(bugLine).toBeLessThan(fillLine);

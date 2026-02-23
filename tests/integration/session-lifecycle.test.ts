@@ -49,6 +49,8 @@ describe('Session lifecycle pipeline', () => {
       bugCount: 0,
       featureCount: 0,
       screenshotCount: 0,
+      tags: [],
+      recordMouseMove: false,
     };
     await createSession(session);
 
@@ -63,6 +65,7 @@ describe('Session lifecycle pipeline', () => {
       sessionId,
       type: 'bug',
       priority: BugPriority.P0,
+      status: 'open',
       title: 'Submit button disabled when it should not be',
       description: 'Repro: fill all fields, button stays grey',
       url: 'http://localhost:38470/form',
@@ -82,6 +85,7 @@ describe('Session lifecycle pipeline', () => {
       sessionId,
       type: 'feature',
       featureType: FeatureType.UX_IMPROVEMENT,
+      status: 'open',
       title: 'Add progress indicator to form',
       description: 'User should see which step they are on',
       url: 'http://localhost:38470/form',
@@ -114,21 +118,21 @@ describe('Session lifecycle pipeline', () => {
     // 5. Stop session
     const stopTime = Date.now();
     await updateSession(sessionId, {
-      status: SessionStatus.STOPPED,
+      status: SessionStatus.COMPLETED,
       stoppedAt: stopTime,
       duration: stopTime - session.startedAt,
     });
 
     // 6. Verify final state
     const final = await getSession(sessionId);
-    expect(final?.status).toBe(SessionStatus.STOPPED);
+    expect(final?.status).toBe(SessionStatus.COMPLETED);
     expect(final?.duration).toBeGreaterThan(0);
     expect(final?.bugCount).toBe(1);
     expect(final?.featureCount).toBe(1);
     expect(final?.screenshotCount).toBe(1);
   });
 
-  it('session status transitions: RECORDING → PAUSED → RECORDING → STOPPED', async () => {
+  it('session status transitions: RECORDING → PAUSED → RECORDING → COMPLETED', async () => {
     const sessionId = generateSessionId(new Date('2026-02-22'), 2);
     await createSession({
       id: sessionId,
@@ -142,6 +146,8 @@ describe('Session lifecycle pipeline', () => {
       bugCount: 0,
       featureCount: 0,
       screenshotCount: 0,
+      tags: [],
+      recordMouseMove: false,
     });
 
     await updateSession(sessionId, { status: SessionStatus.PAUSED });
@@ -150,9 +156,9 @@ describe('Session lifecycle pipeline', () => {
     await updateSession(sessionId, { status: SessionStatus.RECORDING });
     expect((await getSession(sessionId))?.status).toBe(SessionStatus.RECORDING);
 
-    await updateSession(sessionId, { status: SessionStatus.STOPPED, stoppedAt: Date.now(), duration: 5000 });
+    await updateSession(sessionId, { status: SessionStatus.COMPLETED, stoppedAt: Date.now(), duration: 5000 });
     const stopped = await getSession(sessionId);
-    expect(stopped?.status).toBe(SessionStatus.STOPPED);
+    expect(stopped?.status).toBe(SessionStatus.COMPLETED);
     expect(stopped?.duration).toBe(5000);
   });
 
@@ -173,12 +179,14 @@ describe('Session lifecycle pipeline', () => {
         bugCount: 0,
         featureCount: 0,
         screenshotCount: 0,
+        tags: [],
+        recordMouseMove: false,
       });
     }
 
-    await addBug({ id: generateBugId(), sessionId: id1, type: 'bug', priority: BugPriority.P1, title: 'Bug in session 1', description: '', url: '', timestamp: Date.now() });
-    await addBug({ id: generateBugId(), sessionId: id2, type: 'bug', priority: BugPriority.P2, title: 'Bug in session 2', description: '', url: '', timestamp: Date.now() });
-    await addBug({ id: generateBugId(), sessionId: id2, type: 'bug', priority: BugPriority.P3, title: 'Bug2 in session 2', description: '', url: '', timestamp: Date.now() });
+    await addBug({ id: generateBugId(), sessionId: id1, type: 'bug', priority: BugPriority.P1, status: 'open', title: 'Bug in session 1', description: '', url: '', timestamp: Date.now() });
+    await addBug({ id: generateBugId(), sessionId: id2, type: 'bug', priority: BugPriority.P2, status: 'open', title: 'Bug in session 2', description: '', url: '', timestamp: Date.now() });
+    await addBug({ id: generateBugId(), sessionId: id2, type: 'bug', priority: BugPriority.P3, status: 'open', title: 'Bug2 in session 2', description: '', url: '', timestamp: Date.now() });
 
     const bugs1 = await getBugsBySession(id1);
     const bugs2 = await getBugsBySession(id2);

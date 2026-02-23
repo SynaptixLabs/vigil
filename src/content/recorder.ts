@@ -103,7 +103,7 @@ function flushBuffer(final = false): void {
   }
 }
 
-export function startRecording(sessionId: string): void {
+export function startRecording(sessionId: string, recordMouseMove = false): void {
   if (state.isRecording) {
     console.warn('[Refine] Already recording');
     return;
@@ -136,7 +136,7 @@ export function startRecording(sessionId: string): void {
     },
     maskInputOptions: { password: true },
     sampling: {
-      mousemove: 50,
+      mousemove: recordMouseMove ? 50 : 0,
       mouseInteraction: true,
       scroll: 300,
     },

@@ -3,13 +3,15 @@
  * @description Session list page. Shows all sessions from Dexie with status badges.
  */
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { SessionStatus } from '@shared/types';
 import type { Session } from '@shared/types';
 import { getAllSessions } from '@core/db';
-import { formatTimestamp, formatDuration } from '@shared/utils';
-
+import { formatDuration, formatTimestamp } from '@shared/utils';
 import { StorageIndicator } from '../components/StorageIndicator';
+import { ChangelogModal } from '../components/ChangelogModal';
+import { VERSION } from '@shared/constants';
+import ProjectSettings from './ProjectSettings';
 
 interface SessionListProps {
   onNewSession: () => void;
@@ -29,6 +31,22 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
   const [loading, setLoading] = useState(true);
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('');
+  const [showChangelog, setShowChangelog] = useState(false);
+  const [hasNewVersion, setHasNewVersion] = useState(false);
+  const [selectedProjectSettings, setSelectedProjectSettings] = useState<string | null>(null);
+
+  useEffect(() => {
+    chrome.storage.local.get('refineLastSeenVersion', (result) => {
+      const seen = result.refineLastSeenVersion as string | undefined;
+      if (seen !== VERSION) setHasNewVersion(true);
+    });
+  }, []);
+
+  const handleOpenChangelog = () => {
+    setShowChangelog(true);
+    setHasNewVersion(false);
+    chrome.storage.local.set({ refineLastSeenVersion: VERSION });
+  };
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -42,6 +60,15 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
 
   useEffect(() => {
     loadSessions();
+  }, [loadSessions]);
+
+  // Refresh when background signals a session stopped
+  useEffect(() => {
+    const listener = (message: { type: string }) => {
+      if (message.type === 'SESSION_COMPLETED') loadSessions();
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => chrome.runtime.onMessage.removeListener(listener);
   }, [loadSessions]);
 
   const uniqueProjects = Array.from(new Set(sessions.map(s => s.project).filter(Boolean))) as string[];
@@ -59,8 +86,21 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
     (s) => s.status !== SessionStatus.RECORDING && s.status !== SessionStatus.PAUSED
   );
 
+  if (selectedProjectSettings) {
+    return (
+      <ProjectSettings 
+        project={selectedProjectSettings} 
+        onBack={() => {
+          setSelectedProjectSettings(null);
+          loadSessions(); // Reload in case dashboard HTML generation failed or something
+        }} 
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
+      {showChangelog && <ChangelogModal onClose={() => setShowChangelog(false)} />}
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
         <div className="flex items-center gap-2">
@@ -81,6 +121,7 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
+          data-testid="select-project-filter"
           className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
         >
           <option value="all">All Projects</option>
@@ -88,11 +129,22 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
+        {projectFilter !== 'all' && (
+          <button 
+            onClick={() => setSelectedProjectSettings(projectFilter)}
+            data-testid="btn-project-settings"
+            className="shrink-0 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-xs transition-colors"
+            title="Project Settings"
+          >
+            ⚙️
+          </button>
+        )}
         <input
           type="text"
           placeholder="Filter by tag..."
           value={tagFilter}
           onChange={(e) => setTagFilter(e.target.value)}
+          data-testid="input-tag-filter"
           className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
         />
       </div>
@@ -147,7 +199,21 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
           </div>
         )}
       </div>
-      <StorageIndicator />
+      <div className="flex items-center border-t border-gray-800">
+        <div className="flex-1">
+          <StorageIndicator />
+        </div>
+        <button
+          data-testid="btn-whats-new"
+          onClick={handleOpenChangelog}
+          className="relative px-3 py-2 text-xs text-gray-500 hover:text-gray-300 transition-colors shrink-0"
+        >
+          What's New
+          {hasNewVersion && (
+            <span className="absolute top-1.5 right-1 w-1.5 h-1.5 rounded-full bg-indigo-400" />
+          )}
+        </button>
+      </div>
     </div>
   );
 };

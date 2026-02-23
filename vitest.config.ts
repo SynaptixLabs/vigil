@@ -29,7 +29,8 @@ export default defineConfig({
       '@core': resolve(__dirname, './src/core'),
       '@background': resolve(__dirname, './src/background'),
       '@content': resolve(__dirname, './src/content'),
-      '@popup': resolve(__dirname, './src/popup')
+      '@popup': resolve(__dirname, './src/popup'),
+      '@reporter': resolve(__dirname, './src/reporter')
     }
   }
 });

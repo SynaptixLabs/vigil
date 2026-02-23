@@ -35,21 +35,95 @@ async function getNextSequence(): Promise<number> {
   return todaySessions.length + 1;
 }
 
+async function ensureContentScript(tabId: number): Promise<boolean> {
+  try {
+    // Check if script is already running by sending a ping
+    await new Promise<void>((resolve, reject) => {
+      chrome.tabs.sendMessage(tabId, { type: 'PING' }, (response) => {
+        if (chrome.runtime.lastError || !response?.ok) reject(chrome.runtime.lastError);
+        else resolve();
+      });
+    });
+    return true;
+  } catch (e) {
+    console.log('[Refine] Content script missing, injecting...', e);
+    // Script missing, try to inject
+    try {
+      const manifest = await fetch(chrome.runtime.getURL('manifest.json')).then(r => r.json());
+      const files = manifest.content_scripts?.[0]?.js ?? [];
+      if (files.length === 0) return false;
+
+      await chrome.scripting.executeScript({ target: { tabId }, files });
+      
+      // Wait for script to initialize
+      await new Promise(r => setTimeout(r, 500));
+      return true;
+    } catch (injectErr) {
+      console.error('[Refine] Injection failed:', injectErr);
+      return false;
+    }
+  }
+}
+
+async function sendStartRecording(tabId: number, payload: { sessionId: string; recordMouseMove: boolean }, retries = 3): Promise<boolean> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        chrome.tabs.sendMessage(tabId, { type: 'START_RECORDING', payload, source: 'background' }, (_response) => {
+          if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+          else resolve();
+        });
+      });
+      return true;
+    } catch (e) {
+      console.warn(`[Refine] START_RECORDING attempt ${i + 1} failed:`, e);
+      if (i < retries - 1) {
+        // Try injecting if it might be missing
+        await ensureContentScript(tabId);
+        await new Promise(r => setTimeout(r, 1000)); // Wait before retry
+      }
+    }
+  }
+  return false;
+}
+
 function notifyTab(tabId: number | undefined, type: string, payload?: unknown): void {
   if (!tabId) return;
+  
+  // Special handling for START_RECORDING to be robust
+  if (type === 'START_RECORDING') {
+    const startPayload = payload as { sessionId: string; recordMouseMove: boolean };
+    sendStartRecording(tabId, startPayload).then(success => {
+      if (!success) console.error('[Refine] Failed to start recording on tab', tabId);
+      else console.log('[Refine] Recording started on tab', tabId);
+    });
+    return;
+  }
+
+  // Standard notification for other events
   chrome.tabs.sendMessage(tabId, { type, payload, source: 'background' }, () => {
-    if (chrome.runtime.lastError) {
-      console.warn('[Refine] Tab notify failed:', chrome.runtime.lastError.message);
-    }
+    if (!chrome.runtime.lastError) return;
+    console.warn('[Refine] Tab notify failed:', chrome.runtime.lastError.message);
   });
 }
 
 export const sessionManager = {
+  setTabId(tabId: number): void {
+    if (state.sessionId && !state.tabId) {
+      state.tabId = tabId;
+      console.log('[Refine] Updated recording tabId from content script:', tabId);
+    }
+  },
+
   async createSession(
     name: string,
     description: string,
     url: string,
-    tabId?: number
+    tabId?: number,
+    recordMouseMove = false,
+    tags: string[] = [],
+    project?: string,
+    outputPath?: string
   ): Promise<Session> {
     if (state.sessionId) {
       throw new Error(`[Refine] Session already active: ${state.sessionId}`);
@@ -69,10 +143,14 @@ export const sessionManager = {
       startedAt: now,
       duration: 0,
       pages: isUserUrl(url) ? [url] : [],
+      tags,
+      project,
+      outputPath,
       actionCount: 0,
       bugCount: 0,
       featureCount: 0,
       screenshotCount: 0,
+      recordMouseMove,
     };
 
     await createSession(session);
@@ -84,7 +162,7 @@ export const sessionManager = {
     state.tabId = tabId;
 
     startKeepAlive();
-    notifyTab(tabId, 'START_RECORDING', { sessionId: id });
+    notifyTab(tabId, 'START_RECORDING', { sessionId: id, recordMouseMove });
 
     console.log('[Refine] Session created:', id);
     return session;

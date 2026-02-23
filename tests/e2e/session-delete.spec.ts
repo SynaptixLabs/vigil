@@ -15,7 +15,7 @@
  */
 
 import { test, expect } from './fixtures/extension.fixture';
-import { createSession, openTargetApp, stopAndOpenDetail, getPopupPage, DB_NAME } from './helpers/session';
+import { createSession, openTargetApp, stopAndOpenDetail, DB_NAME } from './helpers/session';
 
 test('deleting a session removes it from the list, other sessions remain', async ({ context, extensionId }) => {
   // Create 2 sessions so we can verify only the first is deleted
@@ -26,7 +26,7 @@ test('deleting a session removes it from the list, other sessions remain', async
   const detail1 = await stopAndOpenDetail(page1, popup1, context, extensionId);
 
   // Open second session while first popup is showing detail
-  const { popupPage: popup2 } = await createSession(context, extensionId, 'Q205 Session To Keep');
+  await createSession(context, extensionId, 'Q205 Session To Keep');
   const page2 = await openTargetApp(context);
   await expect(page2.getByTestId('refine-control-bar')).toBeVisible({ timeout: 5000 });
   await page2.getByTestId('btn-stop').click();

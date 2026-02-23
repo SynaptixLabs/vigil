@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SessionStatus } from '@shared/types';
-import type { Session, Bug, Feature } from '@shared/types';
+import type { Session, Bug, Feature, InspectedElement } from '@shared/types';
 import { getSession, deleteSession, getBugsBySession } from '@core/db';
 import { formatDuration } from '@shared/utils';
 
@@ -20,6 +20,7 @@ function formatDate(ts: number): string {
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
+  P0: 'bg-red-900/40 text-red-300 border-red-600/50',
   P1: 'bg-red-500/20 text-red-400 border-red-500/30',
   P2: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   P3: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
@@ -36,6 +37,7 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [bugs, setBugs] = useState<Bug[]>([]);
   const [features, setFeatures] = useState<Feature[]>([]);
+  const [inspectedElements, setInspectedElements] = useState<InspectedElement[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -46,16 +48,18 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     let cancelled = false;
     const load = async () => {
       setLoading(true);
-      const { getFeaturesBySession } = await import('@core/db');
-      const [s, b, f] = await Promise.all([
+      const { getFeaturesBySession, getInspectedElementsBySession } = await import('@core/db');
+      const [s, b, f, insp] = await Promise.all([
         getSession(sessionId),
         getBugsBySession(sessionId),
         getFeaturesBySession(sessionId),
+        getInspectedElementsBySession(sessionId),
       ]);
       if (!cancelled) {
         setSession(s ?? null);
         setBugs(b);
         setFeatures(f);
+        setInspectedElements(insp);
         setLoading(false);
       }
     };
@@ -69,13 +73,9 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     onBack();
   };
 
-  const handleBugStatusToggle = async (bugId: string, currentStatus: string) => {
-    const statuses: Array<Bug['status']> = ['open', 'in_progress', 'resolved', 'wontfix'];
-    const nextIdx = (statuses.indexOf(currentStatus as Bug['status']) + 1) % statuses.length;
-    const nextStatus = statuses[nextIdx];
-    
-    await import('@core/db').then(m => m.updateBugStatus(bugId, nextStatus));
-    setBugs(bugs.map(b => b.id === bugId ? { ...b, status: nextStatus } : b));
+  const handleBugStatusUpdate = async (bugId: string, nextStatus: string) => {
+    await import('@core/db').then(m => m.updateBugStatus(bugId, nextStatus as Bug['status']));
+    setBugs(bugs.map(b => b.id === bugId ? { ...b, status: nextStatus as Bug['status'] } : b));
   };
 
   const handleFeatureSprintUpdate = async (featureId: string, sprintRef: string) => {
@@ -98,7 +98,6 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     setExportError(null);
     try {
       const { generateJsonReport, generateMarkdownReport } = await import('@core/report-generator');
-      const { generateReplayHtml } = await import('@core/replay-bundler');
       const { generatePlaywrightSpec } = await import('@core/playwright-codegen');
       const { generateZipBundle } = await import('@core/zip-bundler');
       const { getRecordingChunks, getActionsBySession, getFeaturesBySession, getScreenshotsBySession } = await import('@core/db');
@@ -117,7 +116,11 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
         return;
       }
 
-      if (type === 'report') {
+      if (type === 'bugs-features') {
+        const { generateBugFeatureMd } = await import('@core/report-generator');
+        const md = generateBugFeatureMd(session, bugs, features);
+        triggerDownload(md, `bugs-features-${sessionId}.md`, 'text/markdown');
+      } else if (type === 'report') {
         const [actions, features, screenshots] = await Promise.all([
           getActionsBySession(sessionId),
           getFeaturesBySession(sessionId),
@@ -128,10 +131,8 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
         triggerDownload(JSON.stringify(json, null, 2), `report-${sessionId}.json`, 'application/json');
         triggerDownload(md, `report-${sessionId}.md`, 'text/markdown');
       } else if (type === 'replay') {
-        const chunks = await getRecordingChunks(sessionId);
-        const events = chunks.flatMap((c) => c.events);
-        const html = generateReplayHtml(session, events);
-        triggerDownload(html, `replay-${sessionId}.html`, 'text/html');
+        const replayUrl = chrome.runtime.getURL(`src/replay-viewer/replay-viewer.html?sessionId=${sessionId}`);
+        chrome.tabs.create({ url: replayUrl });
       } else if (type === 'playwright') {
         const [actions, bugsForSpec] = await Promise.all([
           getActionsBySession(sessionId),
@@ -263,13 +264,17 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
                   <span className={`shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-bold ${PRIORITY_COLORS[bug.priority] ?? PRIORITY_COLORS.P3}`}>
                     {bug.priority}
                   </span>
-                  <span 
-                    onClick={() => handleBugStatusToggle(bug.id, bug.status)}
-                    className={`shrink-0 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[10px] font-bold transition-colors ${getBugStatusColor(bug.status)}`}
-                    title="Click to cycle status"
+                  <select
+                    value={bug.status}
+                    onChange={(e) => handleBugStatusUpdate(bug.id, e.target.value)}
+                    className={`shrink-0 cursor-pointer outline-none px-1 py-0.5 rounded border text-[10px] font-bold transition-colors appearance-none text-center ${getBugStatusColor(bug.status)}`}
+                    title="Change status"
                   >
-                    {bug.status.replace('_', ' ').toUpperCase()}
-                  </span>
+                    <option value="open" className="bg-gray-900 text-red-400">OPEN</option>
+                    <option value="in_progress" className="bg-gray-900 text-amber-400">IN PROGRESS</option>
+                    <option value="resolved" className="bg-gray-900 text-green-400">RESOLVED</option>
+                    <option value="wontfix" className="bg-gray-900 text-gray-400">WONTFIX</option>
+                  </select>
                   <span className="text-gray-200 truncate" title={bug.title}>{bug.title}</span>
                 </div>
               ))}
@@ -296,10 +301,29 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
                       type="text"
                       className="flex-1 bg-gray-900/50 border border-gray-700/50 rounded px-1.5 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:border-indigo-500 transition-colors"
                       placeholder="e.g. Sprint 04"
-                      value={feature.sprintRef || ''}
-                      onChange={(e) => handleFeatureSprintUpdate(feature.id, e.target.value)}
+                      defaultValue={feature.sprintRef || ''}
+                      onBlur={(e) => handleFeatureSprintUpdate(feature.id, e.target.value)}
                     />
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Inspected elements */}
+        {inspectedElements.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Inspected Elements</p>
+            <div className="flex flex-col gap-1.5">
+              {inspectedElements.map((el) => (
+                <div key={el.id} className="flex items-start gap-2 rounded-lg bg-gray-800/40 p-2 text-xs">
+                  <span className="shrink-0 px-1.5 py-0.5 rounded border text-[10px] font-bold bg-indigo-900/40 text-indigo-400 border-indigo-800">
+                    {el.tagName}
+                  </span>
+                  <span className="font-mono text-gray-300 text-[10px] truncate flex-1" title={el.selector}>
+                    {el.selector}
+                  </span>
                 </div>
               ))}
             </div>
@@ -323,12 +347,20 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
             {exportLoading === 'report' ? '⏳ Generating…' : '📄 Download Report (JSON + MD)'}
           </button>
           <button
+            data-testid="btn-export-bugs-features"
+            onClick={() => handleExport('bugs-features')}
+            disabled={exportLoading !== null}
+            className="w-full text-left px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-xs font-medium text-white transition-colors"
+          >
+            {exportLoading === 'bugs-features' ? '⏳ Generating…' : '🐛 Export Bugs & Features MD'}
+          </button>
+          <button
             data-testid="btn-watch-replay"
             onClick={() => handleExport('replay')}
             disabled={exportLoading !== null}
             className="w-full text-left px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-xs font-medium text-white transition-colors"
           >
-            {exportLoading === 'replay' ? '⏳ Generating…' : '▶ Download Replay'}
+            {exportLoading === 'replay' ? '⏳ Opening…' : '▶ Watch Replay'}
           </button>
           <button
             data-testid="btn-export-playwright"
@@ -346,6 +378,16 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
           >
             {exportLoading === 'zip' ? '⏳ Generating…' : '📦 Download ZIP Bundle'}
           </button>
+          {session.outputPath && (
+            <button
+              data-testid="btn-publish"
+              onClick={() => handleExport('publish')}
+              disabled={exportLoading !== null}
+              className="w-full text-left px-3 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-xs font-semibold text-white transition-colors"
+            >
+              {exportLoading === 'publish' ? '⏳ Publishing…' : `🚀 Publish to ${session.project ?? 'Project'}`}
+            </button>
+          )}
         </div>
 
         {/* Danger zone */}

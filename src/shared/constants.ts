@@ -9,7 +9,7 @@
  */
 export const SESSION_ID_FORMAT = /^ats-\d{4}-\d{2}-\d{2}-\d{3}$/;
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.2.0';
 
 export const DB_NAME = 'refine-db';
 

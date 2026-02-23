@@ -13,6 +13,7 @@ vi.stubGlobal('chrome', {
   tabs: { sendMessage: vi.fn((_id, _msg, cb) => cb?.()), get: vi.fn(), captureVisibleTab: vi.fn() },
   windows: { WINDOW_ID_CURRENT: -2 },
   runtime: { lastError: null },
+  storage: { local: { get: vi.fn((_keys, cb) => cb?.({})), set: vi.fn() } },
 });
 
 const { handleMessage } = await import('@background/message-handler');
@@ -20,7 +21,7 @@ const { handleMessage } = await import('@background/message-handler');
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeMsg(type: string, payload?: unknown) {
-  return { type, payload, source: 'test' } as Parameters<typeof handleMessage>[0];
+  return { type, payload, source: 'content' } as Parameters<typeof handleMessage>[0];
 }
 
 function makeSender(tabId?: number): chrome.runtime.MessageSender {

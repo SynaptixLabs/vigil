@@ -102,12 +102,14 @@ const BugEditor: React.FC<BugEditorProps> = ({
       <div className="refine-type-toggle">
         <button
           className={`refine-type-btn ${entryType === 'bug' ? 'refine-type-btn--active' : ''}`}
+          data-testid="btn-type-bug"
           onClick={() => setEntryType('bug')}
         >
           Bug
         </button>
         <button
           className={`refine-type-btn ${entryType === 'feature' ? 'refine-type-btn--active' : ''}`}
+          data-testid="btn-type-feature"
           onClick={() => setEntryType('feature')}
         >
           Feature
@@ -116,11 +118,12 @@ const BugEditor: React.FC<BugEditorProps> = ({
 
       <div className="refine-priority-row">
         <div className="refine-field">
-          <label className="refine-label">
+          <label className="refine-label" htmlFor="refine-priority-select">
             {entryType === 'bug' ? 'Priority' : 'Type'}
           </label>
           {entryType === 'bug' ? (
             <select
+              id="refine-priority-select"
               className="refine-select"
               value={priority}
               onChange={(e) => setPriority(e.target.value as BugPriority)}
@@ -132,6 +135,7 @@ const BugEditor: React.FC<BugEditorProps> = ({
             </select>
           ) : (
             <select
+              id="refine-priority-select"
               className="refine-select"
               value={featureType}
               onChange={(e) => setFeatureType(e.target.value as FeatureType)}
@@ -151,8 +155,9 @@ const BugEditor: React.FC<BugEditorProps> = ({
       </div>
 
       <div className="refine-field">
-        <label className="refine-label">Title *</label>
+        <label className="refine-label" htmlFor="refine-bug-title">Title *</label>
         <input
+          id="refine-bug-title"
           className="refine-input"
           type="text"
           placeholder={entryType === 'bug' ? 'Describe the bug…' : 'Describe the feature…'}
@@ -164,8 +169,9 @@ const BugEditor: React.FC<BugEditorProps> = ({
       </div>
 
       <div className="refine-field">
-        <label className="refine-label">Description</label>
+        <label className="refine-label" htmlFor="refine-bug-description">Description</label>
         <textarea
+          id="refine-bug-description"
           className="refine-textarea"
           placeholder="Steps to reproduce, expected vs actual behavior…"
           value={description}

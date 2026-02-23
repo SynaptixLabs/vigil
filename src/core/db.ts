@@ -5,7 +5,7 @@
  */
 
 import Dexie, { type Table } from 'dexie';
-import type { Session, Bug, Feature, RecordingChunk, Screenshot, Action } from '@shared/types';
+import type { Session, Bug, Feature, RecordingChunk, Screenshot, Action, InspectedElement } from '@shared/types';
 import { DB_NAME } from '@shared/constants';
 
 class RefineDatabase extends Dexie {
@@ -15,16 +15,18 @@ class RefineDatabase extends Dexie {
   features!: Table<Feature, string>;
   screenshots!: Table<Screenshot, string>;
   actions!: Table<Action, string>;
+  inspectedElements!: Table<InspectedElement, string>;
 
   constructor() {
     super(DB_NAME);
     this.version(1).stores({
-      sessions:    '&id, status, startedAt, project', // R025: added project
-      recordings:  '++id, sessionId, chunkIndex',
-      bugs:        '&id, sessionId, timestamp',
-      features:    '&id, sessionId, timestamp',
-      screenshots: '&id, sessionId, timestamp',
-      actions:     '&id, sessionId, timestamp',
+      sessions:          '&id, status, startedAt, project', // R025: added project
+      recordings:        '++id, sessionId, chunkIndex',
+      bugs:              '&id, sessionId, timestamp',
+      features:          '&id, sessionId, timestamp',
+      screenshots:       '&id, sessionId, timestamp',
+      actions:           '&id, sessionId, timestamp',
+      inspectedElements: '&id, sessionId, timestamp',   // R023
     });
   }
 }
@@ -80,6 +82,10 @@ export async function addRecordingChunk(chunk: RecordingChunk): Promise<number> 
   return (await db.recordings.add(chunk)) as number;
 }
 
+export async function updateRecordingChunk(chunkId: number, changes: Partial<RecordingChunk>): Promise<void> {
+  await db.recordings.update(chunkId, changes);
+}
+
 export async function getRecordingChunks(sessionId: string): Promise<RecordingChunk[]> {
   return db.recordings.where('sessionId').equals(sessionId).sortBy('chunkIndex');
 }
@@ -93,6 +99,15 @@ export async function addAction(action: Action): Promise<string> {
 
 export async function getActionsBySession(sessionId: string): Promise<Action[]> {
   return db.actions.where('sessionId').equals(sessionId).sortBy('timestamp');
+}
+
+export async function getLastActionBySession(sessionId: string): Promise<Action | undefined> {
+  const all = await db.actions.where('sessionId').equals(sessionId).sortBy('timestamp');
+  return all[all.length - 1];
+}
+
+export async function updateActionNote(id: string, note: string): Promise<void> {
+  await db.actions.update(id, { note });
 }
 
 // ── Bugs ──────────────────────────────────────────────────────────────────────
@@ -148,4 +163,15 @@ export async function addScreenshot(screenshot: Screenshot): Promise<string> {
 
 export async function getScreenshotsBySession(sessionId: string): Promise<Screenshot[]> {
   return db.screenshots.where('sessionId').equals(sessionId).sortBy('timestamp');
+}
+
+// ── Inspected elements ────────────────────────────────────────────────────────
+
+export async function addInspectedElement(el: InspectedElement): Promise<string> {
+  await db.inspectedElements.add(el);
+  return el.id;
+}
+
+export async function getInspectedElementsBySession(sessionId: string): Promise<InspectedElement[]> {
+  return db.inspectedElements.where('sessionId').equals(sessionId).sortBy('timestamp');
 }

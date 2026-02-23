@@ -17,6 +17,7 @@ export default defineConfig({
       '@background': resolve(__dirname, 'src/background'),
       '@content': resolve(__dirname, 'src/content'),
       '@popup': resolve(__dirname, 'src/popup'),
+      '@changelog': resolve(__dirname, 'CHANGELOG.md'),
     },
   },
 
@@ -25,6 +26,12 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: process.env.NODE_ENV === 'development',
     rollupOptions: {
+      input: {
+        'popup': resolve(__dirname, 'src/popup/popup.html'),
+        'new-session': resolve(__dirname, 'src/new-session/new-session.html'),
+        'sidepanel': resolve(__dirname, 'src/sidepanel/sidepanel.html'),
+        'replay-viewer': resolve(__dirname, 'src/replay-viewer/replay-viewer.html'),
+      },
       output: {
         // Keep chunk names readable for extension debugging
         chunkFileNames: 'assets/[name]-[hash].js',
