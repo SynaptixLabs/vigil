@@ -25,7 +25,8 @@
 | Project | Path | Status | Stack | Sprint |
 |---|---|---|---|---|
 | **Papyrus** | `./Papyrus` | 🟢 Active | Next.js 14 / TypeScript / Prisma | Sprint 10 Planning |
-| **project-refiner** | `./project-refiner` | 🟡 Paused | Chrome Ext / React / Vite | Sprint 00 |
+| **Showroom** | `./Showroom` | 🟢 Active | Node.js / TypeScript / Playwright | Sprint 01 — MVP |
+| **Vigil** | `./vigil` | 🟢 Active | Chrome Ext (MV3) / Node.js / React / MCP | Sprint 06 — Core Platform |
 
 ### 🟢 Client Workspaces
 

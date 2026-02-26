@@ -14,6 +14,7 @@ Read in order:
 ## Active Projects Quick Reference
 - `./Papyrus` — Next.js publishing platform (Sprint 10)
 - `./nightingale` — Agents platform (Sprint 05)
+- `./vigil` — Bug Discovery & Resolution Platform (Sprint 06 🟢 ACTIVE)
 - `./_platform/synaptix-sdk` — Shared infrastructure library
 - `./_platform/synaptix-scaffold` — Project template
 
