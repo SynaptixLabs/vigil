@@ -296,8 +296,8 @@ CPTO (synaptix-workspace — Avi's Claude Desktop session)
   └── CTO_Agent_factory.md  ← this file — generates project CTOs
         ├── Papyrus CTO      → Claude Project + role_cto.md (Windsurf)
         ├── Nightingale CTO  → Claude Project + role_cto.md (Windsurf)
-        ├── project-refiner CTO → Claude Project + role_cto.md (Windsurf)
-        └── [New Project] CTO → same pattern
+        ├── Vigil CPTO       → Claude Project + role_cpto.md (Windsurf) ← note: CPTO merged role
+        └── [New Project] CTO/CPTO → same pattern
 ```
 
 **Relationship to scaffold:**
