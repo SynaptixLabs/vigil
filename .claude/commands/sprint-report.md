@@ -1,52 +1,67 @@
-# /project:sprint-report — Sprint Status Report Generator
+# /project:sprint-report — Vigil Sprint Status Report
 
-Generate a concise, accurate sprint status report for the current project.
+Generate a concise, accurate sprint status report.
 
 ## Steps
 
-1. **Read** the current sprint index: `docs/sprints/sprint_XX/sprint_XX_index.md`
-2. **Read** all todo files: `docs/sprints/sprint_XX/todo/`
-3. **Read** any existing reports: `docs/sprints/sprint_XX/reports/`
-4. **Check** actual code state vs planned deliverables
-5. **Synthesize** into the report below
+1. Read `vigil.config.json` → `sprintCurrent`
+2. Read `docs/sprints/sprint_XX/sprint_XX_index.md`
+3. Read all todo files in `docs/sprints/sprint_XX/todo/`
+4. Read any existing reports in `docs/sprints/sprint_XX/reports/`
+5. Check actual code/file state vs planned deliverables
+6. Run quick gate checks (don't run full suite — just check status)
+7. Synthesize into the report below
 
 ## Output Format
 
 ```
-## Sprint [XX] Status Report — [PROJECT] — [DATE]
-**Branch:** [current branch]
+## Sprint [XX] Status Report — Vigil — [DATE]
 **Sprint goal:** [one-line goal from index]
+**Budget:** [used V] / [total V]
 
 ---
 
 ### ✅ Done (shipped + tested)
-- [item] — [brief note on how verified]
+- [S0X-NN] [description] — verified by: [test / manual / health check]
 
 ### 🔄 In Progress
-- [item] — [% complete estimate] — ETA: [estimate]
+- [S0X-NN] [description] — [% estimate] — Blocker: [if any]
 
 ### ❌ Blocked
-- [item] — Blocked by: [reason] — Needs: [what to unblock]
+- [S0X-NN] [description] — Blocked by: [reason] — Needs: [what]
 
-### ⏭️ Deferred (moved to backlog)
-- [item] — Reason: [why deferred]
+### ⏭️ Deferred
+- [S0X-NN] [description] — Reason: [why] — Moved to: sprint_XX+1
 
 ---
 
-### 🎯 Sprint Goal Assessment
-**Will we hit the sprint goal?** YES / AT RISK / NO
+### 🎯 Sprint Goal
+**On track?** YES / AT RISK / NO
 **Reason:** [1 sentence]
 
 ---
 
-### Quality Gates
+### 🔬 Quality Gates
 | Gate | Status |
-|------|--------|
-| Unit tests passing | ✅/❌ |
-| E2E smoke passing | ✅/❌ |
-| No regressions | ✅/❌ |
-| Type check clean | ✅/❌ |
-| Demo-ready | ✅/❌ |
+|---|---|
+| `npx vitest run` | ✅/❌ |
+| `npx tsc --noEmit` | ✅/❌ |
+| `npm run build` | ✅/❌ |
+| `GET localhost:7474/health` | ✅/❌ / ⬜ not yet |
+| MCP tools reachable | ✅/❌ / ⬜ not yet |
+| Regression suite green | ✅/❌ / ⬜ not yet |
+| Full E2E pass | ✅/❌ / ⬜ not yet |
+
+---
+
+### 🐛 Bug Tracker
+| Severity | Open | Fixed | Deferred |
+|---|---|---|---|
+| P0 | N | N | N |
+| P1 | N | N | N |
+| P2 | N | N | N |
+
+Sprint closure blocked? **YES / NO** (blocked if any P0/P1 open)
 
 ---
 
@@ -58,10 +73,11 @@ Generate a concise, accurate sprint status report for the current project.
 ---
 
 ### Open Decisions Needed
-- [decision 1] — Owner: [FOUNDER/CTO/CPO]
+- [decision] — Owner: [FOUNDER/CTO/CPO] — Due: [sprint or date]
 ```
 
-## After report
+## After Report
 
-If sprint is **complete**: run `/project:regression` then request Avi sign-off.
-If sprint is **at risk**: surface blockers to Avi immediately.
+- **Sprint complete + all gates green:** run `/project:release-gate` then request Avi sign-off
+- **At risk:** surface blockers to Avi immediately via this report
+- **P0/P1 bugs open:** run `/project:bug-review` to assess closure options

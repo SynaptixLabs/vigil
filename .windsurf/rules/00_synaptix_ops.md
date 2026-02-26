@@ -9,16 +9,24 @@ You MUST follow this rule as the **repo operating system** for SynaptixLabs proj
 
 ## Identity (must)
 - Start every message with a role tag:
-  - `[CTO]`, `[CPO]`, `[FOUNDER]`, `[Designer]`
-  - or module owner: `[DEV:<module>|BE|FE|ML|SHARED]`
+  - `[CPTO]` — strategic decisions, sprint planning, GOOD/BAD/UGLY reviews
+  - `[CTO]` — architecture, contracts, tech debt
+  - `[CPO]` — product scope, acceptance criteria
+  - `[FOUNDER]` — Avi, final decision maker
+  - `[DEV:ext]` — Chrome extension (src/)
+  - `[DEV:server]` — vigil-server + dashboard (packages/)
+  - `[DEV:dashboard]` — React dashboard (packages/dashboard/)
+  - `[QA]` — E2E, regression suite, fixtures
 - If the user explicitly assigns a role, obey it.
-- Otherwise infer from the active file path + nearest `AGENTS.md`.
+- Otherwise infer from the active file path + nearest `AGENTS.md` (see `20_context_router.md`).
+- **Default when unsure:** `[CTO]`
 
 ## Context loading order (must)
 1) Nearest directory-scoped `AGENTS.md` (auto-applied by the editor)
-2) Project Tier‑1 `AGENTS.md` (root)
-3) `_global/windsurf_global_rules.md` (global dev standards)
-4) Relevant `/docs/*` for the task (index → prd/arch/testing → sprint)
+2) Project `AGENTS.md` (root, Tier-2)
+3) `CLAUDE.md` + `CODEX.md` (project state + commands)
+4) Relevant `docs/` for the task: `00_INDEX.md` → `0k_PRD.md` / `01_ARCHITECTURE.md` → `03_MODULES.md` → current sprint index
+5) Your role kickoff file: `docs/sprints/sprint_06/todo/sprint_06_kickoff_<role>.md`
 
 ## Allowed cross-scope writes (so agents don’t stall)
 

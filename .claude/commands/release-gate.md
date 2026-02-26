@@ -1,57 +1,68 @@
-# /project:release-gate — Pre-Production Release Checklist
+# /project:release-gate — Vigil Pre-Release Checklist
 
-Run before any production deployment or public demo. Requires all items green.
+Run before any sprint closure, public demo, or version tag. All items must be green.
 
 ## Gate Checklist
 
 ### Code Quality
 ```
-[ ] All tests pass (unit + integration + E2E)
-[ ] No regressions vs previous release
-[ ] Type errors: NONE
-[ ] Lint: CLEAN
-[ ] Code coverage meets minimum threshold (80%+)
+[ ] npx vitest run → all pass
+[ ] npx tsc --noEmit → clean across all tsconfigs
+[ ] npm run build → succeeds, dist/ produced
+[ ] npm run build:server → succeeds
+[ ] npx eslint . → clean (warnings OK, errors NOT OK)
+[ ] Code coverage ≥80% business logic, ≥60% infra
+```
+
+### Vigil-Specific Gates
+```
+[ ] Extension loads without errors: chrome://extensions → Vigil shows no errors
+[ ] vigil-server health: GET localhost:7474/health → { status: "ok" }
+[ ] MCP tools reachable by Claude Code (test vigil_list_bugs)
+[ ] Dashboard loads: GET localhost:7474/dashboard → React SPA renders
+[ ] Regression suite: npx playwright test tests/e2e/regression/ → all green
+[ ] Full E2E suite: npx playwright test → all green
+[ ] VIGILSession POST accepted: extension → vigil-server round-trip verified
+[ ] Bug counter increments correctly (no duplicate IDs)
+[ ] Bug files written to correct sprint folder with correct format
 ```
 
 ### Security
 ```
-[ ] No hardcoded secrets in codebase
-[ ] .env files not committed (check git log)
-[ ] Dependencies audited: npm audit / pip-audit (no critical CVEs)
-[ ] Auth flows tested (login, registration, session expiry, token refresh)
-[ ] Rate limiting in place on public endpoints
-[ ] Input validation on all external inputs
-```
-
-### Infrastructure
-```
-[ ] Environment variables set in prod (not just local .env)
-[ ] Database migrations applied to prod
-[ ] Health endpoint responding (/health or equivalent)
-[ ] Rollback plan defined (what to do if deploy fails)
-[ ] Vercel / Railway / Docker config reviewed
+[ ] No hardcoded secrets: git grep -i "api_key\|secret\|token\|password" -- "*.ts" "*.tsx" "*.json"
+[ ] vigil.config.json contains no API keys (secrets via env vars only)
+[ ] .env files not staged: git status
+[ ] .vigil/ is in .gitignore (runtime data must never commit)
 ```
 
 ### Documentation
 ```
 [ ] CHANGELOG.md updated with version + date
-[ ] README accurate and reflects current state
-[ ] CLAUDE.md reflects current architecture
-[ ] docs/03_MODULES.md current
-[ ] API docs updated (if applicable)
+[ ] README.md reflects current state
+[ ] CLAUDE.md sprint number current
+[ ] CODEX.md sprint status current
+[ ] docs/03_MODULES.md current (no new capabilities undocumented)
+[ ] docs/01_ARCHITECTURE.md matches actual implementation
 ```
 
 ### Demo Readiness
 ```
-[ ] Demo script written and tested end-to-end
-[ ] Test/seed data in place
-[ ] No debug logs or console.logs in production output
-[ ] Screenshots / recordings taken
-[ ] Feature flags set correctly
+[ ] Demo script tested end-to-end (see sprint index §demo)
+[ ] vigil.config.json.example committed with placeholder values
+[ ] No console.log debug output in vigil-server routes
+[ ] No TODO/FIXME without linked sprint item
+```
+
+### Sprint Closure Gate
+```
+[ ] All P0 and P1 bugs closed (sprint-review gate passed)
+[ ] All regression tests: keep/archive decisions logged in BUG-XXX.md
+[ ] Sprint decisions log complete (sprint_XX_decisions_log.md)
+[ ] Next sprint index created (at minimum: sprint_XX+1_index.md skeleton)
 ```
 
 ## Final Sign-off
 
-**Avi must explicitly approve before proceeding to production.**
+**Output:** Full checklist with ✅/❌ per item + list of blockers + **GO / NO-GO** recommendation.
 
-Output: Full checklist with ✅/❌ per item + list of blockers + **GO / NO-GO** recommendation.
+**Avi ([FOUNDER]) must explicitly say GO before sprint is closed or a version tag is cut.**

@@ -1,52 +1,96 @@
-# /project:e2e — E2E Browser Tests via Playwright MCP
+# /project:e2e — Vigil E2E Test Suite
 
-Run end-to-end browser tests using the Playwright MCP tool.
-**Requires a running dev server.** Check CLAUDE.md for port and start command.
+Run the Playwright E2E suite for Vigil. Covers extension flows + vigil-server integration.
 
-## Steps
+## Prerequisites
 
-1. **Verify dev server is running** — check CLAUDE.md for the port
-2. **If not running** → start it and wait for the "ready" signal before continuing
-3. **Navigate to the app** using Playwright MCP
-4. **Run the user flows** listed in CLAUDE.md section "Common Flows to Test"
-5. **Screenshot every significant state** — save to `tests/screenshots/e2e_[timestamp]/`
-6. **Report results**
+```bash
+# 1. Build the extension
+npm run build                    # → dist/
 
-## Playwright MCP usage pattern
+# 2. Start vigil-server
+npm run dev:server               # port 7474
 
-```
-playwright_navigate → go to a URL
-playwright_screenshot → capture state after every major action
-playwright_click → interact with elements
-playwright_fill → fill form fields
-playwright_wait_for_selector → wait for elements to appear
+# 3. Start QA target app
+cd tests/fixtures/target-app && npm start   # port 3847
+
+# 4. Verify server health
+curl http://localhost:7474/health           # → { status: "ok" }
 ```
 
-## Critical rules
+## Run Commands
 
-- Real server required — no mocks for E2E
-- Screenshot after EVERY assertion
-- If a step fails → screenshot the failure state + stop and report clearly
-- Use realistic test data (not "test123" or "aaa")
-- Test error states, not just happy paths
+```bash
+# Full E2E suite
+npx playwright test
 
-## Output format
+# Regression suite only (fastest gate)
+npx playwright test tests/e2e/regression/
+
+# Specific spec
+npx playwright test tests/e2e/session-flow.spec.ts
+
+# Debug UI
+npx playwright test --ui
+
+# With traces on failure
+npx playwright test --trace on-first-retry
+```
+
+## Extension Loading (Playwright)
+
+Vigil E2E tests load the built extension via `chromium.launchPersistentContext()`:
+```typescript
+const context = await chromium.launchPersistentContext(userDataDir, {
+  headless: false,
+  args: [`--load-extension=${path.resolve('dist')}`, `--disable-extensions-except=${path.resolve('dist')}`]
+})
+```
+The built `dist/` must exist before running. Always run `npm run build` first.
+
+## Critical Checks Per Run
 
 ```
-## E2E Run — [PROJECT] — [DATE]
+BEFORE RUNNING:
+  ✅ dist/ exists and is fresh (npm run build)
+  ✅ vigil-server running: GET localhost:7474/health → 200
+  ✅ Target app running: GET localhost:3847 → 200
 
-Server: ✅ Running on http://localhost:XXXX
+AFTER RUNNING:
+  ✅ All regression specs green: tests/e2e/regression/
+  ✅ No console errors in extension pages
+  ✅ vigil-server received POSTs (check server logs)
+```
 
-### Flow: [Flow Name]
-Step 1: Navigate to /path → ✅ Screenshot: tests/screenshots/001_page.png
-Step 2: Fill registration form → ✅
-Step 3: Submit → ❌ FAILED: 500 error. Screenshot: tests/screenshots/003_error.png
+## Output Format
+
+```
+## E2E Run — Vigil — [DATE]
+
+Extension: ✅ Loaded from dist/
+vigil-server: ✅ Healthy at localhost:7474
+Target app: ✅ Running at localhost:3847
+
+### Regression Suite
+tests/e2e/regression/BUG-001.spec.ts → ✅ PASS
+tests/e2e/regression/BUG-002.spec.ts → ✅ PASS
+
+### New Specs (Sprint 06)
+Q601 session-clock-independent → ✅ PASS
+Q602 space-toggle-recording    → ❌ FAIL — [file:line:reason]
 
 ### Summary
-Flows passed: X/Y
-Critical failures: [list]
+Passed: X/Y | Failed: Z
+Regressions: 0 ← must always be 0
 
 ### Gate
-[ ] PASS — all critical flows verified
-[ ] FAIL — [list what failed]
+✅ PASS — safe to proceed | ❌ BLOCKED — regressions must be fixed first
 ```
+
+## Rules
+
+- NEVER skip regression suite — it is the mandatory first gate
+- If `dist/` is stale → rebuild before running, do not test stale builds
+- If vigil-server is down → E2E is blocked, report as failure (do not skip)
+- Screenshots saved to `tests/screenshots/e2e_[timestamp]/`
+- Any regression failure → P0, blocks sprint closure
