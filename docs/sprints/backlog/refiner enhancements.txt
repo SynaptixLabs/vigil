@@ -1,0 +1,142 @@
+Regarding discovery - I am not sure that I agree :
+
+(1) Auto discovery by the dev tools during testing +AUTO resolved - this works since the tests are run again and the loop test->fix->test... resolved is good. But this is initiated and resolved by the DEV AGENT
+
+(2) Human is doing acceptance testing and finds a BUG - then reports to the AI dev team - the AI checks, changes the code, and reports that it is fixed - sometimes it is sometimes it is not. No auto test (regression) generation, no actual testing that the bug is really resolved, no regression testing - the bug may reappear in future sprints - it falls upon the human to keep track - a frustrating and bug prone process (e.g. registration bug - keep registering and hope for the best)
+
+
+
+What we lack in my opinion is:
+
+(i) A consolidated bugs (and features) reporting system (this is what C:\Synaptix-Labs\projects\project-refiner tries to do = not enough)
+
+(ii) Bug storage and management system 
+
+(iii) Bugs resolution system 
+
+(iv) Feedback and monitoring and regression testing to avoid the bug from reappearing  and "elevation" (via severity) if bugs appears 
+
+
+
+The goal is to solve (2) and make it more like (1) 
+
+
+
+I suggest that we elevate C:\Synaptix-Labs\projects\project-refiner (and change the name it is awful) 
+
+
+
+(i) DISCOVERY : The current sys is OK 
+
+
+
+
+
+I would add the ability to  take snapshots and report bugs and features wo/ the need to constantly record everything.
+
+
+
+
+
+ When a new session is opened - it run a clock to add time stamps to events. The user is testing the system and can record bugs or features and capture the screen - this is recorded via snapshots 
+
+
+
+The user may also run a recorder (click play / pause / stop) via mouse or "SPACE" button (for play / pause) when outside an EDIT BOX (there SPACE = " ") - this will add a recording of the DOM and MOUSE movement (per choice) as it is done today 
+
+
+
+The user can END a debugging session 
+
+
+
+The entire session is logged and recorded + LOG (JSON/YAML...)
+
+
+
+The main difference from the current system - is that my new suggestion is based on a debug session in which recordings are part of the sessions and NOT THE session. and a session starts and ends per user choice with or without a FULL recording (it can have 1 opened bug + screenshot) 
+
+
+
+This is NOT a major change to the current discovery process - mainly USABILY change to make life easier and to reduce the size if a session when there is no actual need to record all. Please note that a session may complied of as many recordings as required - it is part of a session 
+
+(ii) STORAGE : Currently within the browser 
+
+
+
+
+
+Storage is currently a problem since the browser can't store in MY workspace and I have to download the session - this is NOT GREAT 
+
+
+
+I think that each sprint should have a BUG + FEATURES  folder that stores the recorded sessions and a project "management system" with a simple GUI that can present that status of bugs and features and help manage them across the sprints (e.g. move to future sprints / backlog) 
+
+
+
+The info is project based - kept locally and stored in GIT during regular commits and push 
+
+
+
+Storage can be solved in various ways : following are few suggestions - please advise what is best, what is possible, what other options exists
+
+
+
+
+
+We divide project-refiner into a chrome extension (as is) + SaaS (or local APP) - the chrome extension is just the recorder and the APP manages the storage and the management GUI - data can flow through an APP DB (e.g. extension places the session data in the DB ; management APP extracts and places sessions in the project folders
+
+
+
+We migrate ALL to an APP 
+
+(iii) RESOLUTION LOOP : Manual currently 
+
+
+
+
+
+During the resolution phase the Agents (Let's assume we use CLAUDE CODE DESKTOP and CLI) should be aware of (i) and (ii) and act to:
+
+
+
+
+
+go over the bugs and features to be resolved in the current sprint (look into the sessions, analyse them, "see" / recreate the issue if needed, understand the bug and respond - if the bug can't be recreated - advise) 
+
+
+
+Create Unit/E2E tests using the testing infra + Playwright to recreate the bugs - i.e. create a FAILED test on the issue 
+
+
+
+Resolve the issues
+
+
+
+Run the test again and see it passes or until it passes if NOT on the N iteration (limit the number of iteration - per settings? if the BUG CAN"T be resolved 
+
+
+
+Report - bug closes and update the management system 
+
+
+
+At the end of EACH sprint - ALL the issues of that sprint should be resolved and reported ; Final regression testing performed prior to sprint closure
+
+
+
+A decision if to keep the test as a regressions test OR JUST archive the test  - the reasoning behind it is as follows: (i) As sprints progress number of tests increase and regression testing is becoming time/resource intensive - we don't wish to run unneeded tests; (ii) Test become obsolete; (iii) BUT - a bug may return - so we do wish to use archived test. 
+
+
+
+NOTE that the system or user need to recognize returning bugs .... (to increases severity level or keep an Archived tests 
+
+
+
+Resolution and issue management is supper crucial - in my opinion in should be a collaboration between the CLUADE system (e.g. via AGENT commands or other supported features) ; the user ; and the "project-refiner" system 
+
+
+
+Following our discussion herein we will open a NEW sprint in project-refiner (PLEASE lets change the name) and reduce to practice and test the feature - THIS IS AN IMPROTANT SYSTEM that will serve ALL Synaptix-Labs projects 
+

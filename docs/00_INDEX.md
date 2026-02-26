@@ -1,6 +1,6 @@
-# SynaptixLabs Refine — Docs Index
+# SynaptixLabs Vigil — Docs Index
 
-This folder is the **source of truth** for how Refine is specified, built, tested, and shipped.
+This folder is the **source of truth** for how Vigil is specified, built, tested, and shipped.
 
 ## Reading order
 

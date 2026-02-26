@@ -1,4 +1,4 @@
-# SYNAPTIX LABS Refine — GLOBAL AGENT CONSTITUTION
+# SYNAPTIX LABS Vigil — GLOBAL AGENT CONSTITUTION
 
 > **Scope:** Applies to all Windsurf/Claude conversations within this repository.
 > Module-level rules live in `src/<module>/AGENTS.md`.

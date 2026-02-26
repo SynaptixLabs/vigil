@@ -1,7 +1,7 @@
-# project-refiner — Project CODEX
+# vigil — Project CODEX
 
 > **Audience:** Dev team + AI agents (internal)
-> **Level:** Project — Acceptance Test Recorder
+> **Level:** Project — Bug Discovery & Resolution Platform
 
 ---
 
@@ -9,9 +9,9 @@
 
 | Field | Value |
 |---|---|
-| **Name** | SynaptixLabs Refine |
+| **Name** | SynaptixLabs Vigil |
 | **Purpose** | Chrome Extension for manual acceptance test recording with Playwright export |
-| **Repo path** | `C:\Synaptix-Labs\projects\project-refiner` |
+| **Repo path** | `C:\Synaptix-Labs\projects\vigil` |
 | **Stack** | Chrome Ext (MV3) · React 18 · Vite · CRXJS · rrweb · Dexie.js |
 | **Deploy** | Local unpacked extension (no server) |
 | **Status** | 🟡 Sprint 00 — Paused |

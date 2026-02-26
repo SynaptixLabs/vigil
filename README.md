@@ -1,12 +1,12 @@
-# SynaptixLabs Refine — Acceptance Test Recorder
+# SynaptixLabs Vigil — Bug Discovery & Resolution Platform
 
-> Chrome Extension for AI-native acceptance testing with Playwright export — v1.1.0
+> Chrome Extension + Local MCP Server for AI-native bug management — v2.0.0
 
 ---
 
-## What is Refine?
+## What is Vigil?
 
-Refine bridges the gap between manual exploratory testing and automated QA. It lets a product owner record acceptance testing sessions on any web app, capture bugs and feature requests inline, and export recordings as visual replays and Playwright regression test scripts.
+Vigil closes the loop between human bug discovery and AI-driven resolution. It lets product owners capture bugs and features during acceptance testing, stores them in Git-native sprint folders, and drives an automated test→fix→verify cycle via Claude Code.
 
 **Key capabilities:**
 - Record DOM interactions via rrweb across page navigations

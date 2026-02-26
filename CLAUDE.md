@@ -1,4 +1,4 @@
-# SynaptixLabs Refine — Claude Code Project Context
+# SynaptixLabs Vigil — Claude Code Project Context
 
 > **Stack:** Chrome Extension (Manifest V3) + React 18 + Tailwind + Vite + CRXJS + rrweb + Dexie.js
 > **Template version:** SynaptixLabs Windsurf-Projects-Template
@@ -11,9 +11,9 @@
 
 | Field | Value |
 |---|---|
-| **Name** | SynaptixLabs Refine (Acceptance Test Recorder) |
+| **Name** | SynaptixLabs Vigil (Bug Discovery & Resolution Platform) |
 | **Purpose** | Chrome Extension for manual acceptance test recording with Playwright export |
-| **Repo path** | `C:\Synaptix-Labs\projects\project-refiner` |
+| **Repo path** | `C:\Synaptix-Labs\projects\vigil` |
 | **Production URL** | N/A (local unpacked extension) |
 | **Current sprint** | sprint_00 |
 | **Dev port** | N/A (extension, not server) |

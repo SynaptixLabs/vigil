@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to SynaptixLabs Refine.
+All notable changes to SynaptixLabs Vigil.
 
 ## [1.2.0] - 2026-02-23
 

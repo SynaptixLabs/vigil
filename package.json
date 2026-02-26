@@ -1,8 +1,8 @@
 {
-  "name": "synaptix-refine",
+  "name": "synaptix-vigil",
   "version": "1.0.0",
   "private": true,
-  "description": "SynaptixLabs Refine — Chrome Extension for recording acceptance testing sessions with Playwright export",
+  "description": "SynaptixLabs Vigil — Bug discovery, management, and resolution platform for AI-native development teams",
   "type": "module",
   "scripts": {
     "dev": "vite",
