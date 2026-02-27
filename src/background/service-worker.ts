@@ -7,7 +7,7 @@
 import { handleMessage } from './message-handler';
 import { initKeepAliveListener } from './keep-alive';
 import { initShortcuts } from './shortcuts';
-import { sessionManager } from './session-manager';
+import { sessionManager, restoreVigilState } from './session-manager';
 import { getAllSessions, getRecordingChunks, updateRecordingChunk } from '@core/db';
 import { compressEvents } from '@core/compression';
 import { SessionStatus } from '@shared/types';
@@ -29,6 +29,11 @@ initKeepAliveListener();
 
 // Wire keyboard shortcuts (Ctrl+Shift+R/S/B)
 initShortcuts();
+
+// Sprint 06: Restore vigil session if service worker restarted mid-session
+restoreVigilState().then((restored) => {
+  if (restored) console.log('[Vigil] Active session restored after service worker restart');
+});
 
 // DR-04: Use tabs API to detect full-page navigations — replaces unreliable document.referrer
 // When a tab completes loading during an active session, notify the content script

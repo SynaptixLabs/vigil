@@ -12,3 +12,5 @@
 | S06-D008 | maxFixIterations default = 3, configurable via vigil.config.json | Prevents infinite loops; Avi can raise per-project | 2026-02-26 |
 | S06-D009 | bug-fix commits to current branch (not a separate branch) | Sprint 07 vigil_agent will use branch isolation; Sprint 06 keeps it simple | 2026-02-26 |
 | S06-D010 | FEAT-XXX uses same file format as BUG-XXX (type field differentiates) | Single schema, single parser, less code | 2026-02-26 |
+| S06-D011 | Bug filename = `BUG-XXX.md` (no description in filename) | Simpler parsing, no filename escaping; description lives in the H1 header inside the file | 2026-02-26 |
+| S06-D012 | Separate counters: `bugs.counter` + `features.counter` | Clean numbering per type (BUG-001, BUG-002 / FEAT-001, FEAT-002); avoids sparse-looking sequences | 2026-02-26 |

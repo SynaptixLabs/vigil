@@ -2,10 +2,13 @@
  * @file session-manager.ts
  * @description Session lifecycle state machine for Refine background service worker.
  * States: idle → RECORDING ↔ PAUSED → COMPLETED
+ *
+ * Sprint 06: Adds vigilSessionManager — session = container, recording = opt-in (D002).
+ * Legacy sessionManager preserved for backward compat with existing E2E tests.
  */
 
-import { SessionStatus, type Session } from '@shared/types';
-import { generateSessionId } from '@shared/utils';
+import { SessionStatus, type Session, type VIGILSession, type VIGILRecording, type VIGILSnapshot, type Bug, type Feature } from '@shared/types';
+import { generateSessionId, generateVigilSessionId, generateRecordingId } from '@shared/utils';
 import {
   createSession,
   getSession,
@@ -245,5 +248,271 @@ export const sessionManager = {
 
   isRecording(): boolean {
     return state.status === SessionStatus.RECORDING;
+  },
+};
+
+// ── Sprint 06: Vigil Session Manager (D002) ────────────────────────────────
+// Session = container (always running), recording = opt-in segments.
+
+interface VigilActiveState {
+  session: VIGILSession | null;
+  activeRecordingId: string | null;
+  tabId: number | undefined;
+}
+
+const vigilState: VigilActiveState = {
+  session: null,
+  activeRecordingId: null,
+  tabId: undefined,
+};
+
+const VIGIL_STATE_KEY = 'vigilActiveSession';
+
+function persistState(): void {
+  const data = {
+    session: vigilState.session,
+    activeRecordingId: vigilState.activeRecordingId,
+    tabId: vigilState.tabId,
+  };
+  chrome.storage.local.set({ [VIGIL_STATE_KEY]: data });
+}
+
+function clearPersistedState(): void {
+  chrome.storage.local.remove(VIGIL_STATE_KEY);
+}
+
+/** Restore vigil session after service worker restart. */
+export async function restoreVigilState(): Promise<boolean> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(VIGIL_STATE_KEY, (result) => {
+      const saved = result[VIGIL_STATE_KEY] as VigilActiveState | undefined;
+      if (saved?.session) {
+        vigilState.session = saved.session;
+        vigilState.activeRecordingId = saved.activeRecordingId;
+        vigilState.tabId = saved.tabId;
+        startKeepAlive();
+        console.log('[Vigil] Session restored from storage:', saved.session.id);
+        resolve(true);
+      } else {
+        resolve(false);
+      }
+    });
+  });
+}
+
+let cachedServerPort: number | null = null;
+
+async function loadServerPort(): Promise<number> {
+  if (cachedServerPort !== null) return cachedServerPort;
+  try {
+    const configUrl = chrome.runtime.getURL('vigil.config.json');
+    const res = await fetch(configUrl);
+    if (res.ok) {
+      const config = await res.json();
+      const port: number = config.serverPort ?? 7474;
+      cachedServerPort = port;
+      return port;
+    }
+  } catch {
+    // config not bundled or unreachable — use default
+  }
+  cachedServerPort = 7474;
+  return 7474;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void> {
+  const port = await loadServerPort();
+  const serverUrl = `http://localhost:${port}`;
+
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(`${serverUrl}/api/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(session),
+      });
+      if (res.ok) {
+        notifyTab(vigilState.tabId, 'SESSION_SYNCED');
+        return;
+      }
+    } catch {
+      await sleep(1000 * (i + 1));
+    }
+  }
+  // All retries failed — mark pending
+  if (vigilState.session) {
+    vigilState.session.pendingSync = true;
+  }
+  notifyTab(vigilState.tabId, 'SESSION_SYNC_FAILED');
+}
+
+export const vigilSessionManager = {
+  setTabId(tabId: number): void {
+    if (vigilState.session && !vigilState.tabId) {
+      vigilState.tabId = tabId;
+    }
+  },
+
+  async createSession(
+    name: string,
+    projectId: string,
+    tabId?: number,
+  ): Promise<VIGILSession> {
+    if (vigilState.session) {
+      throw new Error(`[Vigil] Session already active: ${vigilState.session.id}`);
+    }
+
+    const todaySessions = await getSessionsForToday();
+    const sequence = todaySessions.length + 1;
+    const now = Date.now();
+
+    const session: VIGILSession = {
+      id: generateVigilSessionId(new Date(), sequence),
+      name,
+      projectId,
+      startedAt: now,
+      clock: 0,
+      recordings: [],
+      snapshots: [],
+      bugs: [],
+      features: [],
+    };
+
+    vigilState.session = session;
+    vigilState.tabId = tabId;
+    vigilState.activeRecordingId = null;
+
+    startKeepAlive();
+    persistState();
+    console.log('[Vigil] Session created:', session.id);
+    return session;
+  },
+
+  startRecording(mouseTracking = false): VIGILRecording {
+    if (!vigilState.session) {
+      throw new Error('[Vigil] No active session');
+    }
+    if (vigilState.activeRecordingId) {
+      throw new Error(`[Vigil] Recording already active: ${vigilState.activeRecordingId}`);
+    }
+
+    const recording: VIGILRecording = {
+      id: generateRecordingId(),
+      startedAt: Date.now(),
+      rrwebChunks: [],
+      mouseTracking,
+    };
+
+    vigilState.session.recordings.push(recording);
+    vigilState.activeRecordingId = recording.id;
+
+    notifyTab(vigilState.tabId, 'START_RECORDING', {
+      sessionId: vigilState.session.id,
+      recordMouseMove: mouseTracking,
+    });
+
+    persistState();
+    console.log('[Vigil] Recording started:', recording.id);
+    return recording;
+  },
+
+  stopRecording(): VIGILRecording | null {
+    if (!vigilState.session || !vigilState.activeRecordingId) {
+      return null;
+    }
+
+    const recording = vigilState.session.recordings.find(
+      (r) => r.id === vigilState.activeRecordingId
+    );
+    if (recording) {
+      recording.endedAt = Date.now();
+    }
+
+    notifyTab(vigilState.tabId, 'STOP_RECORDING');
+    const stoppedId = vigilState.activeRecordingId;
+    vigilState.activeRecordingId = null;
+
+    persistState();
+    console.log('[Vigil] Recording stopped:', stoppedId);
+    return recording ?? null;
+  },
+
+  addSnapshot(snapshot: VIGILSnapshot): void {
+    if (!vigilState.session) return;
+    vigilState.session.snapshots.push(snapshot);
+    persistState();
+  },
+
+  addBug(bug: Bug): void {
+    if (!vigilState.session) return;
+    vigilState.session.bugs.push(bug);
+    persistState();
+  },
+
+  addFeature(feature: Feature): void {
+    if (!vigilState.session) return;
+    vigilState.session.features.push(feature);
+    persistState();
+  },
+
+  async endSession(): Promise<VIGILSession> {
+    if (!vigilState.session) {
+      throw new Error('[Vigil] No active session to end');
+    }
+
+    // Stop any active recording
+    this.stopRecording();
+
+    const now = Date.now();
+    vigilState.session.endedAt = now;
+    vigilState.session.clock = now - vigilState.session.startedAt;
+
+    const finalSession = { ...vigilState.session };
+
+    // POST to vigil-server with retry
+    await postWithRetry(finalSession);
+
+    stopKeepAlive();
+    notifyTab(vigilState.tabId, 'STOP_RECORDING');
+
+    console.log('[Vigil] Session ended:', finalSession.id);
+
+    // Reset state
+    vigilState.session = null;
+    vigilState.activeRecordingId = null;
+    vigilState.tabId = undefined;
+    clearPersistedState();
+
+    return finalSession;
+  },
+
+  getActiveSession(): VIGILSession | null {
+    return vigilState.session;
+  },
+
+  getActiveSessionId(): string | null {
+    return vigilState.session?.id ?? null;
+  },
+
+  isRecordingActive(): boolean {
+    return vigilState.activeRecordingId !== null;
+  },
+
+  hasActiveSession(): boolean {
+    return vigilState.session !== null;
+  },
+
+  toggleRecording(mouseTracking = false): boolean {
+    if (vigilState.activeRecordingId) {
+      this.stopRecording();
+      return false; // recording stopped
+    } else {
+      this.startRecording(mouseTracking);
+      return true; // recording started
+    }
   },
 };

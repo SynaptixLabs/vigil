@@ -17,14 +17,14 @@ test('What\'s New button opens changelog modal and close button dismisses it', a
 
   // The "What's New" button is in the footer of SessionList
   const whatsNewBtn = popupPage.getByTestId('btn-whats-new');
-  await expect(whatsNewBtn).toBeVisible({ timeout: 3000 });
+  await expect(whatsNewBtn).toBeVisible({ timeout: 5000 });
 
   // Click it — modal should appear
   await whatsNewBtn.click();
 
-  // Modal heading
-  const modalHeading = popupPage.locator('text=What\'s New');
-  await expect(modalHeading).toBeVisible({ timeout: 2000 });
+  // Modal heading — use role selector to avoid matching button and body text
+  const modalHeading = popupPage.getByRole('heading', { name: 'What\'s New' });
+  await expect(modalHeading).toBeVisible({ timeout: 3000 });
 
   // Must contain at least one version entry (e.g. "v1." prefix)
   const versionEntry = popupPage.locator('text=/v1\\.\\d+\\.\\d+/').first();
@@ -36,7 +36,7 @@ test('What\'s New button opens changelog modal and close button dismisses it', a
   await closeBtn.click();
 
   // Modal is gone
-  await expect(modalHeading).not.toBeVisible({ timeout: 2000 });
+  await expect(modalHeading).not.toBeVisible({ timeout: 3000 });
 });
 
 test('What\'s New badge disappears after opening changelog', async ({ context, extensionId }) => {

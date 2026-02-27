@@ -10,9 +10,9 @@ import { MessageType } from '@shared/types';
 
 vi.stubGlobal('chrome', {
   alarms: { create: vi.fn(), clear: vi.fn(), onAlarm: { addListener: vi.fn() } },
-  tabs: { sendMessage: vi.fn((_id, _msg, cb) => cb?.()), get: vi.fn(), captureVisibleTab: vi.fn() },
+  tabs: { sendMessage: vi.fn((_id, _msg, cb) => cb?.()), get: vi.fn(), captureVisibleTab: vi.fn(), query: vi.fn((_q: unknown, cb: (tabs: unknown[]) => void) => cb([])) },
   windows: { WINDOW_ID_CURRENT: -2 },
-  runtime: { lastError: null },
+  runtime: { lastError: null, sendMessage: vi.fn(() => Promise.resolve()), getURL: vi.fn((path: string) => `chrome-extension://test/${path}`) },
   storage: { local: { get: vi.fn((_keys, cb) => cb?.({})), set: vi.fn() } },
 });
 

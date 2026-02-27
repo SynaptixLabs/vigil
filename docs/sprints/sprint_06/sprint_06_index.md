@@ -41,16 +41,16 @@ Filesystem (Git-native)
   <project>/
     .vigil/
       sessions/         ← raw session artifacts
-      bugs.counter      ← global ID sequence
-      vigil.config.json ← per-project settings
+      bugs.counter      ← bug ID sequence
+      features.counter  ← feature ID sequence
     docs/sprints/
       sprint_XX/
         BUGS/
-          open/   BUG-XXX_description.md
-          fixed/  BUG-XXX_description.md
+          open/   BUG-XXX.md
+          fixed/  BUG-XXX.md
         FEATURES/
-          open/   FEAT-XXX_description.md
-          backlog/ FEAT-XXX_description.md
+          open/   FEAT-XXX.md
+          backlog/ FEAT-XXX.md
 
 Claude Code (.claude/commands/)
   /project:bug-log    ← manual bug/feature entry
@@ -276,12 +276,11 @@ Files changed: —
   "serverPort": 7474,
   "maxFixIterations": 3,
   "llmMode": "mock",
-  "agentsApiUrl": "http://localhost:8000",
-  "agentsApiKey": ""
+  "agentsApiUrl": "http://localhost:8000"
 }
 ```
 
-Lives at project root. Committed to Git (no secrets — keys via env).
+Lives at project root (not inside `.vigil/`). Committed to Git (no secrets — API keys via env vars only: `VIGIL_AGENTS_API_KEY`).
 
 ---
 
@@ -305,18 +304,25 @@ Lives at project root. Committed to Git (no secrets — keys via env).
 
 ## Sprint 07 Preview (Agentic BE)
 
-> Full details in `sprint_07_index.md`. Placeholder only.
+> **Authoritative scope:** `docs/sprints/sprint_07/sprint_07_index.md` (~38.5V)
 
-| ID | Deliverable |
-|---|---|
-| S07-01 | AGENTS `/api/v1/vigil/suggest` endpoint (Python/FastAPI, uses `llm_core`) |
-| S07-02 | vigil-server: flip `VIGIL_LLM_MODE=live`, wire AGENTS API call |
-| S07-03 | Bug auto-complete in ext (title + steps from session context via LLM) |
-| S07-04 | Returning bug detection (semantic similarity via AGENTS embeddings) |
-| S07-05 | Bug prioritization suggestions (severity auto-assign, confidence score) |
-| S07-06 | AGENTS `resource_manager` tracking for Vigil LLM usage |
-| S07-07 | `vigil_agent` — Claude Code agentic loop (reads queue, resolves autonomously) |
-| S07-08 | Sprint health report (LLM-generated: open bugs, risk, suggested priority order) |
+| ID | Track | Deliverable |
+|---|---|---|
+| S07-01 | AGENTS | `/api/v1/vigil/suggest` endpoint (Python/FastAPI, Groq llama-3.3-70b-versatile) |
+| S07-02 | AGENTS | Prompt templates for bug suggest + similarity |
+| S07-03 | AGENTS | `resource_manager` Vigil usage tracking |
+| S07-04 | SERVER | Flip `VIGIL_LLM_MODE=live`, wire → AGENTS API |
+| S07-05 | SERVER | Returning bug detection (semantic similarity, threshold >0.8) |
+| S07-06 | EXT | Bug auto-complete in editor (title + steps pre-fill from LLM) |
+| S07-07 | SERVER | Severity auto-suggest (confidence score) |
+| S07-08a-d | AGENT | `vigil_agent` — autonomous resolution loop (4 sub-tasks with safety gates) |
+| S07-09 | AGENT | Sprint health report (LLM-generated) |
+| S07-10 | QA | Integration tests: ext → server → AGENTS round-trip |
+| S07-11 | SERVER | Shared types package (`packages/shared/`) — carry-forward from S06 |
+| S07-12 | EXT | VIGILSession persistence (chrome.storage.local) — carry-forward from S06 |
+| S07-13 | DASHBOARD | Dashboard vitest config + component tests — carry-forward from S06 |
+| S07-14 | INFRA | Vercel deployment: vigil-server (serverless) + dashboard (static) |
+| S07-15 | SERVER | Neon PostgreSQL: migrate bug/feature storage from filesystem to Postgres |
 
 ---
 

@@ -60,6 +60,33 @@ export const generateScreenshotId = (): string => {
   return `ss-${crypto.randomUUID().split('-')[0]}`;
 };
 
+// ── Sprint 06: Vigil session ID generators ─────────────────────────────────
+
+/**
+ * Generates a Vigil session ID (vigil-SESSION-YYYYMMDD-NNN).
+ */
+export const generateVigilSessionId = (date: Date = new Date(), sequence: number = 1): string => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const seq = String(sequence).padStart(3, '0');
+  return `vigil-SESSION-${y}${m}${d}-${seq}`;
+};
+
+/**
+ * Generates a unique recording ID (rec-XXXXXXXX).
+ */
+export const generateRecordingId = (): string => {
+  return `rec-${crypto.randomUUID().split('-')[0]}`;
+};
+
+/**
+ * Generates a unique snapshot ID (snap-XXXXXXXX).
+ */
+export const generateSnapshotId = (): string => {
+  return `snap-${crypto.randomUUID().split('-')[0]}`;
+};
+
 /**
  * Formats a duration in milliseconds to a human-readable string.
  * Examples: "2h 5m 3s", "12m 30s", "45s", "0s"

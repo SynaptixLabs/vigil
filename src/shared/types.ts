@@ -53,6 +53,11 @@ export enum MessageType {
   ANNOTATE_ACTION = 'ANNOTATE_ACTION',  // R022: Attach a note to the last recorded action
   LOG_INSPECTOR_ELEMENT = 'LOG_INSPECTOR_ELEMENT',  // R023: Log element captured by inspector
   OPEN_SIDE_PANEL = 'OPEN_SIDE_PANEL',  // Request background to open/focus the side panel
+  // Sprint 06 — Vigil session model
+  TOGGLE_RECORDING = 'TOGGLE_RECORDING',
+  OPEN_BUG_EDITOR = 'OPEN_BUG_EDITOR',
+  SESSION_SYNCED = 'SESSION_SYNCED',
+  SESSION_SYNC_FAILED = 'SESSION_SYNC_FAILED',
 }
 
 /**
@@ -178,4 +183,61 @@ export interface Screenshot {
   timestamp: number;
   width: number;
   height: number;
+}
+
+// ── Sprint 06: Vigil Session Model (D002) ──────────────────────────────────
+// Session = container, recording = opt-in.
+// These interfaces coexist with the legacy Session type above.
+// Migration: once all tests pass on the new model, deprecate Session.
+
+/**
+ * A chunk of rrweb events within a VIGILRecording.
+ */
+export interface RrwebChunk {
+  chunkIndex: number;
+  pageUrl: string;
+  events: unknown[];        // rrweb serialized events
+  createdAt: number;
+  compressed?: boolean;
+  data?: string;            // compressed payload
+}
+
+/**
+ * An opt-in rrweb recording segment within a VIGILSession.
+ */
+export interface VIGILRecording {
+  id: string;               // rec-XXXXXXXX
+  startedAt: number;
+  endedAt?: number;
+  rrwebChunks: RrwebChunk[];
+  mouseTracking: boolean;
+}
+
+/**
+ * A point-in-time screenshot captured during a VIGILSession.
+ */
+export interface VIGILSnapshot {
+  id: string;               // snap-XXXXXXXX
+  capturedAt: number;       // session clock ms
+  screenshotDataUrl: string;
+  url: string;
+  triggeredBy: 'manual' | 'bug-editor' | 'auto';
+}
+
+/**
+ * Vigil session container (Sprint 06+). Session is always running once created;
+ * recordings are opt-in segments within the session.
+ */
+export interface VIGILSession {
+  id: string;               // vigil-SESSION-YYYYMMDD-NNN
+  name: string;
+  projectId: string;
+  startedAt: number;
+  endedAt?: number;
+  clock: number;            // ms elapsed since startedAt (always running)
+  recordings: VIGILRecording[];
+  snapshots: VIGILSnapshot[];
+  bugs: Bug[];
+  features: Feature[];
+  pendingSync?: boolean;    // true if POST to server failed
 }

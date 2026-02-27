@@ -13,6 +13,7 @@ interface BugEditorProps {
   currentUrl: string;
   elementSelector?: string;
   screenshotId?: string;
+  screenshotDataUrl?: string;
   onClose: () => void;
 }
 
@@ -23,6 +24,7 @@ const BugEditor: React.FC<BugEditorProps> = ({
   currentUrl,
   elementSelector,
   screenshotId,
+  screenshotDataUrl,
   onClose,
 }) => {
   const [entryType, setEntryType] = useState<EntryType>('bug');
@@ -98,6 +100,16 @@ const BugEditor: React.FC<BugEditorProps> = ({
   return (
     <div className="refine-bug-editor" data-testid="refine-bug-editor">
       <h3>{entryType === 'bug' ? '🐛 Log Bug' : '✨ Log Feature'}</h3>
+
+      {screenshotDataUrl && (
+        <div className="refine-screenshot-preview" data-testid="bug-editor-screenshot">
+          <img
+            src={screenshotDataUrl}
+            alt="Screenshot preview"
+            style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #444', marginBottom: '8px' }}
+          />
+        </div>
+      )}
 
       <div className="refine-type-toggle">
         <button
@@ -187,7 +199,7 @@ const BugEditor: React.FC<BugEditorProps> = ({
           disabled={!title.trim() || saving}
           data-testid="btn-save-bug"
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Submitting…' : 'Submit'}
         </button>
         <button className="refine-btn--cancel" data-testid="btn-cancel-bug" onClick={onClose}>
           Cancel

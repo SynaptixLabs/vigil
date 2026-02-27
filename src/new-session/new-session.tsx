@@ -156,7 +156,7 @@ const NewSessionTab: React.FC = () => {
             <span className="text-indigo-400 text-lg">⬡</span>
             <span className="text-xs text-gray-500 uppercase tracking-widest font-semibold">SynaptixLabs Refine</span>
           </div>
-          <h1 className="text-xl font-bold text-white">New Recording Session</h1>
+          <h1 className="text-xl font-bold text-white">New Session</h1>
           {activeTabUrl && (
             <p className="text-xs text-gray-500 mt-1 truncate">Recording on: {activeTabUrl}</p>
           )}
@@ -295,7 +295,7 @@ const NewSessionTab: React.FC = () => {
               data-testid="btn-start-recording"
               className="flex-[2] py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
             >
-              {loading ? 'Starting…' : '▶ Start Recording'}
+              {loading ? 'Starting…' : '▶ Start Session'}
             </button>
           </div>
         </form>

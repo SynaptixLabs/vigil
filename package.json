@@ -13,7 +13,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:all": "vitest run && playwright test",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "dev:server": "cd packages/server && npx nodemon --exec tsx src/index.ts",
+    "build:server": "cd packages/server && tsc",
+    "dev:dashboard": "cd packages/dashboard && vite",
+    "build:dashboard": "cd packages/dashboard && vite build"
   },
   "dependencies": {
     "dexie": "^4.0.10",

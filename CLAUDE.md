@@ -148,6 +148,9 @@ Status: ⬜ | 🔴 | 🟢
 | Command | Purpose | Who runs it |
 |---|---|---|
 | `/project:cpto` | **Activate CPTO session** — load context, orient, show menu | `[CPTO]` |
+| `/project:dev` | **Activate DEV agent** — load sprint context, await track assignment | `[DEV:*]` |
+| `/project:dev-qa` | **Activate QA agent** — load test plan, run gates | `[QA]` |
+| `/project:design-review` | Good/Bad/Ugly design review on a topic | `[CTO]` |
 | `/project:sprint-plan` | Plan next sprint scope + produce all artifacts | `[CPTO]` |
 | `/project:sprint-report` | Current sprint status report | `[CPTO]` |
 | `/project:release-gate` | Pre-release / sprint closure checklist | `[CPTO]` |

@@ -121,6 +121,11 @@ temp/
 # .windsurf/
 
 # ========================
+# Vigil Runtime Data
+# ========================
+.vigil/
+
+# ========================
 # Project Specific
 # ========================
 # Chrome Extension build artifacts (beyond dist/ already ignored above)

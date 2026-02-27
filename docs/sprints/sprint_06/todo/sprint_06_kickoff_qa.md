@@ -19,10 +19,37 @@ Before testing any new Sprint 06 work, run all existing E2E tests:
 
 ```powershell
 cd C:\Synaptix-Labs\projects\vigil
+
+# Run existing E2E suite
 npx playwright test tests/e2e/ --reporter=list
+
+# Start vigil-server (needed for Phase 2 tests)
+npm run dev:server    # port 7474 — wait for "Server running on port 7474"
+
+# Start TaskPilot demo app (needed for manual testing)
+npm run dev:demo      # port 3900 — or: cd tests/fixtures/demo-app && npm start
 ```
 
 All tests must still pass. Any failure is a P0 regression — block Sprint 06 DEV from proceeding until fixed.
+
+---
+
+## Test Sequencing (track dependencies)
+
+Your tests have two phases based on when DEV tracks ship:
+
+**Phase 1 — After Track A ships (extension refactor):**
+- Q601: Session clock runs independently of recording
+- Q602: SPACE toggle recording (outside input fields)
+- Q603: Ctrl+Shift+B captures screenshot + opens bug editor
+- Manual testing of SPACE + Ctrl+Shift+B on TaskPilot demo app (port 3900)
+
+**Phase 2 — After Track B ships (vigil-server on port 7474):**
+- Q604: END SESSION POST to vigil-server + offline queue behavior
+- Q605: MCP tools (list/close bugs via filesystem)
+- Q606: Dashboard loads and shows bug list
+
+> Do NOT attempt Phase 2 tests until vigil-server is running on port 7474 with health check passing.
 
 ---
 
@@ -91,8 +118,10 @@ test('END SESSION queues when server offline', async ({ page }) => {
 
 ### Q605 — MCP Tools
 
+> **Note:** `tests/integration/` directory does not exist yet. Create it for server-side integration tests (separate from E2E browser tests).
+
 ```typescript
-// tests/integration/mcp-tools.spec.ts
+// tests/integration/mcp-tools.spec.ts  ← new directory, create it
 test('vigil_list_bugs returns bugs from filesystem', async () => {
   // Write a BUG-001.md to sprint_06/BUGS/open/
   // Call vigil_list_bugs via MCP client
@@ -122,6 +151,8 @@ test('dashboard loads and shows bug list', async ({ page }) => {
 
 Ensure DEV adds these to new components:
 
+**Dashboard (Track C):**
+
 | Component | Required testid |
 |---|---|
 | Dashboard root | `dashboard-root` |
@@ -131,6 +162,16 @@ Ensure DEV adds these to new components:
 | Bug row | `bug-row-{BUG-ID}` |
 | Severity badge | `severity-badge-{BUG-ID}` |
 | Server health indicator | `server-health-status` |
+
+**Extension UI (Track A):**
+
+| Component | Required testid |
+|---|---|
+| Control bar recording indicator | `recording-indicator` |
+| Bug editor panel | `bug-editor-panel` |
+| Bug editor screenshot preview | `bug-editor-screenshot` |
+| Session sync toast | `session-sync-toast` |
+| Session clock display | `session-clock` |
 
 ---
 

@@ -70,6 +70,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       unmountOverlay();
       sendResponse({ ok: true });
       break;
+    case 'OPEN_BUG_EDITOR': {
+      // Sprint 06: Ctrl+Shift+B combo — open bug editor with screenshot pre-attached
+      const detail = payload as { snapshotId?: string; screenshotDataUrl?: string; url?: string } | undefined;
+      window.dispatchEvent(new CustomEvent('vigil:open-bug-editor', { detail }));
+      sendResponse({ ok: true });
+      break;
+    }
+    case 'SCREENSHOT_FEEDBACK': {
+      // BUG-FAT-004: Visual feedback toast for keyboard shortcut captures
+      const { message: feedbackMsg } = (payload ?? {}) as { message?: string };
+      if (feedbackMsg) {
+        window.dispatchEvent(new CustomEvent('vigil:show-toast', { detail: { message: feedbackMsg } }));
+      }
+      sendResponse({ ok: true });
+      break;
+    }
     default:
       break;
   }
@@ -97,6 +113,32 @@ window.addEventListener('popstate', () => {
     handleNavigation(currentUrl);
     lastUrl = currentUrl;
   }
+});
+
+// ── Sprint 06: SPACE shortcut — toggle recording (outside input fields) ─────
+// D002: Session = container, recording = opt-in via SPACE key.
+
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.code !== 'Space') return;
+  const active = document.activeElement;
+  // BUG-FAT-007: If focus is inside our Shadow DOM overlay (bug editor, etc.), don't intercept SPACE
+  if (active && (active.id === 'refine-root' || active.closest?.('#refine-root'))) return;
+  const tag = active?.tagName.toLowerCase();
+  if (
+    tag === 'input' || tag === 'textarea' || tag === 'select' ||
+    (active as HTMLElement)?.isContentEditable
+  ) return;
+  e.preventDefault();
+  // BUG-FAT-002: Use response callback to sync ControlBar state after toggle
+  chrome.runtime.sendMessage({ type: 'TOGGLE_RECORDING', source: 'content' }, (response) => {
+    if (chrome.runtime.lastError) return;
+    if (response?.ok && response.data != null) {
+      // Broadcast recording state change to ControlBar via custom event
+      window.dispatchEvent(new CustomEvent('vigil:recording-state-changed', {
+        detail: { recording: response.data.recording },
+      }));
+    }
+  });
 });
 
 // ── Keyboard shortcut fallback (for Playwright automation and headless mode) ──

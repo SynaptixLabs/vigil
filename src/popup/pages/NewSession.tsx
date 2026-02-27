@@ -130,7 +130,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
     <div className="flex flex-col h-full">
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3 border-b border-gray-800 flex-shrink-0">
-        <h2 className="text-base font-bold text-white flex-1">New Recording Session</h2>
+        <h2 className="text-base font-bold text-white flex-1">New Session</h2>
       </div>
 
       {/* ── Scrollable form body ── */}
@@ -281,7 +281,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
             data-testid="btn-start-recording"
             className="flex-[2] py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
           >
-            {loading ? 'Starting…' : '▶ Start Recording'}
+            {loading ? 'Starting…' : '▶ Start Session'}
           </button>
         </div>
       </form>

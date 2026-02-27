@@ -52,7 +52,20 @@
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(echo:*)",
-      "Bash(pwd:*)"
+      "Bash(pwd:*)",
+      "Bash(npx tsc:*)",
+      "Bash(head:*)",
+      "Bash(npx vite:*)",
+      "Bash(tail:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npm run:*)",
+      "Bash(wc:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_select_option",
+      "mcp__playwright__browser_console_messages"
     ],
     "deny": [
       "Bash(git push --force:*)",

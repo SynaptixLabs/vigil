@@ -65,7 +65,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "src/new-session/new-session.html"
+        "src/new-session/new-session.html",
+        "vigil.config.json"
       ],
       "matches": ["<all_urls>"]
     }

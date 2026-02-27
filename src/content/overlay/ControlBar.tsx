@@ -38,6 +38,8 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
   const [showSizeWarning, setShowSizeWarning] = useState(false);
   const sizeWarningFiredRef = useRef(false);
   const [lastClickedSelector, setLastClickedSelector] = useState<string | undefined>(undefined);
+  const [bugEditorScreenshotId, setBugEditorScreenshotId] = useState<string | undefined>(undefined);
+  const [bugEditorScreenshotDataUrl, setBugEditorScreenshotDataUrl] = useState<string | undefined>(undefined);
   const [noteInput, setNoteInput] = useState<string | null>(null);
   const [isInspecting, setIsInspecting] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -94,10 +96,56 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
     return () => document.removeEventListener('click', handler, true);
   }, []);
 
+  // Sprint 06: Listen for OPEN_BUG_EDITOR event from Ctrl+Shift+B combo
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { snapshotId?: string; screenshotDataUrl?: string } | undefined;
+      setBugEditorScreenshotId(detail?.snapshotId);
+      setBugEditorScreenshotDataUrl(detail?.screenshotDataUrl);
+      setShowBugEditor(true);
+    };
+    window.addEventListener('vigil:open-bug-editor', handler);
+    return () => window.removeEventListener('vigil:open-bug-editor', handler);
+  }, []);
+
+  // BUG-FAT-002: Sync recording state when SPACE toggle fires from content-script
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { recording: boolean } | undefined;
+      if (detail == null) return;
+      const newState: RecordingState = detail.recording ? 'recording' : 'paused';
+      setRecordingState((prev) => {
+        if (prev === newState) return prev;
+        // Update pause tracking
+        if (newState === 'paused') {
+          setPauseStart(Date.now());
+        } else {
+          setPauseStart((ps) => {
+            if (ps) setTotalPaused((p) => p + Date.now() - ps);
+            return null;
+          });
+        }
+        return newState;
+      });
+    };
+    window.addEventListener('vigil:recording-state-changed', handler);
+    return () => window.removeEventListener('vigil:recording-state-changed', handler);
+  }, []);
+
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2000);
   }, []);
+
+  // BUG-FAT-004: Listen for toast events from keyboard shortcut captures
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { message: string } | undefined;
+      if (detail?.message) showToast(detail.message);
+    };
+    window.addEventListener('vigil:show-toast', handler);
+    return () => window.removeEventListener('vigil:show-toast', handler);
+  }, [showToast]);
 
   const handlePauseResume = () => {
     if (recordingState === 'recording') {
@@ -219,7 +267,9 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
           sessionId={sessionId}
           currentUrl={window.location.href}
           elementSelector={lastClickedSelector}
-          onClose={() => setShowBugEditor(false)}
+          screenshotId={bugEditorScreenshotId}
+          screenshotDataUrl={bugEditorScreenshotDataUrl}
+          onClose={() => { setShowBugEditor(false); setBugEditorScreenshotId(undefined); setBugEditorScreenshotDataUrl(undefined); }}
         />
       )}
 
@@ -268,8 +318,8 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
         <button
           className="refine-btn refine-btn--danger"
-          title="Stop recording"
-          aria-label="Stop recording"
+          title="End Session"
+          aria-label="End Session"
           data-testid="btn-stop"
           tabIndex={0}
           onClick={handleStop}

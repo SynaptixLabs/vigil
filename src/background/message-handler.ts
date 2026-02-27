@@ -7,7 +7,7 @@
 import { MessageType } from '@shared/types';
 import type { ChromeMessage, ChromeResponse } from '@shared/messages';
 import type { Bug, Feature, RecordingChunk, InspectedElement } from '@shared/types';
-import { sessionManager } from './session-manager';
+import { sessionManager, vigilSessionManager } from './session-manager';
 import { captureScreenshot } from './screenshot';
 import {
   addBug,
@@ -51,7 +51,19 @@ export function handleMessage(
           const outputPath = res.refineOutputPath as string | undefined;
           sessionManager
             .createSession(name, description ?? '', url, finalTabId, recordMouseMove ?? false, tags ?? [], project, outputPath)
-            .then((session) => sendResponse({ ok: true, data: session }))
+            .then(async (session) => {
+              // Sprint 06 BUG-FAT-011: Also create a vigil session so Ctrl+Shift+S/B,
+              // snapshots, and End Session POST all work correctly.
+              // Sprint 06 BUG-FAT-011: Create vigil session (idle — no auto-recording).
+              // Recording starts when user presses SPACE or Ctrl+Shift+R.
+              try {
+                await vigilSessionManager.createSession(name, project ?? '', finalTabId);
+                console.log('[Vigil] Vigil session created alongside legacy session (idle)');
+              } catch (e) {
+                console.warn('[Vigil] Failed to create vigil session:', (e as Error).message);
+              }
+              sendResponse({ ok: true, data: session });
+            })
             .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
         });
       };
@@ -104,7 +116,16 @@ export function handleMessage(
     case MessageType.STOP_RECORDING:
       sessionManager
         .stopSession()
-        .then((session) => {
+        .then(async (session) => {
+          // Sprint 06 BUG-FAT-001: Also end vigil session if active → triggers POST to vigil-server
+          if (vigilSessionManager.hasActiveSession()) {
+            try {
+              await vigilSessionManager.endSession();
+              console.log('[Vigil] Vigil session ended + POSTed on STOP_RECORDING');
+            } catch (e) {
+              console.warn('[Vigil] Failed to end vigil session:', (e as Error).message);
+            }
+          }
           // Notify all extension pages (popup, sidepanel) to refresh their session list
           chrome.runtime.sendMessage({ type: 'SESSION_COMPLETED', payload: { sessionId: session.id } }).catch(() => {});
           sendResponse({ ok: true, data: session });
@@ -136,6 +157,10 @@ export function handleMessage(
 
     case MessageType.LOG_BUG: {
       const bug = message.payload as Bug;
+      // BUG-FAT-012: Also store in vigil session so POST includes bugs
+      if (vigilSessionManager.hasActiveSession()) {
+        vigilSessionManager.addBug(bug);
+      }
       addBug(bug)
         .then(() => incrementSessionBugCount(bug.sessionId))
         .then(() => sendResponse({ ok: true, data: { id: bug.id } }))
@@ -145,6 +170,10 @@ export function handleMessage(
 
     case MessageType.LOG_FEATURE: {
       const feature = message.payload as Feature;
+      // BUG-FAT-012: Also store in vigil session so POST includes features
+      if (vigilSessionManager.hasActiveSession()) {
+        vigilSessionManager.addFeature(feature);
+      }
       addFeature(feature)
         .then(() => incrementSessionFeatureCount(feature.sessionId))
         .then(() => sendResponse({ ok: true, data: { id: feature.id } }))
@@ -220,6 +249,23 @@ export function handleMessage(
           if (win?.id) chrome.sidePanel.open({ windowId: win.id }, () => sendResponse({ ok: true }));
           else sendResponse({ ok: false, error: 'No window found' });
         });
+      }
+      return true;
+    }
+
+    // Sprint 06: SPACE toggle recording — always use legacy session for rrweb control.
+    // Vigil session is data-only (snapshots, bugs, POST) and does NOT control recording.
+    case MessageType.TOGGLE_RECORDING: {
+      if (sessionManager.isRecording()) {
+        sessionManager.pauseSession()
+          .then(() => sendResponse({ ok: true, data: { recording: false } }))
+          .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+      } else if (sessionManager.getStatus() === 'PAUSED') {
+        sessionManager.resumeSession()
+          .then(() => sendResponse({ ok: true, data: { recording: true } }))
+          .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+      } else {
+        sendResponse({ ok: false, error: 'No active session' });
       }
       return true;
     }

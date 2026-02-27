@@ -11,7 +11,7 @@ You are `[DEV]` on **SynaptixLabs Vigil** — Sprint 06.
 
 ## Your Mission
 
-Ship the Vigil core platform in two parallel tracks:
+Ship the Vigil core platform across four tracks:
 
 **Track A — Extension refactor** (S06-01 to S06-04)  
 **Track B — vigil-server** (S06-05 to S06-09)  
@@ -19,6 +19,13 @@ Ship the Vigil core platform in two parallel tracks:
 **Track D — Claude Code commands** (S06-12 to S06-14)
 
 Work Track A first (it defines the session payload schema that Track B consumes).
+
+> **Track Dependencies:**
+> - **Track A is the critical path.** VIGILSession types must ship before B/C/D can integrate.
+> - **Track B scaffold (S06-05) + counter (S06-08)** can start in parallel with Track A — no dependency on session types.
+> - **Track C** can scaffold React app + static UI immediately, but API integration waits for Track B APIs.
+> - **Track D** (Claude Code commands) depends on Track B MCP tools being registered.
+> - **QA Phase 1** (Q601–Q603) runs as soon as Track A ships. **QA Phase 2** (Q604–Q606) waits for Track B.
 
 ---
 
@@ -40,6 +47,13 @@ npm run dev:dashboard
 
 Port `7474` is canonical for vigil-server. Do not use 3000 or 8000.
 
+> **Note:** `dev:server`, `dev:dashboard`, and `build:server` scripts do not exist yet in root `package.json`. Track B must add these as part of S06-05 (scaffold). Example:
+> ```json
+> "dev:server": "cd packages/server && npx nodemon --exec ts-node src/index.ts",
+> "build:server": "cd packages/server && tsc",
+> "dev:dashboard": "cd packages/dashboard && vite"
+> ```
+
 ---
 
 ## Track A — Extension Refactor
@@ -48,7 +62,9 @@ Port `7474` is canonical for vigil-server. Do not use 3000 or 8000.
 
 **File to update:** `src/shared/types.ts`
 
-New session shape (additive — preserve existing Bug/Feature/Action/Screenshot types):
+New session shape. **Migration strategy:** Add `VIGILSession`, `VIGILRecording`, `VIGILSnapshot` as NEW interfaces alongside the existing `Session` interface. Do NOT delete the old `Session` type yet — it's used by existing E2E tests and Dexie storage. Once vigil-server is wired and all tests pass on the new model, deprecate `Session` in a follow-up PR.
+
+Preserve existing Bug/Feature/Action/Screenshot types (they embed into VIGILSession):
 
 ```typescript
 export interface VIGILSession {
@@ -138,7 +154,8 @@ async function endSessionAndSync(sessionId: string): Promise<void> {
 async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void> {
   for (let i = 0; i < attempts; i++) {
     try {
-      const res = await fetch('http://localhost:7474/api/session', {
+      const serverUrl = `http://localhost:${config.serverPort || 7474}`;
+      const res = await fetch(`${serverUrl}/api/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(session)
@@ -246,7 +263,13 @@ export async function nextBugId(): Promise<string> {
   return `BUG-${String(next).padStart(3, '0')}`;
 }
 
-export async function nextFeatId(): Promise<string> { /* same, FEAT- prefix */ }
+// Separate counter file: .vigil/features.counter (decision S06-D012)
+export async function nextFeatId(): Promise<string> {
+  const current = parseInt(await fs.readFile(FEAT_COUNTER_PATH, 'utf8') || '0');
+  const next = current + 1;
+  await fs.writeFile(FEAT_COUNTER_PATH, String(next));
+  return `FEAT-${String(next).padStart(3, '0')}`;
+}
 ```
 
 ---
@@ -286,9 +309,9 @@ Keep it functional, not beautiful. Sprint 08 handles polish.
 
 ## Track D — Claude Code Commands (S06-12 to S06-14)
 
-**Location:** `.claude/commands/`
+**Location:** `.claude/commands/` — **these files already exist.** Review and update them to match the specs below. Do not create from scratch.
 
-### `bug-log.md`
+### `bug-log.md` (update existing)
 ```markdown
 ---
 description: Log a new bug or feature to the current sprint
@@ -299,7 +322,7 @@ Write BUG-XXX.md or FEAT-XXX.md to docs/sprints/sprint_[current]/BUGS/open/ or F
 Confirm with: "Logged as BUG-XXX — [title]"
 ```
 
-### `bug-fix.md`
+### `bug-fix.md` (update existing)
 ```markdown
 ---
 description: Run red→green resolution loop for a bug (or --all open bugs)
@@ -316,7 +339,7 @@ For each target bug:
 Report: fixed | could-not-reproduce | max-iterations-reached
 ```
 
-### `bug-review.md`
+### `bug-review.md` (update existing)
 ```markdown
 ---
 description: Sprint closure gate — review all bugs and regression suite

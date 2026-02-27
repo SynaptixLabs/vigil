@@ -4,7 +4,7 @@
 
 **Depends on:** Sprint 06 complete (vigil-server running, MCP tools live, `/api/vigil/suggest` stub present)  
 **Version target:** `2.1.0`  
-**Budget:** ~28V  
+**Budget:** ~32.5V
 **Prerequisite:** AGENTS project running locally (`http://localhost:8000`)
 
 ---
@@ -36,11 +36,29 @@ vigil-ext  →  vigil-server (:7474)
 | S07-05 | SERVER | Returning bug detection: semantic similarity on new bug receipt | ~3V |
 | S07-06 | EXT | Bug auto-complete in editor (title + steps pre-fill from LLM) | ~3V |
 | S07-07 | SERVER | Severity auto-suggest (confidence score shown, user overrides) | ~2V |
-| S07-08 | AGENT | `vigil_agent` — autonomous resolution loop via Claude Code MCP | ~5V |
+| S07-08a | AGENT | `vigil_agent` scaffold: `/project:vigil-agent` command + config (max time, cost, dry-run) | ~1V |
+| S07-08b | AGENT | Bug analysis + classification (reproducible / needs-info / code-defect / UX-issue) | ~1.5V |
+| S07-08c | AGENT | Regression test generation + red confirmation | ~1.5V |
+| S07-08d | AGENT | Fix implementation + green confirmation + git commit to branch | ~1V |
 | S07-09 | AGENT | Sprint health report (LLM-generated summary of open bugs + risk) | ~2V |
 | S07-10 | QA | Integration tests: ext → server → AGENTS round-trip | ~2V |
+| S07-11 | SERVER | Shared types package (`packages/shared/`) — single source for ext + server + AGENTS types | ~2V |
+| S07-12 | EXT | VIGILSession persistence via `chrome.storage.local` (service worker restart-safe) | ~1.5V |
+| S07-13 | DASHBOARD | Dashboard vitest config + component tests | ~1V |
+| S07-14 | INFRA | Vercel deployment: vigil-server (serverless) + dashboard (static) | ~2V |
+| S07-15 | SERVER | Neon PostgreSQL: migrate bug/feature storage from filesystem to managed Postgres | ~4V |
+| S07-16 | EXT | Project-oriented session model: required project field, auto-sprint, persistent history | ~5V |
+| S07-17 | DASHBOARD | Dashboard overhaul: project/sprint/session nav, screenshots, timeline, replay | ~6V |
+| S07-18 | EXT | Ghost session recovery: end orphaned sessions from side panel | ~1V |
+| S07-19 | EXT | Manifest shortcut fix: `Ctrl+Shift+B` → `Alt+Shift+B` default (BUG-FAT-010) | ~0.5V |
 
-**Total: ~28V**
+**Total: ~51V** (includes 4.5V carry-forward from Sprint 06, 6V cloud infra, 12.5V Founder product vision)
+
+> **Founder product vision (S07-16 through S07-19):** Captured during Sprint 06 FAT Round 2. See `todo/sprint_07_product_vision.md` for full requirements.
+
+> **Carry-forward items (S07-11, S07-12, S07-13):** Deferred from Sprint 06 design reviews (Track B U03, Track A U1, Track C U3). No AGENTS dependencies — can run in parallel as Track E.
+>
+> **Cloud infra (S07-14, S07-15):** Vercel + Neon (D015). Replaces filesystem-as-DB (Sprint 06 D003 tradeoff). S07-15 supersedes Sprint 08 U02 (markdown-as-DB fragility) — going straight to Postgres instead of frontmatter workaround.
 
 ---
 
@@ -73,7 +91,7 @@ Response:
 }
 ```
 
-Uses `llm_core` model selection (Groq `llama-3.1-8b-instant` as default for latency).
+Uses `llm_core` model selection (Groq `llama-3.3-70b-versatile` as default for latency).
 
 ---
 
@@ -146,29 +164,52 @@ Small confidence indicator next to severity dropdown in bug editor:
 
 ---
 
-### S07-08 — `vigil_agent` Autonomous Loop
+### S07-08 — `vigil_agent` Autonomous Loop (4 sub-tasks)
 
-A Claude Code slash command that runs the full resolution queue autonomously:
+A Claude Code slash command that runs the full resolution queue autonomously.
+Decomposed into 4 phases, each with an explicit safety gate (D013).
+
+#### S07-08a — Agent Scaffold (~1V)
+
+- `/project:vigil-agent` command file in `.claude/commands/`
+- Config in `vigil.config.json`: `maxIterations`, `maxTimeMinutes`, `maxCostUsd`, `dryRun`
+- **Safety gate:** `dryRun: true` mode logs all planned actions without executing
+
+#### S07-08b — Bug Analysis + Classification (~1.5V)
+
+- For each open bug → call AGENTS `/api/v1/vigil/suggest` with `type: "classify"`
+- Categories: `reproducible`, `needs-info`, `code-defect`, `UX-issue`
+- **Safety gate:** Classification only — zero code changes, zero file writes
+
+#### S07-08c — Regression Test Generation (~1.5V)
+
+- For `reproducible` bugs: generate regression test in `tests/e2e/regression/BUG-XXX.spec.ts`
+- Run test → confirm RED (test fails, proving the bug exists)
+- If test passes (no bug repro): escalate to Avi
+- **Safety gate:** Stops after RED confirmed — does NOT attempt fix
+
+#### S07-08d — Fix Implementation (~1V)
+
+- Implement fix (max iterations from `vigil.config.json`)
+- Run regression test → confirm GREEN
+- `vigil_close_bug(id, resolution, keep_test: true)`
+- Git commit to `vigil/fixes/sprint-XX` branch
+- **Safety gate:** Branch-only, max iterations enforced, Avi merges
 
 ```
-/project:vigil-agent [--sprint XX] [--severity P0,P1]
+/project:vigil-agent [--sprint XX] [--severity P0,P1] [--dry-run]
 
-For each open bug (filtered by sprint/severity):
-  1. vigil_get_bug(id)
-  2. LLM analysis: classify as reproducible | needs-info | code-defect | UX-issue
-  3. If reproducible:
-     a. Write regression test → run → confirm RED
-     b. Implement fix (max iterations from config)
-     c. Run test → confirm GREEN
-     d. vigil_close_bug(id, resolution, keep_test)
-     e. Git commit
-  4. If needs-info: set status = BLOCKED, comment with what's missing
-  5. If can't reproduce after 2 attempts: escalate to Avi via report
+Phase flow per bug:
+  S07-08b: Classify → S07-08c: Test → S07-08d: Fix → Commit
 
 Reports at end: N fixed, N blocked, N escalated, total time, tests added
 ```
 
-**Max autonomy guardrail:** Agent never deletes files, never pushes to main directly. All commits to a `vigil/fixes/sprint-XX` branch. Avi merges.
+**Max autonomy guardrails:**
+- Agent never deletes files, never pushes to main directly
+- All commits to a `vigil/fixes/sprint-XX` branch. Avi merges.
+- Agent cannot modify test files to force GREEN without actual fix
+- Each phase checkpoint — agent cannot skip from classify to fix
 
 ---
 
@@ -188,6 +229,104 @@ Generates:
 
 ---
 
+### S07-11 — Shared Types Package (~2V)
+
+**Location:** `packages/shared/` (new workspace package)
+
+Extract shared TypeScript types into a workspace package. Both extension (`src/shared/types.ts`) and server (`packages/server/src/types.ts`) import from one source. Zod schemas live in `packages/shared/`; TS types inferred via `z.infer<>`.
+
+Resolves Sprint 06 Track B DR — U03 (duplicate type definitions causing schema drift).
+
+---
+
+### S07-12 — VIGILSession Persistence (~1.5V)
+
+**Location:** `src/background/session-manager.ts`
+
+Persist `VIGILSession` to `chrome.storage.local` on every state change. On service worker restart, rehydrate from storage. Currently in-memory only (`vigilState` module-level variable) — if service worker restarts mid-session, the session is lost.
+
+Resolves Sprint 06 Track A DR — U1 (in-memory only session).
+
+---
+
+### S07-13 — Dashboard Unit Tests (~1V)
+
+**Location:** `packages/dashboard/`
+
+Add vitest config to dashboard package. Write component tests for:
+- `BugList.tsx` — renders bug table, severity dropdown, status toggle
+- `FeatureList.tsx` — renders feature table
+- `SprintSelector.tsx` — sprint dropdown selection
+- `HealthIndicator.tsx` — green/red dot + polling
+
+Resolves Sprint 06 Track C DR — U3 (no dashboard unit tests).
+
+---
+
+### S07-14 — Vercel Deployment (~2V)
+
+**Location:** `vercel.json` (new), `packages/server/` adaptations
+
+Deploy vigil-server and dashboard to Vercel:
+- **Dashboard:** Static build from `packages/server/public/` — deploy as Vercel static site
+- **vigil-server:** Express app adapted to Vercel serverless functions (`/api/` routes)
+- Health check, session receiver, bug/feature CRUD, suggest endpoint all functional in cloud
+- Environment variables (`VIGIL_AGENTS_API_KEY`, `DATABASE_URL`) configured in Vercel project settings
+
+**Prerequisite:** S07-15 (Neon) should be done first — serverless functions need DB, not filesystem.
+
+---
+
+### S07-15 — Neon PostgreSQL Migration (~4V)
+
+**Location:** `packages/server/src/db/` (new), update `filesystem/` layer
+
+Replace markdown-as-DB filesystem storage with Neon managed Postgres:
+
+1. **Schema design:** `bugs`, `features`, `sessions`, `sprints` tables
+2. **Connection:** Neon serverless driver (`@neondatabase/serverless`) — works in both local Node.js and Vercel Edge
+3. **Migration layer:** Replace `reader.ts` / `writer.ts` / `counter.ts` with DB queries
+4. **Counter → sequence:** Bug/feature IDs via Postgres sequences (atomic — resolves Sprint 06 U01 race condition)
+5. **MCP tools:** Update to query DB instead of filesystem
+6. **Seed script:** Import existing `.vigil/` markdown files into Neon
+
+**Config:** `DATABASE_URL` env var. Local dev can use Neon branching or local Postgres.
+
+Supersedes Sprint 08 U02 (markdown-as-DB fragility) — going straight to proper DB instead of frontmatter workaround. Also resolves Sprint 06 U01 (counter race condition via Postgres sequences).
+
+---
+
+## Track Structure
+
+```
+Track A — AGENTS Integration (S07-01 to S07-03)     [cross-project, FLAG]
+  └── Blocked on: AGENTS project availability (parallel AGENTS Sprint 06)
+
+Track B — Server Live Mode (S07-04, S07-05, S07-07)  [DEV:server]
+  └── Blocked on: Track A (AGENTS endpoint must exist)
+
+Track C — Extension LLM Features (S07-06)             [DEV:ext]
+  └── Blocked on: Track B (server must forward to AGENTS)
+
+Track D — Autonomous Agent (S07-08a-d, S07-09)       [DEV:*]
+  └── Blocked on: Track B (MCP tools + live LLM)
+
+Track E — Carry-Forward (S07-11, S07-12, S07-13)     [DEV:server/ext/dashboard]
+  └── No dependencies — can start immediately in parallel
+
+Track F — Cloud Infra (S07-15, S07-14)               [DEV:server]
+  └── S07-15 (Neon) first, then S07-14 (Vercel) — serverless needs DB
+  └── No AGENTS dependency — can start after Sprint 06 server is stable
+
+QA — Integration Tests (S07-10)
+  └── Blocked on: Track B + Track C
+```
+
+**Critical path:** Track A (AGENTS) → Track B → Track C/D → QA
+**Parallel paths:** Track E (carry-forward) + Track F (cloud infra) — both can start immediately
+
+---
+
 ## Definition of Done
 
 - [ ] `POST /api/v1/vigil/suggest` returns real LLM response in AGENTS project
@@ -200,6 +339,11 @@ Generates:
 - [ ] Sprint health report generated and readable
 - [ ] Integration tests: ext POST → server → AGENTS → suggestion round-trip passes
 - [ ] `resource_manager` shows Vigil LLM usage tagged correctly in AGENTS
+- [ ] `packages/shared/` exists with Zod schemas; ext and server import from it (S07-11)
+- [ ] VIGILSession survives service worker restart via `chrome.storage.local` (S07-12)
+- [ ] Dashboard has vitest config + component tests passing (S07-13)
+- [ ] vigil-server deployed to Vercel, health check passes on cloud URL (S07-14)
+- [ ] Bug/feature storage on Neon PostgreSQL — CRUD operations verified (S07-15)
 
 ---
 
@@ -212,4 +356,4 @@ Generates:
 
 ---
 
-*Sprint 07 planned: 2026-02-26 | Depends on Sprint 06 | Owner: CPTO*
+*Sprint 07 planned: 2026-02-26 | Updated: 2026-02-26 (carry-forwards + vigil_agent breakdown) | Depends on Sprint 06 | Owner: CPTO*
