@@ -198,6 +198,21 @@ Spec-first gap from Sprint 06. Either implement the `btn-publish` testid in Sess
 
 > These items were deferred from Sprint 06 design reviews. They can start immediately.
 
+### S07-16b — Session Read API Endpoints (~1.5V) — 🟠 P1
+
+**Files:** `packages/server/src/routes/sessions.ts` (new), `packages/server/src/storage/types.ts`, `packages/server/src/app.ts`
+
+> **🔴 CRITICAL: Blocks S07-17a/17b.** Dashboard `api.ts` has `fetchSessions()` and `fetchSession()` stubs that will 404 without these endpoints. Added per D025.
+
+1. **`GET /api/sessions?project=X&sprint=Y`** — returns `SessionSummary[]` (id, project, sprint, name, startedAt, endedAt, recordingCount, snapshotCount, bugCount, featureCount)
+2. **`GET /api/sessions/:id`** — returns full `SessionDetail` (session JSON with recordings, snapshots, bugs, features)
+3. **Extend storage provider** — add `listSessions(project?, sprint?)` and `getSession(sessionId)` read methods to `packages/server/src/storage/types.ts`
+4. **Register routes** in `packages/server/src/app.ts`
+
+**Types already defined** in `packages/dashboard/src/types.ts` — `SessionSummary` and `SessionDetail` interfaces. Server response must match these shapes.
+
+**Schedule:** D1-D2 (Week 1). Must ship before `[DEV:dashboard]` can integrate S07-17a.
+
 ### S07-11 — Shared Types Package (~2V) — 🟠 P1
 
 **Location:** `packages/shared/` (new workspace package)

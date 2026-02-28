@@ -112,13 +112,13 @@ All existing tests must still pass. Any failure is P0 — blocks Sprint 07 work.
 // Verify: session creation is project-oriented
 // 1. Open side panel → "New Session"
 // 2. Verify: Project field exists and is REQUIRED (folder path input)
-//    data-testid: session-project-input
+//    data-testid: input-project-name (with <datalist> for history — D024)
 // 3. Verify: Sprint dropdown auto-populated from project's docs/sprints/ folder
-//    data-testid: session-sprint-dropdown
+//    data-testid: select-sprint (when sprints found) or input-sprint (manual fallback)
 // 4. Verify: Session name auto-generated (vigil-session-YYYY-MM-DD-NNN)
-//    data-testid: session-name-input
+//    data-testid: input-session-name
 // 5. Verify: Description field exists (free-text)
-//    data-testid: session-description-input
+//    data-testid: input-description
 // 6. Create session → verify session JSON contains project, sprint, name, description
 // 7. Verify: project field validation — non-existent folder shows error (D020)
 // 8. Verify: folder without docs/sprints/ shows empty sprint dropdown with manual entry
@@ -134,7 +134,7 @@ All existing tests must still pass. Any failure is P0 — blocks Sprint 07 work.
 // 4. Verify: project field pre-filled with previous value
 // 5. Verify: sprint dropdown shows previous sprint selected
 // 6. Verify: can pick from history OR create new
-//    data-testid: session-history-dropdown
+//    Note: history is via <datalist> on input-project-name, not a separate dropdown (D024)
 ```
 
 ### Q714a — Dashboard Nav + Filters (S07-17a)
@@ -403,12 +403,12 @@ All existing tests must still pass. Any failure is P0 — blocks Sprint 07 work.
 
 **Extension (existing from S06):** `recording-indicator`, `bug-editor-panel`, `bug-editor-screenshot`, `session-sync-toast`, `session-clock`
 
-**Extension (new for S07 — Phase 1):**
-- `session-project-input` — project folder path field (required)
-- `session-sprint-dropdown` — sprint auto-detect dropdown
-- `session-name-input` — auto-generated session name (editable)
-- `session-description-input` — free-text description field
-- `session-history-dropdown` — persistent history selector
+**Extension (new for S07 — Phase 1, D024 naming convention: `input-*`, `select-*`, `btn-*`):**
+- `input-project-name` — project folder path field (required, with `<datalist>` for session history)
+- `select-sprint` — sprint auto-detect dropdown (when sprints detected from project folder)
+- `input-sprint` — sprint manual entry fallback (when no `docs/sprints/` folder found)
+- `input-session-name` — auto-generated session name (editable)
+- `input-description` — free-text description field (`<textarea>`)
 - `ghost-session-banner` — orphaned session warning
 - `ghost-session-end-btn` — "End stale session" action button
 

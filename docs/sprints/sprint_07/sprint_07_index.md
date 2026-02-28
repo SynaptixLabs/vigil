@@ -38,6 +38,7 @@ vigil-ext  →  vigil-server (:7474)
 | S07-19 | EXT | Manifest shortcut fix: `Ctrl+Shift+B` → `Alt+Shift+B` default (BUG-FAT-010) | 🟠 P1 | ~0.5V | `[DEV:ext]` | 1 | W1-D1 |
 | S07-12 | EXT | VIGILSession persistence via `chrome.storage.local` (service worker restart-safe) | 🟠 P1 | ~1.5V | `[DEV:ext]` | 1 | W1 |
 | S07-11 | SERVER | Shared types package (`packages/shared/`) — single source for ext + server + AGENTS types | 🟠 P1 | ~2V | `[DEV:server]` | 1 | W1 |
+| S07-16b | SERVER | Session read API: `GET /api/sessions` (list + detail) for dashboard integration | 🟠 P1 | ~1.5V | `[DEV:server]` | 1 | W1-W2 |
 | S07-18 | EXT | Ghost session recovery: end orphaned sessions from side panel | 🟠 P1 | ~1V | `[DEV:ext]` | 1 | W1 |
 | S07-17a | DASHBOARD | Dashboard overhaul Phase A: project/sprint/session nav, filters, screenshot display | 🟠 P1 | ~3V | `[DEV:dashboard]` | 1 | W2 |
 | S07-17b | DASHBOARD | Dashboard overhaul Phase B: session timeline + recording replay | 🟠 P1 | ~3V | `[DEV:dashboard]` | 1 | W2 |
@@ -45,7 +46,7 @@ vigil-ext  →  vigil-server (:7474)
 | S07-20 | EXT | BUG-EXT-001 fix: Playwright codegen generates invalid TypeScript (S06 carry-forward) | 🟡 P2 | ~1V | `[DEV:ext]` | 1 | W1 |
 | S07-21 | EXT | BUG-EXT-002: btn-publish testid implementation (S06 carry-forward) | 🟡 P2 | ~1V | `[DEV:ext]` | 1 | W1 |
 
-**Phase 1 total: ~20V** | **Gate: FAT Round 3 — Founder sign-off required before Phase 2**
+**Phase 1 total: ~21.5V** | **Gate: FAT Round 3 — Founder sign-off required before Phase 2**
 
 ### 🔧 PHASE 2 — Backend + LLM + Agent (Week 2-3, ~31V)
 

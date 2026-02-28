@@ -68,6 +68,7 @@
 | Status | ID | Deliverable | Cost | Notes |
 |---|---|---|---|---|
 | [ ] | S07-11 | Shared types package (`packages/shared/`) | ~2V | Zod schemas + `z.infer<>` types, ext + server import from one source |
+| [ ] | S07-16b | Session read API endpoints (`GET /api/sessions`, `GET /api/sessions/:id`) | ~1.5V | `[DEV:server]` — **BLOCKS S07-17a/17b dashboard integration.** D025. Must ship by D2. |
 | [x] | S07-12 | VIGILSession persistence (chrome.storage.local) | ~0V | ✅ Already implemented in S06. Verified: `persistState()`, `restoreVigilState()`, `clearPersistedState()` all functional. |
 | [ ] | S07-13 | Dashboard vitest config + component tests | ~1V | BugList, FeatureList, SprintSelector, HealthIndicator |
 
