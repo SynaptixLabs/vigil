@@ -181,16 +181,23 @@ async function seed(): Promise<void> {
   console.log(`[seed] Sessions imported: ${sessionCount}`);
 
   // 5. Sync counter sequences to match imported data
-  await pool.query(`
-    SELECT setval('bug_counter', COALESCE(
-      (SELECT MAX(CAST(SUBSTRING(id FROM 5) AS INTEGER)) FROM bugs), 0
-    ))
-  `);
-  await pool.query(`
-    SELECT setval('feature_counter', COALESCE(
-      (SELECT MAX(CAST(SUBSTRING(id FROM 6) AS INTEGER)) FROM features), 0
-    ))
-  `);
+  // Handle non-numeric IDs like BUG-EXT-001 by filtering to only BUG-NNN pattern
+  // GREATEST(1, ...) prevents setval(0) which is out-of-bounds for sequences starting at 1
+  const bugMax = await pool.query(
+    `SELECT MAX(CAST(SUBSTRING(id FROM 5) AS INTEGER)) AS val FROM bugs WHERE id ~ '^BUG-[0-9]+$'`,
+  );
+  const bugVal = Number(bugMax.rows[0]?.val) || 0;
+  if (bugVal > 0) {
+    await pool.query(`SELECT setval('bug_counter', $1)`, [bugVal]);
+  }
+
+  const featMax = await pool.query(
+    `SELECT MAX(CAST(SUBSTRING(id FROM 6) AS INTEGER)) AS val FROM features WHERE id ~ '^FEAT-[0-9]+$'`,
+  );
+  const featVal = Number(featMax.rows[0]?.val) || 0;
+  if (featVal > 0) {
+    await pool.query(`SELECT setval('feature_counter', $1)`, [featVal]);
+  }
   console.log('[seed] Counter sequences synced.');
 
   await pool.end();
