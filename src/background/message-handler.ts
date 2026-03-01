@@ -116,7 +116,11 @@ export function handleMessage(
       sessionManager
         .stopSession()
         .then(async (session) => {
+          // Respond immediately — vigil POST (postWithRetry) can take 6s+ if server is down
+          sendResponse({ ok: true, data: session });
+
           // Sprint 06 BUG-FAT-001: Also end vigil session if active → triggers POST to vigil-server
+          // Runs AFTER sendResponse to avoid blocking callers (ControlBar, popup)
           if (vigilSessionManager.hasActiveSession()) {
             try {
               await vigilSessionManager.endSession();
@@ -127,7 +131,6 @@ export function handleMessage(
           }
           // Notify all extension pages (popup, sidepanel) to refresh their session list
           chrome.runtime.sendMessage({ type: 'SESSION_COMPLETED', payload: { sessionId: session.id } }).catch(() => {});
-          sendResponse({ ok: true, data: session });
         })
         .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
       return true;

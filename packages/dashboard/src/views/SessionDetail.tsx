@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { SessionDetail as SessionDetailType, SnapshotItem, SessionBug } from '../types';
+import { SessionTimeline } from '../components/SessionTimeline';
+import { RecordingPlayer } from '../components/RecordingPlayer';
+import type { RecordingPlayerHandle } from '../components/RecordingPlayer';
 
 interface SessionDetailProps {
   session: SessionDetailType;
@@ -65,7 +68,26 @@ function BugCard({ bug, snapshots }: { bug: SessionBug; snapshots: SnapshotItem[
   );
 }
 
+/** Check if session has any timeline-worthy content (recordings, bugs, features, snapshots). */
+function hasTimelineContent(session: SessionDetailType): boolean {
+  return (
+    session.recordings.length > 0 ||
+    session.bugs.length > 0 ||
+    session.features.length > 0 ||
+    session.snapshots.length > 0
+  );
+}
+
 export function SessionDetail({ session }: SessionDetailProps) {
+  const playerRef = useRef<RecordingPlayerHandle>(null);
+
+  const handleTimelineSeek = useCallback((timeOffset: number) => {
+    playerRef.current?.goto(timeOffset);
+  }, []);
+
+  const showTimeline = hasTimelineContent(session);
+  const showPlayer = session.recordings.length > 0;
+
   return (
     <div data-testid="session-detail" className="space-y-4">
       {/* Session metadata */}
@@ -79,6 +101,36 @@ export function SessionDetail({ session }: SessionDetailProps) {
           <span>Recordings: {session.recordings.length}</span>
         </div>
       </div>
+
+      {/* Timeline + Recording Player section */}
+      {(showTimeline || showPlayer) && (
+        <div data-testid="timeline-player-section" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Timeline */}
+          {showTimeline && (
+            <SessionTimeline
+              session={session}
+              onSeek={showPlayer ? handleTimelineSeek : undefined}
+            />
+          )}
+
+          {/* Recording player */}
+          {showPlayer ? (
+            <RecordingPlayer
+              ref={playerRef}
+              recordings={session.recordings}
+              width={560}
+              height={400}
+            />
+          ) : (
+            <div
+              data-testid="recording-player"
+              className="bg-white rounded-lg border border-gray-200 p-6 text-center text-sm text-gray-500"
+            >
+              No recording available for this session.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bugs section */}
       {session.bugs.length > 0 && (

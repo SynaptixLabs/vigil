@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageType } from '@shared/types';
 import type { Session } from '@shared/types';
+import { generateSessionName } from '@shared/utils';
 
 interface NewSessionProps {
   onBack: () => void;
@@ -25,17 +26,6 @@ interface SessionHistory {
 }
 
 const HISTORY_KEY = 'vigilSessionHistory';
-
-function extractProjectName(path: string): string {
-  const segments = path.replace(/\\/g, '/').split('/').filter(Boolean);
-  return segments[segments.length - 1] || 'session';
-}
-
-function generateSessionName(projectPath: string, sequence: number): string {
-  const projectName = extractProjectName(projectPath);
-  const today = new Date().toISOString().slice(0, 10);
-  return `${projectName}-session-${today}-${String(sequence).padStart(3, '0')}`;
-}
 
 const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
   // Form state

@@ -2,6 +2,7 @@ import { getPool } from '../db/client.js';
 import { loadConfig } from '../config.js';
 import { TEST_STATUS } from '../types.js';
 import type { StorageProvider, SprintInfo } from './types.js';
+import { VIGILSessionSchema } from '../types.js';
 import type { Bug, Feature, VIGILSession, BugFile, FeatureFile, BugUpdate } from '../types.js';
 
 function formatDate(ts: number): string {
@@ -257,6 +258,78 @@ export class NeonStorage implements StorageProvider {
     const pool = getPool();
     const result = await pool.query('SELECT last_value FROM feature_counter');
     return Number(result.rows[0].last_value);
+  }
+
+  async listSessions(project?: string, sprint?: string): Promise<VIGILSession[]> {
+    const pool = getPool();
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (project) {
+      conditions.push(`project_id = $${idx++}`);
+      values.push(project);
+    }
+    if (sprint) {
+      // Session sprint is stored inside the JSON, but we also query by the sprint field
+      // extracted at write time. For sessions table, sprint is embedded in session data.
+      // Filter post-query since sprint is in the JSON payload.
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(
+      `SELECT id, name, project_id, started_at, ended_at, clock, recordings, snapshots, bugs, features FROM sessions ${where} ORDER BY started_at DESC`,
+      values,
+    );
+
+    const sessions: VIGILSession[] = [];
+    for (const row of result.rows) {
+      const obj = {
+        id: row.id as string,
+        name: row.name as string,
+        projectId: row.project_id as string,
+        sprint: undefined as string | undefined,
+        startedAt: Number(row.started_at),
+        endedAt: row.ended_at != null ? Number(row.ended_at) : undefined,
+        clock: Number(row.clock),
+        recordings: typeof row.recordings === 'string' ? JSON.parse(row.recordings) : row.recordings,
+        snapshots: typeof row.snapshots === 'string' ? JSON.parse(row.snapshots) : row.snapshots,
+        bugs: typeof row.bugs === 'string' ? JSON.parse(row.bugs) : row.bugs,
+        features: typeof row.features === 'string' ? JSON.parse(row.features) : row.features,
+      };
+      const parsed = VIGILSessionSchema.safeParse(obj);
+      if (!parsed.success) continue;
+      if (sprint && parsed.data.sprint !== sprint) continue;
+      sessions.push(parsed.data);
+    }
+
+    return sessions;
+  }
+
+  async getSession(sessionId: string): Promise<VIGILSession | null> {
+    const pool = getPool();
+    const result = await pool.query(
+      'SELECT id, name, project_id, started_at, ended_at, clock, recordings, snapshots, bugs, features FROM sessions WHERE id = $1',
+      [sessionId],
+    );
+
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    const obj = {
+      id: row.id as string,
+      name: row.name as string,
+      projectId: row.project_id as string,
+      startedAt: Number(row.started_at),
+      endedAt: row.ended_at != null ? Number(row.ended_at) : undefined,
+      clock: Number(row.clock),
+      recordings: typeof row.recordings === 'string' ? JSON.parse(row.recordings) : row.recordings,
+      snapshots: typeof row.snapshots === 'string' ? JSON.parse(row.snapshots) : row.snapshots,
+      bugs: typeof row.bugs === 'string' ? JSON.parse(row.bugs) : row.bugs,
+      features: typeof row.features === 'string' ? JSON.parse(row.features) : row.features,
+    };
+    const parsed = VIGILSessionSchema.safeParse(obj);
+    return parsed.success ? parsed.data : null;
   }
 
   async listSprints(): Promise<{ sprints: SprintInfo[]; current: string }> {

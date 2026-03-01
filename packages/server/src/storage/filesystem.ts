@@ -1,6 +1,6 @@
 import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { listBugs, getBug, listFeatures, getFeature } from '../filesystem/reader.js';
+import { listBugs, getBug, listFeatures, getFeature, listSessions, getSession } from '../filesystem/reader.js';
 import { writeBug, writeFeature, writeSessionJson, updateBug, closeBug } from '../filesystem/writer.js';
 import { nextBugId, nextFeatId, currentBugCount, currentFeatCount } from '../filesystem/counter.js';
 import { getProjectRoot, loadConfig } from '../config.js';
@@ -44,6 +44,14 @@ export class FilesystemStorage implements StorageProvider {
 
   writeSessionJson(session: VIGILSession): Promise<string> {
     return writeSessionJson(session);
+  }
+
+  listSessions(project?: string, sprint?: string): Promise<VIGILSession[]> {
+    return listSessions(project, sprint);
+  }
+
+  getSession(sessionId: string): Promise<VIGILSession | null> {
+    return getSession(sessionId);
   }
 
   nextBugId(): Promise<string> {

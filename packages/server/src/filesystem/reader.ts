@@ -1,7 +1,8 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { getSprintDir, loadConfig } from '../config.js';
-import type { BugFile, FeatureFile } from '@synaptix/vigil-shared';
+import { getSprintDir, getVigilDataDir, loadConfig } from '../config.js';
+import { VIGILSessionSchema } from '@synaptix/vigil-shared';
+import type { BugFile, FeatureFile, VIGILSession } from '@synaptix/vigil-shared';
 
 function parseBugFile(filename: string, content: string): BugFile {
   const id = filename.replace('.md', '');
@@ -142,4 +143,49 @@ export async function getFeature(featId: string, sprint?: string): Promise<Featu
   }
 
   return null;
+}
+
+// ── Session reading (S07-16b) ───────────────────────────────────────────────
+
+export async function listSessions(
+  project?: string,
+  sprint?: string,
+): Promise<VIGILSession[]> {
+  const sessionsDir = resolve(getVigilDataDir(), 'sessions');
+  let files: string[];
+  try {
+    files = (await readdir(sessionsDir)).filter((f) => f.endsWith('.json'));
+  } catch {
+    return [];
+  }
+
+  const sessions: VIGILSession[] = [];
+  for (const file of files) {
+    try {
+      const raw = await readFile(resolve(sessionsDir, file), 'utf8');
+      const parsed = VIGILSessionSchema.safeParse(JSON.parse(raw));
+      if (!parsed.success) continue;
+      const session = parsed.data;
+
+      if (project && session.projectId !== project) continue;
+      if (sprint && session.sprint !== sprint) continue;
+
+      sessions.push(session);
+    } catch {
+      continue;
+    }
+  }
+
+  return sessions.sort((a, b) => b.startedAt - a.startedAt);
+}
+
+export async function getSession(sessionId: string): Promise<VIGILSession | null> {
+  const filePath = resolve(getVigilDataDir(), 'sessions', `${sessionId}.json`);
+  try {
+    const raw = await readFile(filePath, 'utf8');
+    const parsed = VIGILSessionSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }

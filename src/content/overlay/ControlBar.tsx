@@ -168,8 +168,10 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
       }
       // Open side panel so the user can see the session results
       chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
-      onStop?.();
     });
+    // Unmount overlay immediately — don't block on background response
+    // (background may await vigilSessionManager.endSession → postWithRetry which can take 6s+)
+    onStop?.();
   };
 
   const handleOpenPanel = () => {

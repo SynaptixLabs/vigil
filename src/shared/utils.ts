@@ -100,3 +100,29 @@ export const formatDuration = (ms: number): string => {
   if (m > 0) return `${m}m ${s % 60}s`;
   return `${s}s`;
 };
+
+// ── Sprint 07: Session naming utilities (S07-13) ─────────────────────────
+
+/**
+ * Extracts the project name from a filesystem path.
+ * Normalises backslashes to forward slashes, returns the last segment.
+ * @param path  Filesystem path (e.g., "C:\\Projects\\vigil" or "/home/user/vigil")
+ * @returns     Last segment of the path, or "session" as fallback
+ */
+export function extractProjectName(path: string): string {
+  const segments = path.replace(/\\/g, '/').split('/').filter(Boolean);
+  return segments[segments.length - 1] || 'session';
+}
+
+/**
+ * Generates a human-readable session name from a project path and daily sequence.
+ * Format: `{projectName}-session-{YYYY-MM-DD}-{NNN}`
+ * @param projectPath  Filesystem path to the project
+ * @param sequence     Daily session sequence number (1-based)
+ * @param date         Optional date override (defaults to new Date())
+ */
+export function generateSessionName(projectPath: string, sequence: number, date: Date = new Date()): string {
+  const projectName = extractProjectName(projectPath);
+  const today = date.toISOString().slice(0, 10);
+  return `${projectName}-session-${today}-${String(sequence).padStart(3, '0')}`;
+}

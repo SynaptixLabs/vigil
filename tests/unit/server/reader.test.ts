@@ -16,13 +16,14 @@ vi.mock('../../../packages/server/src/config.js', () => ({
     agentsApiUrl: 'http://localhost:8000',
   }),
   getProjectRoot: () => TEST_ROOT,
+  getVigilDataDir: () => resolve(TEST_ROOT, '.vigil'),
   getSprintDir: (sprint?: string) => {
     const s = sprint ?? '06';
     return resolve(TEST_ROOT, 'docs', 'sprints', `sprint_${s}`);
   },
 }));
 
-const { listBugs, getBug, listFeatures, getFeature } = await import(
+const { listBugs, getBug, listFeatures, getFeature, listSessions, getSession } = await import(
   '../../../packages/server/src/filesystem/reader.js'
 );
 
@@ -160,6 +161,108 @@ describe('reader', () => {
     it('returns null for nonexistent feature', async () => {
       const feat = await getFeature('FEAT-999', '06');
       expect(feat).toBeNull();
+    });
+  });
+
+  describe('listSessions', () => {
+    const SESSION_A = {
+      id: 'sess-a',
+      name: 'session-a',
+      projectId: 'vigil',
+      sprint: '06',
+      startedAt: 1000,
+      clock: 500,
+      recordings: [],
+      snapshots: [],
+      bugs: [],
+      features: [],
+    };
+
+    const SESSION_B = {
+      id: 'sess-b',
+      name: 'session-b',
+      projectId: 'other-project',
+      sprint: '07',
+      startedAt: 2000,
+      clock: 300,
+      recordings: [],
+      snapshots: [],
+      bugs: [],
+      features: [],
+    };
+
+    beforeEach(async () => {
+      const sessionsDir = resolve(TEST_ROOT, '.vigil', 'sessions');
+      await mkdir(sessionsDir, { recursive: true });
+      await writeFile(resolve(sessionsDir, 'sess-a.json'), JSON.stringify(SESSION_A), 'utf8');
+      await writeFile(resolve(sessionsDir, 'sess-b.json'), JSON.stringify(SESSION_B), 'utf8');
+    });
+
+    it('returns all sessions when no filters', async () => {
+      const sessions = await listSessions();
+      expect(sessions).toHaveLength(2);
+    });
+
+    it('filters by project', async () => {
+      const sessions = await listSessions('vigil');
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].id).toBe('sess-a');
+    });
+
+    it('filters by sprint', async () => {
+      const sessions = await listSessions(undefined, '07');
+      expect(sessions).toHaveLength(1);
+      expect(sessions[0].id).toBe('sess-b');
+    });
+
+    it('filters by both project and sprint', async () => {
+      const sessions = await listSessions('vigil', '07');
+      expect(sessions).toHaveLength(0);
+    });
+
+    it('sorts by startedAt descending', async () => {
+      const sessions = await listSessions();
+      expect(sessions[0].id).toBe('sess-b');
+      expect(sessions[1].id).toBe('sess-a');
+    });
+
+    it('returns empty array when sessions dir does not exist', async () => {
+      await rm(resolve(TEST_ROOT, '.vigil'), { recursive: true, force: true });
+      const sessions = await listSessions();
+      expect(sessions).toHaveLength(0);
+    });
+  });
+
+  describe('getSession', () => {
+    const SESSION = {
+      id: 'sess-get',
+      name: 'get-test',
+      projectId: 'vigil',
+      startedAt: 1000,
+      clock: 100,
+      recordings: [],
+      snapshots: [],
+      bugs: [],
+      features: [],
+    };
+
+    beforeEach(async () => {
+      const sessionsDir = resolve(TEST_ROOT, '.vigil', 'sessions');
+      await mkdir(sessionsDir, { recursive: true });
+      await writeFile(resolve(sessionsDir, 'sess-get.json'), JSON.stringify(SESSION), 'utf8');
+    });
+
+    it('returns session by ID', async () => {
+      const session = await getSession('sess-get');
+      expect(session).not.toBeNull();
+      expect(session!.id).toBe('sess-get');
+      expect(session!.name).toBe('get-test');
+      expect(session!.projectId).toBe('vigil');
+    });
+
+    it('returns null for nonexistent session', async () => {
+      const session = await getSession('nonexistent');
+      expect(session).toBeNull();
     });
   });
 });

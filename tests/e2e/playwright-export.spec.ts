@@ -101,17 +101,16 @@ test('Exported .spec.ts is syntactically valid TypeScript', async ({ context, ex
 
   const path = await download.path();
   if (path) {
-    // Write to a temp location and run tsc on it
-    const { readFileSync, writeFileSync } = await import('fs');
+    // Write to project directory so tsc can resolve @playwright/test from node_modules
+    const { readFileSync, writeFileSync, unlinkSync } = await import('fs');
     const { execSync } = await import('child_process');
-    const { tmpdir } = await import('os');
     const { join } = await import('path');
 
     const content = readFileSync(path, 'utf-8');
-    const tmpPath = join(tmpdir(), 'exported-spec.ts');
+    const tmpPath = join(process.cwd(), 'test-results', 'exported-spec.ts');
     writeFileSync(tmpPath, content, 'utf-8');
 
-    // tsc --noEmit --strict false --target ES2020 --module commonjs
+    // tsc --noEmit — verify the generated spec compiles
     // Wrap in try/catch — report content if it fails
     let tscError = '';
     try {
@@ -122,6 +121,8 @@ test('Exported .spec.ts is syntactically valid TypeScript', async ({ context, ex
       });
     } catch (e: unknown) {
       tscError = e instanceof Error ? e.message : String(e);
+    } finally {
+      try { unlinkSync(tmpPath); } catch { /* ignore cleanup errors */ }
     }
 
     expect(tscError, `TypeScript compile error in exported spec:\n${tscError}`).toBe('');

@@ -3,6 +3,7 @@ import cors from 'cors';
 import { resolve } from 'node:path';
 import { loadConfig } from './config.js';
 import { sessionRouter } from './routes/session.js';
+import { sessionsRouter } from './routes/sessions.js';
 import { bugsRouter } from './routes/bugs.js';
 import { featuresRouter } from './routes/features.js';
 import { sprintsRouter } from './routes/sprints.js';
@@ -38,6 +39,7 @@ app.get('/health', (_req, res) => {
 
 // API routes
 app.use('/api/session', sessionRouter);
+app.use('/api/sessions', sessionsRouter);
 app.use('/api/bugs', bugsRouter);
 app.use('/api/features', featuresRouter);
 app.use('/api/sprints', sprintsRouter);

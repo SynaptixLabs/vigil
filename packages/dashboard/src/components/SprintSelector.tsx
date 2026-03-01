@@ -2,9 +2,11 @@ interface SprintSelectorProps {
   sprints: string[];
   selected: string;
   onChange: (sprint: string) => void;
+  /** When true, adds an "All sprints" option with value "" */
+  showAll?: boolean;
 }
 
-export function SprintSelector({ sprints, selected, onChange }: SprintSelectorProps) {
+export function SprintSelector({ sprints, selected, onChange, showAll }: SprintSelectorProps) {
   return (
     <select
       data-testid="sprint-selector"
@@ -13,6 +15,7 @@ export function SprintSelector({ sprints, selected, onChange }: SprintSelectorPr
       onChange={(e) => onChange(e.target.value)}
     >
       {sprints.length === 0 && <option value="">No sprints</option>}
+      {showAll && sprints.length > 0 && <option value="">All sprints</option>}
       {sprints.map((s) => (
         <option key={s} value={s}>
           Sprint {s}
