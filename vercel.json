@@ -3,7 +3,8 @@
   "version": 2,
   "framework": null,
   "installCommand": "npm install && cd packages/shared && npm install && cd ../server && npm install --include=dev",
-  "buildCommand": "cd packages/shared && npx -p typescript tsc && cd ../server && npx -p typescript tsc",
+  "buildCommand": "cd packages/shared && npx -p typescript tsc && cd ../server && npx -p typescript tsc && mkdir -p ../../.vercel_static",
+  "outputDirectory": ".vercel_static",
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]
