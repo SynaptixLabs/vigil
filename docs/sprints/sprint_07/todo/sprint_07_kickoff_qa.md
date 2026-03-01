@@ -440,6 +440,15 @@ For every gate run:
 
 ---
 
+## Team References (D027)
+
+| Role | Scope | You depend on them for |
+|---|---|---|
+| `[DEV:app]` | Extension + Server + Dashboard + Infra | S07-16b (session read API), S07-17a/b (dashboard), S07-15 (Neon), S07-14 (Vercel) |
+| `[DEV:ai]` | AGENTS + LLM + Agent | S07-01 (AGENTS endpoint), S07-04 (live mode), S07-06 (auto-complete), S07-08 (agent) |
+
+---
+
 **Await your TODO assignment from CPTO before executing anything.**
 
-*Generated: 2026-02-26 | Updated: 2026-02-27 (RESTRUCTURED: Phase 1 UX-first per D021. Q712-Q717 promoted to Phase 1. Q714 split into Q714a/Q714b per D022. Q717 added for carry-forward bugs per D023. Phase 4 added for cloud infra. Q718-Q721 added.) | Sprint 07 | Owner: CPTO*
+*Generated: 2026-02-26 | Updated: 2026-03-01 (Team restructured to 3 roles per D027: `[DEV:app]`, `[DEV:ai]`, `[QA]`. Phase 1 UX-first per D021. Q712-Q717 Phase 1. Q714 split per D022. Q717-Q721 for carry-forward + cloud.) | Sprint 07 | Owner: CPTO*

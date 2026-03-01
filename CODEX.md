@@ -13,7 +13,7 @@
 | **Name** | SynaptixLabs Vigil |
 | **Purpose** | Chrome Extension captures bugs/sessions → vigil-server writes to filesystem → Claude Code resolves via MCP |
 | **Repo path** | `C:\Synaptix-Labs\projects\vigil` |
-| **GitHub** | `https://github.com/avirabino/vigil` |
+| **GitHub** | `https://github.com/SynaptixLabs/vigil` |
 | **Stack** | Chrome Ext (MV3) · React 18 · Vite · CRXJS · rrweb · Dexie.js · Node.js + Express (server) · MCP SDK · React (dashboard) |
 | **LLM platform** | AGENTS project (`localhost:8000`) — Sprint 07+ |
 | **Deploy** | Unpacked extension + vigil-server (local) + Vercel + Neon PostgreSQL (cloud, Sprint 07) |

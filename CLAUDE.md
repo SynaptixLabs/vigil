@@ -14,9 +14,9 @@
 | **Name** | SynaptixLabs Vigil |
 | **Purpose** | Bug Discovery & Resolution Platform — Chrome Extension capture → vigil-server → Claude Code resolution loop |
 | **Repo path** | `C:\Synaptix-Labs\projects\vigil` |
-| **GitHub** | `https://github.com/avirabino/vigil` |
-| **Current sprint** | sprint_06 |
-| **Sprint index** | `docs/sprints/sprint_06/sprint_06_index.md` |
+| **GitHub** | `https://github.com/SynaptixLabs/vigil` |
+| **Current sprint** | sprint_07 |
+| **Sprint index** | `docs/sprints/sprint_07/sprint_07_index.md` |
 
 ---
 

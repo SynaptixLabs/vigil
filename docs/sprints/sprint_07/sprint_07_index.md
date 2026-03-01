@@ -34,17 +34,17 @@ vigil-ext  →  vigil-server (:7474)
 
 | ID | Track | Deliverable | Priority | Cost | Owner | Phase | Week |
 |---|---|---|---|---|---|---|---|
-| S07-16 | EXT | Project-oriented session model: required project field, auto-sprint, persistent history | 🔴 P0 | ~5V | `[DEV:ext]` | 1 | W1-W2 |
-| S07-19 | EXT | Manifest shortcut fix: `Ctrl+Shift+B` → `Alt+Shift+B` default (BUG-FAT-010) | 🟠 P1 | ~0.5V | `[DEV:ext]` | 1 | W1-D1 |
-| S07-12 | EXT | VIGILSession persistence via `chrome.storage.local` (service worker restart-safe) | 🟠 P1 | ~1.5V | `[DEV:ext]` | 1 | W1 |
-| S07-11 | SERVER | Shared types package (`packages/shared/`) — single source for ext + server + AGENTS types | 🟠 P1 | ~2V | `[DEV:server]` | 1 | W1 |
-| S07-16b | SERVER | Session read API: `GET /api/sessions` (list + detail) for dashboard integration | 🟠 P1 | ~1.5V | `[DEV:server]` | 1 | W1-W2 |
-| S07-18 | EXT | Ghost session recovery: end orphaned sessions from side panel | 🟠 P1 | ~1V | `[DEV:ext]` | 1 | W1 |
-| S07-17a | DASHBOARD | Dashboard overhaul Phase A: project/sprint/session nav, filters, screenshot display | 🟠 P1 | ~3V | `[DEV:dashboard]` | 1 | W2 |
-| S07-17b | DASHBOARD | Dashboard overhaul Phase B: session timeline + recording replay | 🟠 P1 | ~3V | `[DEV:dashboard]` | 1 | W2 |
-| S07-13 | DASHBOARD | Dashboard component tests (for NEW S07-17 components) | 🟠 P1 | ~1V | `[DEV:dashboard]` | 1 | W2 |
-| S07-20 | EXT | BUG-EXT-001 fix: Playwright codegen generates invalid TypeScript (S06 carry-forward) | 🟡 P2 | ~1V | `[DEV:ext]` | 1 | W1 |
-| S07-21 | EXT | BUG-EXT-002: btn-publish testid implementation (S06 carry-forward) | 🟡 P2 | ~1V | `[DEV:ext]` | 1 | W1 |
+| S07-16 | EXT | Project-oriented session model: required project field, auto-sprint, persistent history | 🔴 P0 | ~5V | `[DEV:app]` | 1 | W1-W2 |
+| S07-19 | EXT | Manifest shortcut fix: `Ctrl+Shift+B` → `Alt+Shift+B` default (BUG-FAT-010) | 🟠 P1 | ~0.5V | `[DEV:app]` | 1 | W1-D1 |
+| S07-12 | EXT | VIGILSession persistence via `chrome.storage.local` (service worker restart-safe) | 🟠 P1 | ~1.5V | `[DEV:app]` | 1 | W1 |
+| S07-11 | SERVER | Shared types package (`packages/shared/`) — single source for ext + server + AGENTS types | 🟠 P1 | ~2V | `[DEV:app]` | 1 | W1 |
+| S07-16b | SERVER | Session read API: `GET /api/sessions` (list + detail) for dashboard integration | 🟠 P1 | ~1.5V | `[DEV:app]` | 1 | W1-W2 |
+| S07-18 | EXT | Ghost session recovery: end orphaned sessions from side panel | 🟠 P1 | ~1V | `[DEV:app]` | 1 | W1 |
+| S07-17a | DASHBOARD | Dashboard overhaul Phase A: project/sprint/session nav, filters, screenshot display | 🟠 P1 | ~3V | `[DEV:app]` | 1 | W2 |
+| S07-17b | DASHBOARD | Dashboard overhaul Phase B: session timeline + recording replay | 🟠 P1 | ~3V | `[DEV:app]` | 1 | W2 |
+| S07-13 | DASHBOARD | Dashboard component tests (for NEW S07-17 components) | 🟠 P1 | ~1V | `[DEV:app]` | 1 | W2 |
+| S07-20 | EXT | BUG-EXT-001 fix: Playwright codegen generates invalid TypeScript (S06 carry-forward) | 🟡 P2 | ~1V | `[DEV:app]` | 1 | W1 |
+| S07-21 | EXT | BUG-EXT-002: btn-publish testid implementation (S06 carry-forward) | 🟡 P2 | ~1V | `[DEV:app]` | 1 | W1 |
 
 **Phase 1 total: ~21.5V** | **Gate: FAT Round 3 — Founder sign-off required before Phase 2**
 
@@ -55,21 +55,21 @@ vigil-ext  →  vigil-server (:7474)
 
 | ID | Track | Deliverable | Priority | Cost | Owner | Phase | Week |
 |---|---|---|---|---|---|---|---|
-| S07-01 | AGENTS | Add `/api/v1/vigil/suggest` endpoint to AGENTS project | 🟠 P1 | ~4V | `[DEV:agents]` | 2 | W2 |
-| S07-02 | AGENTS | `llm_core` prompt templates for bug auto-complete + similarity | 🟠 P1 | ~3V | `[DEV:agents]` | 2 | W3 |
-| S07-03 | AGENTS | `resource_manager` Vigil usage tracking (project_id=vigil) | 🟡 P2 | ~2V | `[DEV:agents]` | 2 | W3 |
-| S07-04 | SERVER | Flip `VIGIL_LLM_MODE=live`, wire vigil-server → AGENTS API | 🟠 P1 | ~2V | `[DEV:server]` | 2 | W3 |
-| S07-05 | SERVER | Returning bug detection: semantic similarity on new bug receipt | 🟠 P1 | ~3V | `[DEV:server]` | 2 | W3 |
-| S07-06 | EXT | Bug auto-complete in editor (title + steps pre-fill from LLM) | 🟠 P1 | ~3V | `[DEV:ext]` | 2 | W3 |
-| S07-07 | SERVER | Severity auto-suggest (confidence score shown, user overrides) | 🟡 P2 | ~2V | `[DEV:server]` + `[DEV:ext]` | 2 | W3 |
-| S07-08a | AGENT | `vigil_agent` scaffold: `/project:vigil-agent` command + config (max time, cost, dry-run) | 🟠 P1 | ~1V | `[CTO]` | 2 | W1-W2 |
-| S07-08b | AGENT | Bug analysis + classification (reproducible / needs-info / code-defect / UX-issue) | 🟠 P1 | ~1.5V | `[CTO]` + `[DEV:ext]` | 2 | W3 |
-| S07-08c | AGENT | Regression test generation + red confirmation | 🟠 P1 | ~1.5V | `[CTO]` + `[QA]` | 2 | W3 |
-| S07-08d | AGENT | Fix implementation + green confirmation + git commit to branch | 🟠 P1 | ~1V | `[CTO]` | 2 | W3 |
-| S07-09 | AGENT | Sprint health report (LLM-generated summary of open bugs + risk) | 🟡 P2 | ~2V | `[CTO]` + `[DEV:server]` | 2 | W3 |
+| S07-01 | AGENTS | Add `/api/v1/vigil/suggest` endpoint to AGENTS project | 🟠 P1 | ~4V | `[DEV:ai]` | 2 | W2 |
+| S07-02 | AGENTS | `llm_core` prompt templates for bug auto-complete + similarity | 🟠 P1 | ~3V | `[DEV:ai]` | 2 | W3 |
+| S07-03 | AGENTS | `resource_manager` Vigil usage tracking (project_id=vigil) | 🟡 P2 | ~2V | `[DEV:ai]` | 2 | W3 |
+| S07-04 | SERVER | Flip `VIGIL_LLM_MODE=live`, wire vigil-server → AGENTS API | 🟠 P1 | ~2V | `[DEV:ai]` | 2 | W3 |
+| S07-05 | SERVER | Returning bug detection: semantic similarity on new bug receipt | 🟠 P1 | ~3V | `[DEV:app]` | 2 | W3 |
+| S07-06 | EXT | Bug auto-complete in editor (title + steps pre-fill from LLM) | 🟠 P1 | ~3V | `[DEV:ai]` | 2 | W3 |
+| S07-07 | SERVER | Severity auto-suggest (confidence score shown, user overrides) | 🟡 P2 | ~2V | `[DEV:app]` | 2 | W3 |
+| S07-08a | AGENT | `vigil_agent` scaffold: `/project:vigil-agent` command + config (max time, cost, dry-run) | 🟠 P1 | ~1V | `[DEV:ai]` | 1 | W1 |
+| S07-08b | AGENT | Bug analysis + classification (reproducible / needs-info / code-defect / UX-issue) | 🟠 P1 | ~1.5V | `[DEV:ai]` | 2 | W3 |
+| S07-08c | AGENT | Regression test generation + red confirmation | 🟠 P1 | ~1.5V | `[DEV:ai]` | 2 | W3 |
+| S07-08d | AGENT | Fix implementation + green confirmation + git commit to branch | 🟠 P1 | ~1V | `[DEV:ai]` | 2 | W3 |
+| S07-09 | AGENT | Sprint health report (LLM-generated summary of open bugs + risk) | 🟡 P2 | ~2V | `[DEV:ai]` | 2 | W3 |
 | S07-10 | QA | Integration tests: ext → server → AGENTS round-trip | 🟡 P2 | ~2V | `[QA]` | 2 | W3 |
-| S07-14 | INFRA | Vercel deployment: vigil-server (serverless) + dashboard (static) | 🟡 P2 | ~2V | `[INFRA]` + `[DEV:server]` | 2 | W3 |
-| S07-15 | SERVER | Neon PostgreSQL: migrate bug/feature storage from filesystem to managed Postgres | 🟠 P1 | ~4V | `[DEV:server]` | 2 | W2 |
+| S07-14 | INFRA | Vercel deployment: vigil-server (serverless) + dashboard (static) | 🟡 P2 | ~2V | `[DEV:app]` | 2 | W3 |
+| S07-15 | SERVER | Neon PostgreSQL: migrate bug/feature storage from filesystem to managed Postgres | 🟠 P1 | ~4V | `[DEV:app]` | 2 | W2 |
 | S07-22 | QA | HTTP route integration tests (S06 Track B review B03 carry-forward) | 🟡 P2 | ~1.5V | `[QA]` | 2 | W3 |
 
 **Phase 2 total: ~35V (core P1: ~25V, stretch P2: ~10V)**
@@ -323,22 +323,22 @@ Supersedes Sprint 08 U02 (markdown-as-DB fragility) — going straight to proper
 ## Track Structure
 
 ```
-Track A — AGENTS Integration (S07-01 to S07-03)     [cross-project, FLAG]
+Track A — AGENTS Integration (S07-01 to S07-03)     [DEV:ai]
   └── Blocked on: AGENTS project availability (parallel AGENTS Sprint 06)
 
-Track B — Server Live Mode (S07-04, S07-05, S07-07)  [DEV:server]
+Track B — Server Live Mode (S07-04, S07-05, S07-07)  [DEV:ai] (S07-04) + [DEV:app] (S07-05, S07-07)
   └── Blocked on: Track A (AGENTS endpoint must exist)
 
-Track C — Extension LLM Features (S07-06)             [DEV:ext]
+Track C — Extension LLM Features (S07-06)             [DEV:ai]
   └── Blocked on: Track B (server must forward to AGENTS)
 
-Track D — Autonomous Agent (S07-08a-d, S07-09)       [DEV:*]
-  └── Blocked on: Track B (MCP tools + live LLM)
+Track D — Autonomous Agent (S07-08a-d, S07-09)       [DEV:ai]
+  └── S07-08a (scaffold) starts Phase 1. S07-08b-d blocked on Track B (live LLM)
 
-Track E — Carry-Forward (S07-11, S07-12, S07-13)     [DEV:server/ext/dashboard]
+Track E — Carry-Forward (S07-11, S07-16b, S07-13)    [DEV:app]
   └── No dependencies — can start immediately in parallel
 
-Track F — Cloud Infra (S07-15, S07-14)               [DEV:server]
+Track F — Cloud Infra (S07-15, S07-14)               [DEV:app]
   └── S07-15 (Neon) first, then S07-14 (Vercel) — serverless needs DB
   └── No AGENTS dependency — can start after Sprint 06 server is stable
 
@@ -380,4 +380,4 @@ QA — Integration Tests (S07-10)
 
 ---
 
-*Sprint 07 planned: 2026-02-26 | Updated: 2026-02-27 (priority/owner/schedule assigned — see `sprint_07_plan.md`) | Depends on Sprint 06 | Owner: CPTO*
+*Sprint 07 planned: 2026-02-26 | Updated: 2026-03-01 (D027: team restructured to 3 roles — `[DEV:app]`, `[DEV:ai]`, `[QA]`. Owner columns updated.) | Depends on Sprint 06 | Owner: CPTO*

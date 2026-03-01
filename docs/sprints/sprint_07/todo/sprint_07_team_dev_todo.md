@@ -1,134 +1,104 @@
-# Sprint 07 — DEV Team Deliverable Checklist
+# Sprint 07 — Team Deliverable Checklist
 
-**Sprint goal:** Wire AGENTS LLM backend, ship vigil_agent autonomous loop, deploy to Vercel + Neon, project-oriented sessions + dashboard overhaul
+**Sprint goal:** Project-oriented sessions + dashboard overhaul → FAT Round 3 gate → AGENTS LLM backend, vigil_agent, Vercel + Neon
 **Budget:** ~51V (core P0+P1: ~36V) | **Ports:** 7474 (vigil-server), 8000 (AGENTS) | **LLM:** live (Groq llama-3.3-70b-versatile)
 
----
-
-## Track A — AGENTS Integration `[cross-project, FLAG]` (CRITICAL PATH)
-
-> ⚠️ Executes in `nightingale` repo under AGENTS Sprint 06 (D014). Vigil Track B is blocked until this ships.
-
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-01 | AGENTS `/api/v1/vigil/suggest` endpoint | ~4V | `backend/app/api/routes/vigil.py` — Groq `llama-3.3-70b-versatile`, X-Vigil-Key auth |
-| [ ] | S07-02 | Prompt templates for bug suggest + similarity | ~3V | `backend/modules/llm_core/prompts/vigil/` — 4 Jinja2 templates |
-| [ ] | S07-03 | resource_manager Vigil tracking | ~2V | Tag all calls with `project_id="vigil"`, `feature="suggest"` |
-
-**Track A total: ~9V**
+**Team (D027):** `[DEV:app]` (platform) + `[DEV:ai]` (intelligence) + `[QA]`
 
 ---
 
-## Track B — Server Live Mode `[DEV:server]`
+## Completed (Phase 1 — Extension + Carry-Forward)
 
-> Blocked on Track A — AGENTS endpoint must be deployed first.
-
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-04 | Flip `VIGIL_LLM_MODE=live`, wire → AGENTS API | ~2V | `packages/server/src/llm-client.ts` — fetch + timeout + fallback |
-| [ ] | S07-05 | Returning bug detection (semantic similarity) | ~3V | On new bug → load fixed bugs → call AGENTS similarity → auto-escalate if >0.8 |
-| [ ] | S07-07 | Severity auto-suggest (confidence score) | ~2V | Confidence indicator next to dropdown in bug editor |
-
-**Track B total: ~7V**
-
----
-
-## Track C — Extension LLM Features `[DEV:ext]`
-
-> Blocked on Track B — server must forward to AGENTS.
-
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-06 | Bug auto-complete in editor (title + steps pre-fill) | ~3V | `BugEditor.tsx` — sends to /api/suggest, pre-fills fields, overridable |
-
-**Track C total: ~3V**
+| Status | ID | Deliverable | Cost | Owner | Done |
+|---|---|---|---|---|---|
+| [x] | S07-12 | VIGILSession persistence (chrome.storage.local) | ~0V | `[DEV:app]` | 2026-02-28 |
+| [x] | S07-16 | Project-oriented session model | ~5V | `[DEV:app]` | 2026-02-28 |
+| [x] | S07-18 | Ghost session recovery | ~1V | `[DEV:app]` | 2026-02-28 |
+| [x] | S07-19 | Manifest shortcut fix (Ctrl+Shift+B → Alt+Shift+B) | ~0.5V | `[DEV:app]` | 2026-02-28 |
+| [x] | S07-20 | BUG-EXT-001 codegen fix | ~1V | `[DEV:app]` | 2026-02-28 |
+| [x] | S07-21 | BUG-EXT-002 btn-publish testid | ~1V | `[DEV:app]` | 2026-02-28 |
+| [x] | — | E2E regression fix (25→0 failures, D026) | — | `[DEV:app]` | 2026-03-01 |
 
 ---
 
-## Track D — Autonomous Agent `[DEV:*]`
+## `[DEV:app]` — Application Developer
 
-> Blocked on Track B — needs live MCP tools + live LLM. Sub-tasks have sequential safety gates (D013).
+> Scope: Extension + Server + Dashboard + Infrastructure. All **Vigil repo** code.
 
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-08a | Agent scaffold: command + config (dry-run, max time/cost) | ~1V | `.claude/commands/vigil-agent.md` + config in `vigil.config.json` |
-| [ ] | S07-08b | Bug classification (reproducible / needs-info / code-defect / UX-issue) | ~1.5V | Classification only — zero code changes |
-| [ ] | S07-08c | Regression test generation + RED confirmation | ~1.5V | Stops after RED — does NOT attempt fix |
-| [ ] | S07-08d | Fix implementation + GREEN confirmation + branch commit | ~1V | Branch-only: `vigil/fixes/sprint-XX`. Avi merges. |
-| [ ] | S07-09 | Sprint health report (LLM-generated summary) | ~2V | Open bugs, returning bugs, regression tests, closure recommendation |
+### ⚡ Phase 1 — Remaining (must pass FAT Round 3)
 
-**Track D total: ~7V**
+| Status | Order | ID | Deliverable | Cost | Notes |
+|---|---|---|---|---|---|
+| [x] | 1 | S07-11 | Shared types package (`packages/shared/`) | ~2V | Done (prior session). Zod schemas + `z.infer<>`. |
+| [x] | 2 | S07-16b | Session read API (`GET /api/sessions`, `GET /api/sessions/:id`) | ~1.5V | Done 2026-03-01. 8 new tests. D025. |
+| [ ] | 3 | S07-17a | Dashboard overhaul Phase A: nav, filters, screenshots | ~3V | Blocked by S07-16b. |
+| [ ] | 4 | S07-17b | Dashboard overhaul Phase B: timeline + replay | ~3V | Blocked by S07-17a. |
+| [ ] | 5 | S07-13 | Dashboard vitest config + component tests | ~1V | After S07-17a ships. |
 
----
+**Phase 1 remaining: ~10.5V**
 
-## Track E — Carry-Forward `[DEV:server/ext/dashboard]`
+### 🔧 Phase 2 — After FAT Round 3
 
-> No dependencies on AGENTS. Can start immediately in parallel.
+| Status | Order | ID | Deliverable | Cost | Notes |
+|---|---|---|---|---|---|
+| [ ] | 6 | S07-15 | Neon PostgreSQL migration | ~4V | Can start parallel Week 2. No AGENTS dep. |
+| [ ] | 7 | S07-14 | Vercel deployment | ~2V | After S07-15. |
+| [ ] | 8 | S07-05 | Returning bug detection (server-side) | ~3V | After `[DEV:ai]` ships S07-04. |
+| [ ] | 9 | S07-07 | Severity auto-suggest (confidence UI) | ~2V | Stretch. After S07-04. |
 
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-11 | Shared types package (`packages/shared/`) | ~2V | Zod schemas + `z.infer<>` types, ext + server import from one source |
-| [ ] | S07-16b | Session read API endpoints (`GET /api/sessions`, `GET /api/sessions/:id`) | ~1.5V | `[DEV:server]` — **BLOCKS S07-17a/17b dashboard integration.** D025. Must ship by D2. |
-| [x] | S07-12 | VIGILSession persistence (chrome.storage.local) | ~0V | ✅ Already implemented in S06. Verified: `persistState()`, `restoreVigilState()`, `clearPersistedState()` all functional. |
-| [ ] | S07-13 | Dashboard vitest config + component tests | ~1V | BugList, FeatureList, SprintSelector, HealthIndicator |
-
-**Track E total: ~4.5V**
+**Phase 2: ~11V | `[DEV:app]` grand total: ~21.5V**
 
 ---
 
-## Track F — Cloud Infrastructure `[DEV:server]`
+## `[DEV:ai]` — AI/Agent Developer
 
-> No AGENTS dependency. S07-15 (Neon) first, then S07-14 (Vercel). Can start once Sprint 06 server is stable.
+> Scope: AGENTS integration + LLM features + Autonomous Agent. Cross-repo (**nightingale** + **vigil**).
 
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-15 | Neon PostgreSQL: migrate filesystem storage to managed Postgres | ~4V | `packages/server/src/db/` — schema, driver, migration, seed script. Resolves S06 U01 (race condition) + U02 (markdown fragility) |
-| [ ] | S07-14 | Vercel deployment: vigil-server (serverless) + dashboard (static) | ~2V | `vercel.json` + Express → serverless adaptation. Needs S07-15 first. |
+### ⚡ Phase 1 — Scaffold (no AGENTS dependency)
 
-**Track F total: ~6V**
+| Status | Order | ID | Deliverable | Cost | Notes |
+|---|---|---|---|---|---|
+| [ ] | 1 | S07-08a | `vigil_agent` scaffold: command + config (dry-run) | ~1V | No deps. Start immediately. |
 
----
+### 🔧 Phase 2 — AGENTS Chain
 
-## ⚡ Track G — PHASE 1: Founder UX Priority `[DEV:ext/dashboard]`
+| Status | Order | ID | Deliverable | Cost | Notes |
+|---|---|---|---|---|---|
+| [ ] | 2 | S07-01 | AGENTS `/api/v1/vigil/suggest` endpoint | ~4V | **nightingale** repo. Critical path. |
+| [ ] | 3 | S07-02 | Prompt templates (4 Jinja2 files) | ~3V | nightingale repo. After S07-01. |
+| [ ] | 4 | S07-03 | resource_manager Vigil tracking | ~2V | Stretch — defer to S08 if tight. |
+| [ ] | 5 | S07-04 | Flip `VIGIL_LLM_MODE=live`, wire → AGENTS | ~2V | vigil-server. After S07-01. |
+| [ ] | 6 | S07-06 | Bug auto-complete in extension (LLM UI) | ~3V | `BugEditor.tsx`. After S07-04. |
+| [ ] | 7 | S07-08b | Bug classification (via AGENTS) | ~1.5V | After S07-04. Sequential gate. |
+| [ ] | 8 | S07-08c | Regression test gen + RED confirmation | ~1.5V | After S07-08b. Sequential gate. |
+| [ ] | 9 | S07-08d | Fix implementation + GREEN + branch commit | ~1V | After S07-08c. Sequential gate. |
+| [ ] | 10 | S07-09 | Sprint health report (LLM-generated) | ~2V | Stretch. After S07-04. |
 
-> **RESTRUCTURED per D021:** Phase 1 items ship FIRST. FAT Round 3 gate before Phase 2.
-> Full requirements: `todo/sprint_07_product_vision.md`
-
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [x] | S07-16 | Project-oriented session model: required project field, auto-sprint, persistent history | ~5V | ✅ `[DEV:ext]` — Done 2026-02-28. Form rewrite, data model, server endpoint, E2E helpers updated. Design review passed. |
-| [x] | S07-19 | Manifest shortcut fix: `Ctrl+Shift+B` → `Alt+Shift+B` default | ~0.5V | ✅ `[DEV:ext]` — Done 2026-02-28. `manifest.json:60` updated. |
-| [x] | S07-18 | Ghost session recovery: "End stale session" button in side panel | ~1V | ✅ `[DEV:ext]` — Done 2026-02-28. Banner in `SessionList.tsx` with `ghost-session-banner` / `ghost-session-end-btn` testids. |
-| [ ] | S07-17a | Dashboard overhaul Phase A: project/sprint/session nav, filters, screenshots | ~3V | 🟠 **P1** — `[DEV:dashboard]` — Blocked by S07-16 (data model). W2. |
-| [ ] | S07-17b | Dashboard overhaul Phase B: session timeline + recording replay | ~3V | 🟠 **P1** — `[DEV:dashboard]` — Blocked by S07-17a. W2. |
-
-**Track G total: ~12.5V**
+**`[DEV:ai]` grand total: ~21V**
 
 ---
 
-## Track H — Carry-Forward Bugs `[DEV:ext]`
+## `[QA]` — Quality Assurance
 
-> Sprint 06 deferred bugs + design review items that must be tracked in S07.
-> Added per D023. Phase 1 items.
+| Status | Order | ID | Deliverable | Phase | Notes |
+|---|---|---|---|---|---|
+| [ ] | 1 | — | Regression gate: 201 vitest + 38 E2E | Pre | Before any new testing |
+| [ ] | 2 | Q712 | New Session form: project required, sprint auto-detect | 1 | Verify S07-16 |
+| [ ] | 3 | Q713 | Session name auto-gen + history persistence | 1 | chrome.storage.local |
+| [ ] | 4 | Q714a | Dashboard Phase A: nav, filters, screenshots | 1 | After S07-17a |
+| [ ] | 5 | Q714b | Dashboard Phase B: timeline + replay | 1 | After S07-17b |
+| [ ] | 6 | Q715 | Ghost session recovery flow | 1 | Verify S07-18 |
+| [ ] | 7 | Q716 | Service worker restart persistence | 1 | Kill worker → verify |
+| [ ] | 8 | Q717 | Carry-forward bug regression (S07-20, S07-21) | 1 | Already green |
+| — | — | **FAT** | **FAT Round 3 (13 steps) — Founder sign-off** | **Gate** | |
+| [ ] | 9 | S07-10 | Integration tests: ext → server → AGENTS | 2 | ~2V. After S07-04. |
+| [ ] | 10 | S07-22 | HTTP route integration tests | 2 | ~1.5V. After S07-15. |
+| [ ] | 11 | Q718 | LLM graceful degradation (AGENTS offline) | 2 | D006 compliance |
+| [ ] | 12 | Q719 | `vigil_agent` safety gates (dry-run, branch-only) | 2 | After S07-08d |
+| [ ] | 13 | Q720 | Neon PostgreSQL CRUD verification | 2 | After S07-15 |
+| [ ] | 14 | Q721 | Vercel health check (cloud URL) | 2 | After S07-14 |
 
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [x] | S07-20 | BUG-EXT-001 fix: Playwright codegen generates invalid TypeScript | ~1V | ✅ `[DEV:ext]` — Done 2026-02-28. String-based `toHaveURL`, removed `escapeRegex`. Regression test + E2E unskipped. |
-| [x] | S07-21 | BUG-EXT-002: btn-publish testid implementation (or test removal) | ~1V | ✅ `[DEV:ext]` — Done 2026-02-28. `btn-publish` in `SessionDetail.tsx` (conditional on `outputPath`). E2E unskipped. |
-| [ ] | S07-22 | HTTP route integration tests (S06 Track B review B03 carry-forward) | ~1.5V | 🟡 P2 — `[QA]` — Phase 2. Write after S07-15 (Neon) changes data layer. W3. |
-
-**Track H total: ~3.5V**
-
----
-
-## QA `[QA]`
-
-| Status | ID | Deliverable | Cost | Notes |
-|---|---|---|---|---|
-| [ ] | S07-10 | Integration tests: ext → server → AGENTS round-trip | ~2V | Phase 2 — after Track B + Track C ship |
-| [ ] | S07-22 | HTTP route integration tests (S06 B03 carry-forward) | ~1.5V | Phase 2 — after S07-15 (Neon) |
-
-**QA total: ~3.5V**
+**`[QA]` total: ~3.5V (test code) + manual validation**
 
 ---
 
@@ -136,22 +106,22 @@
 
 ```
 ⚡ PHASE 1 — UX First (Week 1-2):
-  Track G (Founder UX):   S07-19 (D1) → S07-12 (W1) → S07-16 (W1-W2) → S07-17a (W2) → S07-17b (W2)
-  Track E (carry):        S07-11 (W1) → available
-  Track H (carry bugs):   S07-20 + S07-21 (W1)
+  [DEV:app]   S07-11 → S07-16b → S07-17a → S07-17b → S07-13
+  [DEV:ai]    S07-08a (scaffold, parallel)
+  [QA]        Regression gate → Q712-Q717
   ──── FAT Round 3 GATE ────
 
-⚡ PHASE 2 — Backend + LLM (Week 2-3):
-  Track A (AGENTS) ─── Phase 2 critical path ───→ Track B (server live)
-                                                        ├──→ Track C (ext LLM features)
-                                                        ├──→ Track D (vigil_agent)
-                                                        └──→ QA (S07-10)
-  Track F (cloud infra)  ─── no AGENTS dep ────→ S07-15 (Neon W2) → S07-14 (Vercel W3)
+🔧 PHASE 2 — Backend + LLM (Week 2-3):
+  [DEV:ai]    S07-01 → S07-02 → S07-04 → S07-06 → S07-08b → S07-08c → S07-08d
+                                    ↓
+  [DEV:app]                   S07-05, S07-07
+  [DEV:app]   S07-15 → S07-14 (parallel, no AGENTS dep)
+  [QA]        S07-10, S07-22, Q718-Q721
 
-  Track D sub-tasks are sequential:
-    S07-08a (scaffold W1-2) → S07-08b (classify) → S07-08c (test gen) → S07-08d (fix)
+  [DEV:ai] Track D sub-tasks are sequential:
+    S07-08a (W1) → S07-08b (W3) → S07-08c (W3) → S07-08d (W3)
 ```
 
 ---
 
-*Generated: 2026-02-26 | Updated: 2026-02-28 ([DEV:ext] Phase 1 complete: S07-12, S07-16, S07-18, S07-19, S07-20, S07-21 all done. 173/173 tests green.) | Sprint 07 | Owner: CPTO*
+*Generated: 2026-02-26 | Updated: 2026-03-01 (Team restructured to 3 roles per D027. E2E regression fixed per D026. Phase 1 ext work complete: S07-12/16/18/19/20/21. 201/201 vitest, 38/38 E2E green.) | Sprint 07 | Owner: CPTO*
