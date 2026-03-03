@@ -301,23 +301,37 @@ export async function restoreVigilState(): Promise<boolean> {
 }
 
 let cachedServerPort: number | null = null;
+let cachedServerUrl: string | null = null;
 
 export async function loadServerPort(): Promise<number> {
   if (cachedServerPort !== null) return cachedServerPort;
+  await loadServerConfig();
+  return cachedServerPort!;
+}
+
+export async function loadServerUrl(): Promise<string> {
+  if (cachedServerUrl !== null) return cachedServerUrl;
+  await loadServerConfig();
+  return cachedServerUrl!;
+}
+
+async function loadServerConfig(): Promise<void> {
   try {
     const configUrl = chrome.runtime.getURL('vigil.config.json');
     const res = await fetch(configUrl);
     if (res.ok) {
       const config = await res.json();
-      const port: number = config.serverPort ?? 7474;
-      cachedServerPort = port;
-      return port;
+      cachedServerPort = config.serverPort ?? 7474;
+      // If serverUrl is set, POST directly there (e.g. Vercel).
+      // Otherwise fall back to localhost:<port>.
+      cachedServerUrl = config.serverUrl ?? `http://localhost:${cachedServerPort}`;
+      return;
     }
   } catch {
-    // config not bundled or unreachable — use default
+    // config not bundled or unreachable — use defaults
   }
   cachedServerPort = 7474;
-  return 7474;
+  cachedServerUrl = 'http://localhost:7474';
 }
 
 function sleep(ms: number): Promise<void> {
@@ -325,8 +339,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void> {
-  const port = await loadServerPort();
-  const serverUrl = `http://localhost:${port}`;
+  const serverUrl = await loadServerUrl();
 
   for (let i = 0; i < attempts; i++) {
     try {

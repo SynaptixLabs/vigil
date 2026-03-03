@@ -7,7 +7,7 @@
 import { MessageType } from '@shared/types';
 import type { ChromeMessage, ChromeResponse } from '@shared/messages';
 import type { Bug, Feature, RecordingChunk, InspectedElement } from '@shared/types';
-import { sessionManager, vigilSessionManager, loadServerPort } from './session-manager';
+import { sessionManager, vigilSessionManager, loadServerUrl } from './session-manager';
 import { startKeepAlive } from './keep-alive';
 import { captureScreenshot } from './screenshot';
 import {
@@ -283,8 +283,8 @@ export function handleMessage(
         return false;
       }
 
-      loadServerPort()
-        .then(port => fetch(`http://localhost:${port}/api/sprints/project?path=${encodeURIComponent(projectPath)}`, {
+      loadServerUrl()
+        .then(serverUrl => fetch(`${serverUrl}/api/sprints/project?path=${encodeURIComponent(projectPath)}`, {
           signal: AbortSignal.timeout(3000),
         }))
         .then(r => r.json())
