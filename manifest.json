@@ -49,7 +49,7 @@
 
   "commands": {
     "toggle-recording": {
-      "suggested_key": { "default": "Ctrl+Shift+R", "mac": "Command+Shift+R" },
+      "suggested_key": { "default": "Alt+Shift+V", "mac": "Alt+Shift+V" },
       "description": "Toggle recording (pause/resume)"
     },
     "capture-screenshot": {
@@ -57,7 +57,7 @@
       "description": "Capture screenshot"
     },
     "open-bug-editor": {
-      "suggested_key": { "default": "Alt+Shift+B", "mac": "Alt+Shift+B" },
+      "suggested_key": { "default": "Alt+Shift+G", "mac": "Alt+Shift+G" },
       "description": "Open bug editor"
     }
   },

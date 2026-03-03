@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { SessionStatus } from '@shared/types';
+import { MessageType, SessionStatus } from '@shared/types';
 import type { Session, Bug, Feature, InspectedElement } from '@shared/types';
 import { getSession, deleteSession, getBugsBySession } from '@core/db';
 import { formatDuration } from '@shared/utils';
@@ -43,6 +43,7 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
   const [deleting, setDeleting] = useState(false);
   const [exportLoading, setExportLoading] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [ending, setEnding] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +67,23 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
     load();
     return () => { cancelled = true; };
   }, [sessionId]);
+
+  const handleEndSession = () => {
+    setEnding(true);
+    chrome.runtime.sendMessage(
+      { type: MessageType.STOP_RECORDING, source: 'popup' },
+      (response) => {
+        setEnding(false);
+        if (chrome.runtime.lastError || !response?.ok) {
+          console.warn('[Vigil] End session failed:', chrome.runtime.lastError?.message || response?.error);
+        }
+        // Reload session data to show COMPLETED status
+        getSession(sessionId).then((s) => {
+          if (s) setSession(s);
+        });
+      }
+    );
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -395,6 +413,20 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
             </button>
           )}
         </div>
+
+        {/* End Session — only for active sessions */}
+        {(session.status === SessionStatus.RECORDING || session.status === SessionStatus.PAUSED) && (
+          <div className="pt-2 border-t border-gray-800">
+            <button
+              data-testid="btn-end-session"
+              onClick={handleEndSession}
+              disabled={ending}
+              className="w-full text-xs py-2.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold transition-colors"
+            >
+              {ending ? 'Ending session…' : 'End Session & Save'}
+            </button>
+          </div>
+        )}
 
         {/* Danger zone */}
         <div className="mt-auto pt-2 border-t border-gray-800">

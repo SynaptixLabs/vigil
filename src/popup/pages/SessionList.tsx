@@ -52,7 +52,9 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
     chrome.storage.local.set({ refineLastSeenVersion: VERSION });
   };
 
-  // S07-18: Detect orphaned/ghost sessions on mount
+  // S07-18: Detect orphaned/ghost sessions on mount.
+  // Only show the ghost banner if the background has an active session that
+  // is NOT already visible in the session list (avoids "double booking").
   useEffect(() => {
     chrome.runtime.sendMessage(
       { type: MessageType.GET_SESSION_STATUS, source: 'popup' },
@@ -60,7 +62,15 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
         if (chrome.runtime.lastError || !response?.ok) return;
         const data = response.data as { sessionId: string | null; status: string; isRecording: boolean };
         if (data.sessionId && (data.status === 'RECORDING' || data.status === 'PAUSED')) {
-          setGhostSessionId(data.sessionId);
+          // Check if this session already exists in the IndexedDB session list.
+          // If it does, it's visible as a normal active session card — no ghost banner needed.
+          getAllSessions().then((all) => {
+            const existsInList = all.some(s => s.id === data.sessionId);
+            setGhostSessionId(existsInList ? null : data.sessionId);
+          }).catch(() => {
+            // Fallback: show ghost banner if we can't read sessions
+            setGhostSessionId(data.sessionId);
+          });
         } else {
           setGhostSessionId(null);
         }

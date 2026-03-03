@@ -296,7 +296,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
         {recordingState === 'recording' && (
           <button
             className="refine-btn"
-            title="Pause (Ctrl+Shift+R)"
+            title="Pause (Alt+Shift+V)"
             aria-label="Pause recording"
             data-testid="btn-pause"
             tabIndex={0}
@@ -308,7 +308,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
         {recordingState === 'paused' && (
           <button
             className="refine-btn"
-            title="Resume (Ctrl+Shift+R)"
+            title="Resume (Alt+Shift+V)"
             aria-label="Resume recording"
             data-testid="btn-resume"
             tabIndex={0}
@@ -342,7 +342,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
         <button
           className="refine-btn refine-btn--record"
-          title="Log Bug / Feature (Ctrl+Shift+B)"
+          title="Log Bug / Feature (Alt+Shift+G)"
           aria-label="Log Bug or Feature"
           data-testid="btn-bug"
           tabIndex={0}

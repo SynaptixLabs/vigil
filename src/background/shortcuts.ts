@@ -3,7 +3,7 @@
  * @description Keyboard shortcut handler for chrome.commands API.
  * Commands are declared in manifest.json under "commands".
  *
- * Sprint 06: Ctrl+Shift+B = snapshot + bug editor combo (D007).
+ * Sprint 06: snapshot + bug editor combo (D007). S07: Alt+Shift+G.
  */
 
 import { sessionManager } from './session-manager';

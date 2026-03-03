@@ -1,3 +1,9 @@
+import { config as loadEnv } from 'dotenv';
+import { resolve } from 'node:path';
+
+// Load .env from project root (two levels up from packages/server/)
+loadEnv({ path: resolve(import.meta.dirname, '..', '..', '..', '.env') });
+
 import { app, initStorage } from './app.js';
 import { loadConfig } from './config.js';
 

@@ -339,6 +339,9 @@ async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void>
         notifyTab(vigilState.tabId, 'SESSION_SYNCED');
         return;
       }
+      // Log server-side validation errors (e.g. Zod schema failures)
+      const errBody = await res.text().catch(() => '');
+      console.error(`[Vigil] POST /api/session failed (${res.status}):`, errBody);
     } catch {
       await sleep(1000 * (i + 1));
     }

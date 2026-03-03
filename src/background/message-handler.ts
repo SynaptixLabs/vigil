@@ -8,6 +8,7 @@ import { MessageType } from '@shared/types';
 import type { ChromeMessage, ChromeResponse } from '@shared/messages';
 import type { Bug, Feature, RecordingChunk, InspectedElement } from '@shared/types';
 import { sessionManager, vigilSessionManager, loadServerPort } from './session-manager';
+import { startKeepAlive } from './keep-alive';
 import { captureScreenshot } from './screenshot';
 import {
   addBug,
@@ -121,8 +122,10 @@ export function handleMessage(
 
           // Sprint 06 BUG-FAT-001: Also end vigil session if active → triggers POST to vigil-server
           // Runs AFTER sendResponse to avoid blocking callers (ControlBar, popup)
+          // S07-FAT: Re-start keep-alive — legacy stopSession() killed it, but vigil POST still needs it
           if (vigilSessionManager.hasActiveSession()) {
             try {
+              startKeepAlive();
               await vigilSessionManager.endSession();
               console.log('[Vigil] Vigil session ended + POSTed on STOP_RECORDING');
             } catch (e) {

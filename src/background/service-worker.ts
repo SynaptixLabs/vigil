@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener(handleMessage);
 // Start keep-alive alarm listener (alarm itself is created on session start)
 initKeepAliveListener();
 
-// Wire keyboard shortcuts (Ctrl+Shift+R/S/B)
+// Wire keyboard shortcuts (Alt+Shift+V, Ctrl+Shift+S, Alt+Shift+G)
 initShortcuts();
 
 // Sprint 06: Restore vigil session if service worker restarted mid-session

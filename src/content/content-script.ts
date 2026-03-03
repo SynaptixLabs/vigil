@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: true });
       break;
     case 'OPEN_BUG_EDITOR': {
-      // Sprint 06: Ctrl+Shift+B combo — open bug editor with screenshot pre-attached
+      // Sprint 06: Alt+Shift+G combo — open bug editor with screenshot pre-attached
       const detail = payload as { snapshotId?: string; screenshotDataUrl?: string; url?: string } | undefined;
       window.dispatchEvent(new CustomEvent('vigil:open-bug-editor', { detail }));
       sendResponse({ ok: true });

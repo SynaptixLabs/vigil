@@ -16,9 +16,9 @@ export const DB_NAME = 'refine-db';
 export const KEEPALIVE_ALARM_NAME = 'refine-keepalive';
 
 export const SHORTCUT_MAP = {
-  R: 'toggle-recording',
+  V: 'toggle-recording',
   S: 'capture-screenshot',
-  B: 'open-bug-editor',
+  G: 'open-bug-editor',
 } as const;
 
 /**
