@@ -340,19 +340,47 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** Downscale a data URL to a small thumbnail using OffscreenCanvas (service worker safe). */
+async function downsizeDataUrl(dataUrl: string, maxWidth: number, quality: number): Promise<string> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const bmp = await createImageBitmap(blob);
+  const scale = Math.min(1, maxWidth / bmp.width);
+  const w = Math.round(bmp.width * scale);
+  const h = Math.round(bmp.height * scale);
+  const canvas = new OffscreenCanvas(w, h);
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(bmp, 0, 0, w, h);
+  bmp.close();
+  const outBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality });
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(outBlob);
+  });
+}
+
 async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void> {
   const serverUrl = await loadServerUrl();
   console.log(`[Vigil] postWithRetry → ${serverUrl}/api/session (session: ${session.id}, bugs: ${session.bugs.length}, features: ${session.features.length})`);
 
-  // Strip screenshotDataUrl from snapshots to stay under Vercel's 4.5MB body limit.
-  // Server stores metadata only — actual screenshot data stays in extension IndexedDB.
-  const liteSession = {
-    ...session,
-    snapshots: session.snapshots.map(({ screenshotDataUrl: _strip, ...rest }) => ({
-      ...rest,
-      screenshotDataUrl: '', // schema requires string, send empty
-    })),
-  };
+  // Downscale screenshots to small thumbnails to stay under Vercel's 4.5MB body limit.
+  // Full-res screenshots stay in extension IndexedDB; server gets ~20KB thumbnails.
+  const liteSnapshots = await Promise.all(
+    session.snapshots.map(async (snap) => {
+      if (!snap.screenshotDataUrl || snap.screenshotDataUrl.length < 1000) {
+        return snap; // already empty or tiny
+      }
+      try {
+        const thumb = await downsizeDataUrl(snap.screenshotDataUrl, 320, 0.5);
+        return { ...snap, screenshotDataUrl: thumb };
+      } catch {
+        return { ...snap, screenshotDataUrl: '' };
+      }
+    }),
+  );
+  const liteSession = { ...session, snapshots: liteSnapshots };
 
   for (let i = 0; i < attempts; i++) {
     try {
