@@ -18,12 +18,27 @@ import { SHORTCUT_MAP } from '@shared/constants';
 
 console.log(`[Refine] Content script loaded on: ${window.location.href}`);
 
+// ── Guard: safely send messages when extension context may be invalidated ────
+// After extension reload/update, old content scripts remain injected but
+// chrome.runtime.sendMessage throws synchronously. This wrapper catches that.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function safeSendMessage(message: Record<string, unknown>, callback?: (response: any) => void): void {
+  try {
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) return;
+      callback?.(response);
+    });
+  } catch {
+    // Extension context invalidated — content script is stale after reload.
+    // Silently ignore; user will refresh the page to get a fresh content script.
+  }
+}
+
 // ── On-load: resume recording if a session is already active ─────────────────
 
-chrome.runtime.sendMessage(
+safeSendMessage(
   { type: 'GET_SESSION_STATUS', source: 'content' },
   (response) => {
-    if (chrome.runtime.lastError) return;
     if (response?.ok && response.data?.isRecording && response.data?.sessionId) {
       const sid = response.data.sessionId as string;
       const rmm = (response.data.recordMouseMove as boolean | undefined) ?? false;
@@ -35,13 +50,13 @@ chrome.runtime.sendMessage(
       if (fromUrl && fromUrl !== toUrl) {
         recordCrossPageNavigation(sid, fromUrl, toUrl);
       }
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         type: 'SESSION_STATUS_UPDATE',
         payload: { url: window.location.href },
         source: 'content',
       });
     }
-  }
+  },
 );
 
 // ── Message listener (commands from background) ───────────────────────────────
@@ -130,8 +145,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   ) return;
   e.preventDefault();
   // BUG-FAT-002: Use response callback to sync ControlBar state after toggle
-  chrome.runtime.sendMessage({ type: 'TOGGLE_RECORDING', source: 'content' }, (response) => {
-    if (chrome.runtime.lastError) return;
+  safeSendMessage({ type: 'TOGGLE_RECORDING', source: 'content' }, (response) => {
     if (response?.ok && response.data != null) {
       // Broadcast recording state change to ControlBar via custom event
       window.dispatchEvent(new CustomEvent('vigil:recording-state-changed', {

@@ -76,11 +76,15 @@ function onDocumentChange(e: Event): void {
 }
 
 function sendToBackground(type: string, payload: unknown): void {
-  chrome.runtime.sendMessage({ type, payload, source: 'content' }, () => {
-    if (chrome.runtime.lastError) {
-      console.warn('[Refine] Background message failed:', chrome.runtime.lastError.message);
-    }
-  });
+  try {
+    chrome.runtime.sendMessage({ type, payload, source: 'content' }, () => {
+      if (chrome.runtime.lastError) {
+        console.warn('[Refine] Background message failed:', chrome.runtime.lastError.message);
+      }
+    });
+  } catch {
+    // Extension context invalidated after reload — stale content script, ignore.
+  }
 }
 
 function flushBuffer(final = false): void {
