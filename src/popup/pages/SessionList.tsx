@@ -6,10 +6,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { SessionStatus, MessageType } from '@shared/types';
 import type { Session } from '@shared/types';
-import { getAllSessions } from '@core/db';
+import { getAllSessions, getSession, countScreenshotsBySession, countRecordingChunksBySession } from '@core/db';
 import { formatDuration, formatTimestamp } from '@shared/utils';
 import { StorageIndicator } from '../components/StorageIndicator';
 import { ChangelogModal } from '../components/ChangelogModal';
+import { ShortcutsLegend } from '../components/ShortcutsLegend';
 import { VERSION } from '@shared/constants';
 import ProjectSettings from './ProjectSettings';
 
@@ -38,6 +39,10 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
   // S07-18: Ghost session detection
   const [ghostSessionId, setGhostSessionId] = useState<string | null>(null);
   const [endingGhost, setEndingGhost] = useState(false);
+
+  // FEAT-SP-002/003: End Session button + live session counters
+  const [activeCounters, setActiveCounters] = useState<{ screenshots: number; bugs: number; recordings: number } | null>(null);
+  const [endingSession, setEndingSession] = useState(false);
 
   useEffect(() => {
     chrome.storage.local.get('refineLastSeenVersion', (result) => {
@@ -132,6 +137,49 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
     (s) => s.status !== SessionStatus.RECORDING && s.status !== SessionStatus.PAUSED
   );
 
+  // FEAT-SP-002/003: Track current active session for end button + live counters
+  const activeSessionId = sessions.find(
+    (s) => s.status === SessionStatus.RECORDING || s.status === SessionStatus.PAUSED
+  )?.id ?? null;
+
+  // FEAT-SP-003: Poll live counters for the active session every 2s
+  useEffect(() => {
+    if (!activeSessionId) {
+      setActiveCounters(null);
+      return;
+    }
+    const poll = async () => {
+      try {
+        const [session, screenshots, recordings] = await Promise.all([
+          getSession(activeSessionId),
+          countScreenshotsBySession(activeSessionId),
+          countRecordingChunksBySession(activeSessionId),
+        ]);
+        setActiveCounters({
+          screenshots,
+          bugs: session?.bugCount ?? 0,
+          recordings,
+        });
+      } catch { /* ignore polling errors */ }
+    };
+    poll();
+    const interval = setInterval(poll, 2000);
+    return () => clearInterval(interval);
+  }, [activeSessionId]);
+
+  // FEAT-SP-002: End active session from side panel (same as red control bar button)
+  const handleEndSession = () => {
+    setEndingSession(true);
+    chrome.runtime.sendMessage(
+      { type: MessageType.STOP_RECORDING, source: 'popup' },
+      (response) => {
+        setEndingSession(false);
+        if (chrome.runtime.lastError || !response?.ok) return;
+        loadSessions();
+      }
+    );
+  };
+
   if (selectedProjectSettings) {
     return (
       <ProjectSettings 
@@ -216,6 +264,31 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
         </div>
       )}
 
+      {/* FEAT-SP-002/003: Active session controls — End Session + live counters */}
+      {activeSessionId && activeCounters && (
+        <div
+          data-testid="active-session-panel"
+          className="mx-3 mt-2 px-3 py-2.5 rounded-lg border border-indigo-700/40 bg-indigo-900/20"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-indigo-300">Session Activity</span>
+            <button
+              data-testid="btn-end-session"
+              onClick={handleEndSession}
+              disabled={endingSession}
+              className="text-[10px] font-semibold bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-2.5 py-1 rounded transition-colors"
+            >
+              {endingSession ? 'Ending\u2026' : '\u23F9 End Session'}
+            </button>
+          </div>
+          <div className="flex items-center gap-4 text-xs text-gray-400">
+            <span title="Screenshots captured">\uD83D\uDCF7 {activeCounters.screenshots}</span>
+            <span title="Bugs logged">\uD83D\uDC1B {activeCounters.bugs}</span>
+            <span title="Recording segments">\uD83C\uDFAC {activeCounters.recordings}</span>
+          </div>
+        </div>
+      )}
+
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -266,6 +339,11 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
           </div>
         )}
       </div>
+      {/* FEAT-SP-001: Keyboard shortcuts legend */}
+      <div className="border-t border-gray-800">
+        <ShortcutsLegend />
+      </div>
+
       <div className="flex items-center border-t border-gray-800">
         <div className="flex-1">
           <StorageIndicator />

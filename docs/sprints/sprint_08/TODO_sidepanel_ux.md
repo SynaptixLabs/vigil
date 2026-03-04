@@ -58,7 +58,7 @@ Add live counters in the RHS Project tab showing session activity: screenshots t
 
 ## FEAT-SP-004 — What's New: Human-Readable, Not Markdown
 
-**Status:** TODO
+**Status:** DONE (commit 1fda3e1, 2026-03-04)
 **Area:** Extension (side panel / popup)
 **Source:** FAT observation
 

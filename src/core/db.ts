@@ -154,6 +154,16 @@ export async function incrementSessionFeatureCount(sessionId: string): Promise<v
   await db.sessions.where('id').equals(sessionId).modify((s) => { s.featureCount++; });
 }
 
+// ── Counting helpers (FEAT-SP-003: live session counters) ────────────────────
+
+export async function countScreenshotsBySession(sessionId: string): Promise<number> {
+  return db.screenshots.where('sessionId').equals(sessionId).count();
+}
+
+export async function countRecordingChunksBySession(sessionId: string): Promise<number> {
+  return db.recordings.where('sessionId').equals(sessionId).count();
+}
+
 // ── Screenshots ───────────────────────────────────────────────────────────────
 
 export async function addScreenshot(screenshot: Screenshot): Promise<string> {
