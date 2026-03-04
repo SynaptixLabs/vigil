@@ -28,13 +28,13 @@
 
 ## Prerequisites
 
-**Cloud backend:** vigil-server is deployed to Vercel at **https://vigil-two.vercel.app** with Neon PostgreSQL. You can verify API data there anytime.
+**Cloud backend:** vigil-server is deployed to Vercel at **https://vigil-two.vercel.app** with Neon PostgreSQL. The extension POSTs session data **directly to Vercel** (configured via `serverUrl` in `vigil.config.json`). No local server needed for the core capture+POST flow.
 
-**Local server still needed:** The extension POSTs session data to `localhost:7474`. The local server writes to the **same Neon database** as Vercel, so all data is shared.
+**Local server only needed for dashboard:** The management dashboard at `localhost:7474/dashboard` requires `npm run dev:server`. Dashboard is NOT available on Vercel (static files aren't bundled in serverless).
 
-**You need 2 terminals** and Chrome.
+**You need 1-2 terminals** and Chrome. (1 for demo app; optionally 1 for local server if testing dashboard.)
 
-**Config check:** Verify `vigil.config.json` has `"sprintCurrent": "07"`. If it still says `"06"`, update it before starting.
+**Config check:** Verify `vigil.config.json` has `"sprintCurrent": "07"` and `"serverUrl": "https://vigil-two.vercel.app"`.
 
 If `dist/` is stale, rebuild:
 ```powershell
@@ -55,26 +55,7 @@ Expected:
 
 ---
 
-## Step 1 — Start Local Server (Terminal 1)
-
-The extension POSTs to `localhost:7474`. The local server writes to the same Neon database as Vercel.
-
-```powershell
-cd C:\Synaptix-Labs\projects\vigil
-npm run dev:server
-```
-
-Wait for:
-```
-[vigil-server] running on http://localhost:7474
-[vigil-server] storage: neon
-```
-
-**Quick verify:** `http://localhost:7474/health` -> `"storage": "neon"`
-
----
-
-## Step 2 — Start Demo App "TaskPilot" (Terminal 2)
+## Step 1 — Start Demo App "TaskPilot" (Terminal 1)
 
 ```powershell
 cd C:\Synaptix-Labs\projects\vigil\demos\refine-demo-app
@@ -92,7 +73,7 @@ Open browser -> `http://localhost:39000`
 
 ---
 
-## Step 3 — Load Extension in Chrome
+## Step 2 — Load Extension in Chrome
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (toggle top-right)
@@ -170,10 +151,10 @@ Description: Founder acceptance testing Sprint 07
    - Description: `Testing feature capture flow`
 3. Submit
 
-### 4E — End Session -> POST to Server
+### 4E — End Session -> POST to Vercel
 
 1. Click **End Session** in the side panel / control bar
-2. The session data (including your test bug and feature) is POSTed to vigil-server on Vercel
+2. The session data (including your test bug and feature) is POSTed directly to `vigil-two.vercel.app/api/session`
 
 ### 4F — Verify Data Persistence
 
@@ -190,7 +171,13 @@ Your new session and bug should appear in the results.
 
 ## Step 5 — Test the Dashboard (Overhauled in S07)
 
-The dashboard is served by the local server (already running from Step 1). Open `http://localhost:7474/dashboard`.
+**Requires local server.** Start it first if you haven't:
+```powershell
+cd C:\Synaptix-Labs\projects\vigil
+npm run dev:server   # → http://localhost:7474 (storage: neon)
+```
+
+Then open `http://localhost:7474/dashboard`.
 
 > Dashboard is local-only — not available on Vercel (static files aren't bundled in serverless). P2 follow-up.
 
@@ -283,7 +270,7 @@ Proxies API calls to `:7474` automatically (requires local server).
 | 14 | Bug editor shows screenshot preview + pre-filled URL | [ ] |
 | 15 | Bug submission works (fill title, severity, description -> submit) | [ ] |
 | | **Session End** | |
-| 16 | End Session POSTs to local server -> Neon | [ ] |
+| 16 | End Session POSTs to Vercel -> Neon | [ ] |
 | 17 | Session visible at `vigil-two.vercel.app/api/sessions` after POST | [ ] |
 | 18 | Bug visible at `vigil-two.vercel.app/api/bugs?sprint=07` after POST | [ ] |
 | | **Session Persistence (S07-12)** | |

@@ -8,7 +8,7 @@
 
 ## FEAT-SP-001 — Keyboard Shortcuts Legend in Side Panel
 
-**Status:** TODO
+**Status:** DONE (commit 514f15b, 2026-03-04)
 **Area:** Extension (side panel)
 
 Add a visible legend of available keyboard shortcuts in the RHS side panel.
@@ -29,7 +29,7 @@ Add a visible legend of available keyboard shortcuts in the RHS side panel.
 
 ## FEAT-SP-002 — End Session Button in Project Tab
 
-**Status:** TODO
+**Status:** DONE (commit 514f15b, 2026-03-04)
 **Area:** Extension (side panel)
 
 Add an End Session button in the RHS Project tab that ends the session same as the red control bar button.
@@ -43,7 +43,7 @@ Add an End Session button in the RHS Project tab that ends the session same as t
 
 ## FEAT-SP-003 — Session Counters in Project Tab
 
-**Status:** TODO
+**Status:** DONE (commit 514f15b, 2026-03-04)
 **Area:** Extension (side panel)
 
 Add live counters in the RHS Project tab showing session activity: screenshots taken, bugs opened, recordings (start+stop pairs). Update in real-time.

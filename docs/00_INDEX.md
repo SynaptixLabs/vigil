@@ -32,15 +32,16 @@ This is the **source of truth** for how Vigil is specified, built, tested, and s
 
 ## Current Sprint
 
-**Sprint 06 — Active 🟢**
-- Index: `sprints/sprint_06/sprint_06_index.md`
-- Dev kickoff: `sprints/sprint_06/todo/sprint_06_kickoff_dev.md`
-- QA kickoff: `sprints/sprint_06/todo/sprint_06_kickoff_qa.md`
-- Decisions: `sprints/sprint_06/sprint_06_decisions_log.md`
-
-**Sprint 07 — Planned 📐**
+**Sprint 07 — Active 🟢**
 - Index: `sprints/sprint_07/sprint_07_index.md`
 - Decisions: `sprints/sprint_07/sprint_07_decisions_log.md`
+- Acceptance: `sprints/sprint_07/FOUNDER_ACCEPTANCE_WALKTHROUGH.md`
+
+**Sprint 06 — Closed ✅**
+- Index: `sprints/sprint_06/sprint_06_index.md`
+
+**Sprint 08 — Planned 📐**
+- Scope: AGENTS LLM integration (deferred from Sprint 07)
 
 ---
 
@@ -51,7 +52,7 @@ docs/
 ├── 00_INDEX.md              # This file
 ├── 0k_PRD.md                # Product requirements (CPO owns)
 ├── 0l_DECISIONS.md          # Decision log (CTO/FOUNDER own)
-├── 01_ARCHITECTURE.md       # System architecture (Sprint 06 — CTO owns)
+├── 01_ARCHITECTURE.md       # System architecture (Sprint 07 — CTO owns)
 ├── 02_SETUP.md              # Dev setup + commands
 ├── 03_MODULES.md            # Module registry
 ├── 04_TESTING.md            # Testing strategy
@@ -62,7 +63,7 @@ docs/
 │   ├── README.md
 │   ├── backlog/             # Deferred items
 │   ├── sprint_00/ … sprint_05/   # ARCHIVED
-│   ├── sprint_06/           # ACTIVE
+│   ├── sprint_06/           # CLOSED
 │   │   ├── sprint_06_index.md
 │   │   ├── sprint_06_decisions_log.md
 │   │   ├── todo/
@@ -70,9 +71,11 @@ docs/
 │   │   │   └── sprint_06_kickoff_qa.md
 │   │   ├── reports/
 │   │   └── reviews/
-│   └── sprint_07/           # PLANNED
-│       ├── sprint_07_index.md
-│       └── sprint_07_decisions_log.md
+│   ├── sprint_07/           # ACTIVE
+│   │   ├── sprint_07_index.md
+│   │   ├── sprint_07_decisions_log.md
+│   │   └── FOUNDER_ACCEPTANCE_WALKTHROUGH.md
+│   └── sprint_08/           # PLANNED
 ├── templates/               # Sprint artifact templates
 └── ui/                      # UI reference assets
 ```
@@ -81,11 +84,11 @@ docs/
 
 ## Agent Notes
 
-- **Always read `01_ARCHITECTURE.md` before writing any code** — it defines the Sprint 06 architecture (extension + vigil-server + AGENTS)
+- **Always read `01_ARCHITECTURE.md` before writing any code** — it defines the Sprint 07 architecture (extension + vigil-server + Vercel/Neon + AGENTS)
 - **Always read `03_MODULES.md` before building** — reuse before building new
 - **Bug/Feature files** live in `sprints/sprint_XX/BUGS/` and `sprints/sprint_XX/FEATURES/` — not in docs/ root
 - **Decision log** is in two places: `docs/0l_DECISIONS.md` (high-level) + `sprints/sprint_XX/sprint_XX_decisions_log.md` (sprint-specific)
 
 ---
 
-*Last updated: 2026-02-26 | Owner: [CTO] + [FOUNDER]*
+*Last updated: 2026-03-04 | Owner: [CTO] + [FOUNDER]*

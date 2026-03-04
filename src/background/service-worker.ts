@@ -17,7 +17,9 @@ console.log('[Refine] Background service worker initialized.');
 // Open the side panel when the extension icon is clicked
 chrome.action.onClicked.addListener((tab) => {
   if (tab.windowId) {
-    chrome.sidePanel.open({ windowId: tab.windowId });
+    chrome.sidePanel.open({ windowId: tab.windowId }).catch(() => {
+      // Side panel failed to open (e.g. window closing) — ignore
+    });
   }
 });
 

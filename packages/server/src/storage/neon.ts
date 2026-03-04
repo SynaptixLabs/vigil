@@ -237,7 +237,14 @@ export class NeonStorage implements StorageProvider {
 
     await pool.query(
       `INSERT INTO sessions (id, name, project_id, started_at, ended_at, clock, recordings, snapshots, bugs, features, sprint, description)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ON CONFLICT (id) DO UPDATE SET
+         ended_at = EXCLUDED.ended_at,
+         clock = EXCLUDED.clock,
+         recordings = EXCLUDED.recordings,
+         snapshots = EXCLUDED.snapshots,
+         bugs = EXCLUDED.bugs,
+         features = EXCLUDED.features`,
       [
         session.id,
         session.name,

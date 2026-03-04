@@ -91,23 +91,27 @@ const NewSessionTab: React.FC = () => {
     }
 
     setSprintsLoading(true);
-    chrome.runtime.sendMessage(
-      { type: MessageType.GET_PROJECT_SPRINTS, payload: { projectPath: projectPath.trim() }, source: 'new-session-tab' },
-      (response) => {
-        setSprintsLoading(false);
-        if (chrome.runtime.lastError || !response?.ok) {
-          setSprints([]);
-          setProjectExists(null);
-          return;
+    try {
+      chrome.runtime.sendMessage(
+        { type: MessageType.GET_PROJECT_SPRINTS, payload: { projectPath: projectPath.trim() }, source: 'new-session-tab' },
+        (response) => {
+          setSprintsLoading(false);
+          if (chrome.runtime.lastError || !response?.ok) {
+            setSprints([]);
+            setProjectExists(null);
+            return;
+          }
+          const data = response.data as { exists: boolean; sprints: SprintEntry[]; current: string | null };
+          setProjectExists(data.exists);
+          setSprints(data.sprints);
+          if (data.current && !sprint) {
+            setSprint(data.current);
+          }
         }
-        const data = response.data as { exists: boolean; sprints: SprintEntry[]; current: string | null };
-        setProjectExists(data.exists);
-        setSprints(data.sprints);
-        if (data.current && !sprint) {
-          setSprint(data.current);
-        }
-      }
-    );
+      );
+    } catch {
+      setSprintsLoading(false);
+    }
   }, [sprint]);
 
   useEffect(() => {
@@ -139,41 +143,49 @@ const NewSessionTab: React.FC = () => {
     };
     chrome.storage.local.set({ [HISTORY_KEY]: updatedHistory });
 
-    chrome.runtime.sendMessage(
-      {
-        type: MessageType.CREATE_SESSION,
-        payload: {
-          name: sessionName,
-          description: description.trim(),
-          project: projectKey,
-          sprint: sprintKey,
-          tags: [],
-          url: activeTabUrl,
-          tabId: activeTabId,
-          recordMouseMove,
+    try {
+      chrome.runtime.sendMessage(
+        {
+          type: MessageType.CREATE_SESSION,
+          payload: {
+            name: sessionName,
+            description: description.trim(),
+            project: projectKey,
+            sprint: sprintKey,
+            tags: [],
+            url: activeTabUrl,
+            tabId: activeTabId,
+            recordMouseMove,
+          },
+          source: 'new-session-tab',
         },
-        source: 'new-session-tab',
-      },
-      (response: { ok: boolean; data?: Session; error?: string }) => {
-        setLoading(false);
-        if (chrome.runtime.lastError) {
-          setError(chrome.runtime.lastError.message ?? 'Failed to start session');
-          return;
-        }
-        if (response?.ok) {
-          setDone(true);
-          if (activeTabId) {
-            chrome.tabs.update(activeTabId, { active: true }, () => {
-              setTimeout(() => window.close(), 400);
-            });
-          } else {
-            setTimeout(() => window.close(), 1200);
+        (response: { ok: boolean; data?: Session; error?: string }) => {
+          setLoading(false);
+          if (chrome.runtime.lastError) {
+            setError(chrome.runtime.lastError.message ?? 'Failed to start session');
+            return;
           }
-        } else {
-          setError(response?.error ?? 'Failed to start session');
+          if (response?.ok) {
+            setDone(true);
+            if (activeTabId) {
+              chrome.tabs.update(activeTabId, { active: true }, () => {
+                if (chrome.runtime.lastError) {
+                  console.warn('[Vigil] Tab switch failed:', chrome.runtime.lastError.message);
+                }
+                setTimeout(() => window.close(), 400);
+              });
+            } else {
+              setTimeout(() => window.close(), 1200);
+            }
+          } else {
+            setError(response?.error ?? 'Failed to start session');
+          }
         }
-      }
-    );
+      );
+    } catch {
+      setLoading(false);
+      setError('Extension context invalidated — reload the extension');
+    }
   };
 
   const handleCancel = () => {

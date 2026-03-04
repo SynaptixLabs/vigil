@@ -109,7 +109,8 @@ function flushBuffer(final = false): void {
 
 export function startRecording(sessionId: string, recordMouseMove = false): void {
   if (state.isRecording) {
-    console.warn('[Refine] Already recording');
+    // Benign: on-load status check and background START_RECORDING can both fire
+    console.debug('[Refine] Already recording — ignoring duplicate start');
     return;
   }
   if (!SESSION_ID_FORMAT.test(sessionId)) {

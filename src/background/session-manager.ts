@@ -344,12 +344,22 @@ async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void>
   const serverUrl = await loadServerUrl();
   console.log(`[Vigil] postWithRetry → ${serverUrl}/api/session (session: ${session.id}, bugs: ${session.bugs.length}, features: ${session.features.length})`);
 
+  // Strip screenshotDataUrl from snapshots to stay under Vercel's 4.5MB body limit.
+  // Server stores metadata only — actual screenshot data stays in extension IndexedDB.
+  const liteSession = {
+    ...session,
+    snapshots: session.snapshots.map(({ screenshotDataUrl: _strip, ...rest }) => ({
+      ...rest,
+      screenshotDataUrl: '', // schema requires string, send empty
+    })),
+  };
+
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(`${serverUrl}/api/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(session),
+        body: JSON.stringify(liteSession),
       });
       if (res.ok) {
         console.log(`[Vigil] POST success → session ${session.id} synced to ${serverUrl}`);

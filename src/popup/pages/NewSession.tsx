@@ -112,23 +112,27 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
     }
 
     setSprintsLoading(true);
-    chrome.runtime.sendMessage(
-      { type: MessageType.GET_PROJECT_SPRINTS, payload: { projectPath: projectPath.trim() }, source: 'popup' },
-      (response) => {
-        setSprintsLoading(false);
-        if (chrome.runtime.lastError || !response?.ok) {
-          setSprints([]);
-          setProjectExists(null);
-          return;
+    try {
+      chrome.runtime.sendMessage(
+        { type: MessageType.GET_PROJECT_SPRINTS, payload: { projectPath: projectPath.trim() }, source: 'popup' },
+        (response) => {
+          setSprintsLoading(false);
+          if (chrome.runtime.lastError || !response?.ok) {
+            setSprints([]);
+            setProjectExists(null);
+            return;
+          }
+          const data = response.data as { exists: boolean; sprints: SprintEntry[]; current: string | null };
+          setProjectExists(data.exists);
+          setSprints(data.sprints);
+          if (data.current && !sprint) {
+            setSprint(data.current);
+          }
         }
-        const data = response.data as { exists: boolean; sprints: SprintEntry[]; current: string | null };
-        setProjectExists(data.exists);
-        setSprints(data.sprints);
-        if (data.current && !sprint) {
-          setSprint(data.current);
-        }
-      }
-    );
+      );
+    } catch {
+      setSprintsLoading(false);
+    }
   }, [sprint]);
 
   // Debounce project path changes
@@ -162,34 +166,39 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
     chrome.storage.local.set({ [HISTORY_KEY]: updatedHistory });
     setHistory(updatedHistory);
 
-    chrome.runtime.sendMessage(
-      {
-        type: MessageType.CREATE_SESSION,
-        payload: {
-          name: sessionName,
-          description: description.trim(),
-          project: projectKey,
-          sprint: sprintKey,
-          tags: [],
-          url: activeTabUrl,
-          tabId: activeTabId,
-          recordMouseMove,
+    try {
+      chrome.runtime.sendMessage(
+        {
+          type: MessageType.CREATE_SESSION,
+          payload: {
+            name: sessionName,
+            description: description.trim(),
+            project: projectKey,
+            sprint: sprintKey,
+            tags: [],
+            url: activeTabUrl,
+            tabId: activeTabId,
+            recordMouseMove,
+          },
+          source: 'popup',
         },
-        source: 'popup',
-      },
-      (response) => {
-        setLoading(false);
-        if (chrome.runtime.lastError) {
-          setError(chrome.runtime.lastError.message ?? 'Failed to start session');
-          return;
+        (response) => {
+          setLoading(false);
+          if (chrome.runtime.lastError) {
+            setError(chrome.runtime.lastError.message ?? 'Failed to start session');
+            return;
+          }
+          if (response?.ok && response.data) {
+            onCreated(response.data as Session);
+          } else {
+            setError(response?.error ?? 'Failed to start session');
+          }
         }
-        if (response?.ok && response.data) {
-          onCreated(response.data as Session);
-        } else {
-          setError(response?.error ?? 'Failed to start session');
-        }
-      }
-    );
+      );
+    } catch {
+      setLoading(false);
+      setError('Extension context invalidated — reload the extension');
+    }
   };
 
   return (

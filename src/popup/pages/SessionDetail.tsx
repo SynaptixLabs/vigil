@@ -70,19 +70,24 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
 
   const handleEndSession = () => {
     setEnding(true);
-    chrome.runtime.sendMessage(
-      { type: MessageType.STOP_RECORDING, source: 'popup' },
-      (response) => {
-        setEnding(false);
-        if (chrome.runtime.lastError || !response?.ok) {
-          console.warn('[Vigil] End session failed:', chrome.runtime.lastError?.message || response?.error);
+    try {
+      chrome.runtime.sendMessage(
+        { type: MessageType.STOP_RECORDING, source: 'popup' },
+        (response) => {
+          setEnding(false);
+          if (chrome.runtime.lastError || !response?.ok) {
+            console.warn('[Vigil] End session failed:', chrome.runtime.lastError?.message || response?.error);
+          }
+          // Reload session data to show COMPLETED status
+          getSession(sessionId).then((s) => {
+            if (s) setSession(s);
+          });
         }
-        // Reload session data to show COMPLETED status
-        getSession(sessionId).then((s) => {
-          if (s) setSession(s);
-        });
-      }
-    );
+      );
+    } catch {
+      setEnding(false);
+      console.warn('[Vigil] Extension context invalidated');
+    }
   };
 
   const handleDelete = async () => {
@@ -150,7 +155,11 @@ const SessionDetail: React.FC<SessionDetailProps> = ({ sessionId, onBack }) => {
         triggerDownload(md, `report-${sessionId}.md`, 'text/markdown');
       } else if (type === 'replay') {
         const replayUrl = chrome.runtime.getURL(`src/replay-viewer/replay-viewer.html?sessionId=${sessionId}`);
-        chrome.tabs.create({ url: replayUrl });
+        chrome.tabs.create({ url: replayUrl }, () => {
+          if (chrome.runtime.lastError) {
+            console.warn('[Vigil] Failed to open replay tab:', chrome.runtime.lastError.message);
+          }
+        });
       } else if (type === 'playwright') {
         const [actions, bugsForSpec] = await Promise.all([
           getActionsBySession(sessionId),

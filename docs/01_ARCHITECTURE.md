@@ -2,7 +2,7 @@
 
 > **System Design & Technical Architecture**
 > **Owner:** `[CTO]`
-> **Last updated:** 2026-02-26 — Sprint 06 pivot (extension + server + AGENTS)
+> **Last updated:** 2026-03-04 — Sprint 07 (Neon/Vercel, project sessions, session persistence)
 
 ---
 
@@ -87,16 +87,17 @@
 | DOM Recording | rrweb | ^2.x |
 | Local Storage | Dexie.js (IndexedDB) | ^4.x |
 
-### vigil-server (Sprint 06 — new)
+### vigil-server (Sprint 06+)
 | Component | Technology |
 |---|---|
 | Runtime | Node.js ≥20.x |
 | Framework | Express + TypeScript |
 | MCP | @modelcontextprotocol/sdk |
 | Validation | Zod |
-| Storage | Filesystem (Git-native markdown) |
-| Dashboard | React + Vite (built → server/public/) |
-| Port | **7474** (canonical) |
+| Storage | Neon PostgreSQL (Sprint 07) — migrated from filesystem markdown |
+| Dashboard | React + Vite (built → server/public/) — local only |
+| Deployment | Vercel (serverless) — `vigil-two.vercel.app` |
+| Port | **7474** (canonical, local dev) |
 
 ### AGENTS Platform (Sprint 07+)
 | Component | Technology |
@@ -117,14 +118,15 @@
 ### Content Script (`src/content/`)
 - **Responsibilities:** rrweb injection, control bar UI (Shadow DOM), bug editor (Shadow DOM), action extraction, SPACE shortcut handler
 - **Shadow DOM isolation:** All overlay UI — zero CSS leakage into target app
-- **Sprint 06 addition:** `Ctrl+Shift+B` handler → screenshot + open bug editor pre-filled
+- **Sprint 06:** `Ctrl+Shift+B` handler → screenshot + open bug editor pre-filled
+- **Sprint 07:** Shortcut changed to **Alt+Shift+G** (Ctrl+Shift+B conflicted with Chrome bookmarks)
 
 ### Popup (`src/popup/`)
 - Session CRUD, start/stop recording, view session list
 
 ---
 
-## Session Model (Sprint 06)
+## Session Model (Sprint 07)
 
 ```typescript
 // src/shared/types.ts — canonical
@@ -301,7 +303,7 @@ User clicks END SESSION
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Storage (Sprint 06) | Git-native filesystem markdown | Debuggable, diffable, no infra dependency |
+| Storage (Sprint 06→07) | Neon PostgreSQL (was filesystem markdown) | Managed DB, Vercel-compatible, scalable |
 | Server port | **7474** | Avoids conflict with Vite (5173), FastAPI (8000), dev servers (3000, 33847) |
 | Session model | Session = container, recording = opt-in | Reduces friction; snapshot/bug always available |
 | LLM mode | mock (Sprint 06) → live via AGENTS (Sprint 07) | Clean seam, Sprint 06 ships without AGENTS |
@@ -314,7 +316,7 @@ User clicks END SESSION
 
 ## Security Considerations
 
-- [x] No external network requests from extension — fully offline
+- [x] Extension POSTs session data to Vercel (HTTPS) — no other external requests
 - [x] Password masking — rrweb masks `input[type=password]` by default
 - [x] Shadow DOM isolation — overlay cannot leak into target app
 - [x] Minimal manifest permissions
@@ -337,4 +339,4 @@ Coverage targets: ≥80% business logic, ≥60% infra.
 
 ---
 
-*Last updated: 2026-02-26 (Sprint 06 pivot) | Owner: [CTO] + [FOUNDER]*
+*Last updated: 2026-03-04 (Sprint 07 — Neon/Vercel) | Owner: [CTO] + [FOUNDER]*

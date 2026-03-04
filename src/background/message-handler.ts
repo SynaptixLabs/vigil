@@ -134,7 +134,11 @@ export function handleMessage(
             }
           }
           // Notify all extension pages (popup, sidepanel) to refresh their session list
-          chrome.runtime.sendMessage({ type: 'SESSION_COMPLETED', payload: { sessionId: session.id } }).catch(() => {});
+          try {
+            chrome.runtime.sendMessage({ type: 'SESSION_COMPLETED', payload: { sessionId: session.id } }).catch(() => {});
+          } catch {
+            // No listeners (popup/sidepanel closed) — expected, ignore
+          }
         })
         .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
       return true;
@@ -249,11 +253,26 @@ export function handleMessage(
       // Open side panel on the window of the sender tab, or last focused window
       const windowId = sender.tab?.windowId;
       if (windowId) {
-        chrome.sidePanel.open({ windowId }, () => sendResponse({ ok: true }));
+        chrome.sidePanel.open({ windowId }, () => {
+          if (chrome.runtime.lastError) {
+            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ ok: true });
+          }
+        });
       } else {
         chrome.windows.getLastFocused((win) => {
-          if (win?.id) chrome.sidePanel.open({ windowId: win.id }, () => sendResponse({ ok: true }));
-          else sendResponse({ ok: false, error: 'No window found' });
+          if (win?.id) {
+            chrome.sidePanel.open({ windowId: win.id }, () => {
+              if (chrome.runtime.lastError) {
+                sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+              } else {
+                sendResponse({ ok: true });
+              }
+            });
+          } else {
+            sendResponse({ ok: false, error: 'No window found' });
+          }
         });
       }
       return true;

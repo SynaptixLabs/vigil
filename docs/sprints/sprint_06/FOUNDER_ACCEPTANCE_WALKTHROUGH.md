@@ -1,3 +1,13 @@
+---- 27/02/2026
+🟦 1. [DEV:ext] — Extension Developer
+🟦 2. [DEV:server] — Server Developer
+🟦 3. [DEV:dashboard] — Dashboard Developer
+🟦 7. [INFRA] — Infrastructure
+NS
+🟦 6. [CTO] — Chief Technology Officer / Architecture
+🟦 5. [QA] — Quality Assurance
+🟦 4. [DEV:agents] — AGENTS Platform Developer
+
 # Sprint 06 — Founder Acceptance Testing Walkthrough
 
 **For:** Avi ([FOUNDER])

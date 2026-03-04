@@ -5,6 +5,11 @@
   "installCommand": "npm install && cd packages/shared && npm install && cd ../server && npm install --include=dev",
   "buildCommand": "cd packages/shared && npx -p typescript tsc && cd ../server && npx -p typescript tsc && mkdir -p ../../.vercel_static && echo ok > ../../.vercel_static/health.txt",
   "outputDirectory": ".vercel_static",
+  "functions": {
+    "api/**": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/api" }
   ]
