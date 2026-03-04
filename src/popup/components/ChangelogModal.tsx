@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import changelogContent from '../../../CHANGELOG.md?raw';
+import changelogContent from '../../../WHATSNEW.md?raw';
 
 interface ChangelogModalProps {
   onClose: () => void;
@@ -28,7 +28,7 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-          <h2 className="text-sm font-bold text-white">What's New</h2>
+          <h2 className="text-sm font-bold text-white">What&apos;s New</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-lg leading-none transition-colors"
@@ -63,21 +63,26 @@ export const ChangelogModal: React.FC<ChangelogModalProps> = ({ onClose }) => {
                   {body
                     .split('\n')
                     .map((line, j) => {
+                      // Strip markdown formatting: **bold**, `code`, *italic*
+                      const clean = (s: string) =>
+                        s.replace(/\*\*([^*]+)\*\*/g, '$1')
+                          .replace(/`([^`]+)`/g, '$1')
+                          .replace(/\*([^*]+)\*/g, '$1');
                       if (line.startsWith('### ')) {
                         return (
                           <p key={j} className="font-semibold text-gray-200 mt-2 mb-1">
-                            {line.replace('### ', '')}
+                            {clean(line.replace('### ', ''))}
                           </p>
                         );
                       }
                       if (line.startsWith('- ')) {
                         return (
                           <p key={j} className="pl-2 text-gray-400">
-                            {line}
+                            • {clean(line.slice(2))}
                           </p>
                         );
                       }
-                      return line ? <p key={j} className="text-gray-500">{line}</p> : null;
+                      return line ? <p key={j} className="text-gray-500">{clean(line)}</p> : null;
                     })
                     .filter(Boolean)}
                 </div>
