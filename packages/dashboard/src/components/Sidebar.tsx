@@ -6,42 +6,59 @@ interface SidebarProps {
 
 export function Sidebar({ projects, selectedProject, onSelectProject }: SidebarProps) {
   return (
-    <aside data-testid="sidebar" className="w-56 shrink-0 bg-white border-r border-gray-200 min-h-0 overflow-y-auto">
-      <div className="px-4 py-3 border-b border-gray-100">
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+    <aside
+      data-testid="sidebar"
+      className="w-60 shrink-0 bg-slate-900 min-h-0 overflow-y-auto custom-scrollbar flex flex-col"
+    >
+      <div className="px-5 py-4 flex-1">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">
           Projects
         </h2>
-      </div>
-      <nav className="py-1">
-        <button
-          data-testid="sidebar-all-projects"
-          className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-            selectedProject === ''
-              ? 'bg-blue-50 text-blue-700 font-medium border-r-2 border-blue-500'
-              : 'text-gray-700 hover:bg-gray-50'
-          }`}
-          onClick={() => onSelectProject('')}
-        >
-          All projects
-        </button>
-        {projects.map((project) => (
+        <nav className="space-y-0.5">
           <button
-            key={project}
-            data-testid={`sidebar-project-${project}`}
-            className={`w-full text-left px-4 py-2 text-sm transition-colors ${
-              selectedProject === project
-                ? 'bg-blue-50 text-blue-700 font-medium border-r-2 border-blue-500'
-                : 'text-gray-700 hover:bg-gray-50'
+            data-testid="sidebar-all-projects"
+            className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${
+              selectedProject === ''
+                ? 'bg-indigo-600 text-white font-medium shadow-sm'
+                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
-            onClick={() => onSelectProject(project)}
+            onClick={() => onSelectProject('')}
           >
-            {project}
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+              All projects
+            </span>
           </button>
-        ))}
-        {projects.length === 0 && (
-          <div className="px-4 py-3 text-xs text-gray-400">No projects found</div>
-        )}
-      </nav>
+          {projects.map((project) => (
+            <button
+              key={project}
+              data-testid={`sidebar-project-${project}`}
+              className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${
+                selectedProject === project
+                  ? 'bg-indigo-600 text-white font-medium shadow-sm'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+              onClick={() => onSelectProject(project)}
+            >
+              <span className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
+                {project}
+              </span>
+            </button>
+          ))}
+          {projects.length === 0 && (
+            <div className="px-3 py-4 text-xs text-slate-500 text-center">
+              No projects yet
+            </div>
+          )}
+        </nav>
+      </div>
+
+      <div className="px-5 py-3 border-t border-slate-800">
+        <div className="text-xs text-slate-500">Vigil v2.0.0</div>
+      </div>
     </aside>
   );
 }

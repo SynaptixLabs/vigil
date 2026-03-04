@@ -2,11 +2,6 @@ import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 
 import type { RecordingItem } from '../types';
 import { loadRrwebPlayer } from './rrweb-loader';
 
-/**
- * rrweb eventWithTime — minimal shape for the player.
- * We use `unknown` events from RrwebChunk, which are already eventWithTime
- * objects serialized by the extension's rrweb recorder.
- */
 type RrwebEvent = { timestamp: number; type: number; data: unknown };
 
 export interface RecordingPlayerHandle {
@@ -19,17 +14,12 @@ export interface RecordingPlayerProps {
   height?: number;
 }
 
-/**
- * Flatten all rrweb chunks from all recordings into a single sorted event array.
- * rrweb-player requires a contiguous event stream with real timestamps.
- */
 function flattenEvents(recordings: RecordingItem[]): RrwebEvent[] {
   const events: RrwebEvent[] = [];
   for (const rec of recordings) {
     for (const chunk of rec.rrwebChunks) {
       if (Array.isArray(chunk.events)) {
         for (const evt of chunk.events) {
-          // Each event should be an object with at least { timestamp, type, data }
           const e = evt as RrwebEvent;
           if (e && typeof e.timestamp === 'number') {
             events.push(e);
@@ -38,17 +28,10 @@ function flattenEvents(recordings: RecordingItem[]): RrwebEvent[] {
       }
     }
   }
-  // Sort by timestamp ascending
   events.sort((a, b) => a.timestamp - b.timestamp);
   return events;
 }
 
-/**
- * RecordingPlayer — wraps rrweb-player (Svelte component) in a React wrapper.
- *
- * The rrweb-player is instantiated imperatively via `new Player({ target, props })`.
- * Exposes a `goto(timeOffset)` method via React ref for timeline sync.
- */
 export const RecordingPlayer = forwardRef<RecordingPlayerHandle, RecordingPlayerProps>(
   function RecordingPlayer({ recordings, width = 640, height = 480 }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -69,15 +52,13 @@ export const RecordingPlayer = forwardRef<RecordingPlayerHandle, RecordingPlayer
     useEffect(() => {
       if (!hasEvents || !containerRef.current) return;
 
-      // Clear previous player
       const container = containerRef.current;
       container.innerHTML = '';
 
       let player: unknown = null;
 
-      // Load rrweb-player via extracted loader (mockable in tests)
       loadRrwebPlayer().then((Player) => {
-        if (!container.isConnected) return; // component unmounted
+        if (!container.isConnected) return;
 
         try {
           player = new Player({
@@ -102,14 +83,11 @@ export const RecordingPlayer = forwardRef<RecordingPlayerHandle, RecordingPlayer
 
       return () => {
         playerRef.current = null;
-        // Svelte components have $destroy
         if (player && typeof (player as Record<string, unknown>).$destroy === 'function') {
           (player as { $destroy: () => void }).$destroy();
         }
         container.innerHTML = '';
       };
-      // We intentionally depend on recordings identity rather than events
-      // to avoid re-creating the player on every render
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasEvents, recordings, width, height]);
 
@@ -117,26 +95,27 @@ export const RecordingPlayer = forwardRef<RecordingPlayerHandle, RecordingPlayer
       return (
         <div
           data-testid="recording-player"
-          className="bg-white rounded-lg border border-gray-200 p-6 text-center text-sm text-gray-500"
+          className="bg-white rounded-xl border border-slate-200 p-8 text-center"
         >
-          No recording available for this session.
+          <div className="text-3xl mb-2">🎥</div>
+          <div className="text-sm text-slate-500">No recording available</div>
         </div>
       );
     }
 
     return (
-      <div data-testid="recording-player" className="bg-white rounded-lg border border-gray-200">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-900">
+      <div data-testid="recording-player" className="bg-white rounded-xl border border-slate-200">
+        <div className="px-5 py-3 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">
             Session Recording
           </h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5">
             {events.length} events across {recordings.length} recording{recordings.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div
           ref={containerRef}
-          className="p-2 flex justify-center overflow-hidden"
+          className="p-3 flex justify-center overflow-hidden"
           style={{ minHeight: height + 80 }}
         />
       </div>

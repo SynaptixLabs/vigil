@@ -9,14 +9,22 @@ export function HealthIndicator({ health }: HealthIndicatorProps) {
 
   return (
     <div data-testid="server-health-status" className="flex items-center gap-2 text-sm">
-      <span
-        className={`inline-block w-2 h-2 rounded-full ${isOk ? 'bg-green-500' : 'bg-red-500'}`}
-      />
-      <span className={isOk ? 'text-green-700' : 'text-red-700'}>
-        {isOk ? `Server OK${health.version ? ` v${health.version}` : ''}` : 'Server offline'}
+      <span className="relative flex h-2.5 w-2.5">
+        {isOk && (
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+        )}
+        <span
+          className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOk ? 'bg-emerald-400' : 'bg-red-400'}`}
+        />
       </span>
-      {isOk && health.llmMode && (
-        <span className="text-gray-400 text-xs">({health.llmMode})</span>
+      <span className={isOk ? 'text-emerald-300 font-medium' : 'text-red-300 font-medium'}>
+        {isOk ? 'Connected' : 'Offline'}
+      </span>
+      {isOk && health.version && (
+        <span className="text-indigo-300/60 text-xs">v{health.version}</span>
+      )}
+      {isOk && health.storage && (
+        <span className="text-indigo-300/40 text-xs">{health.storage}</span>
       )}
     </div>
   );

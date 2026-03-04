@@ -69,6 +69,7 @@ export interface SessionDetail {
   id: string;
   project: string;
   sprint: string;
+  description?: string;
   name: string;
   startedAt: number;
   endedAt?: number;

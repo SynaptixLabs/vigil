@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchBugs, fetchFeatures, fetchSprints, fetchHealth, fetchSessions, fetchSession } from './api';
+import { fetchBugs, fetchFeatures, fetchSprints, fetchHealth, fetchSessions, fetchSession, deleteSession } from './api';
 import type { BugItem, FeatureItem, HealthStatus, SessionSummary, SessionDetail as SessionDetailType } from './types';
 import { Sidebar } from './components/Sidebar';
 import { SprintSelector } from './components/SprintSelector';
@@ -10,6 +10,12 @@ import { SessionList } from './views/SessionList';
 import { SessionDetail } from './views/SessionDetail';
 
 type Tab = 'bugs' | 'features' | 'sessions';
+
+const TAB_CONFIG: { key: Tab; label: string; icon: string }[] = [
+  { key: 'sessions', label: 'Sessions', icon: '📹' },
+  { key: 'bugs', label: 'Bugs', icon: '🐛' },
+  { key: 'features', label: 'Features', icon: '✨' },
+];
 
 export default function App() {
   // ── Global state ──────────────────────────────────────────────────────────
@@ -84,7 +90,6 @@ export default function App() {
         selectedProject || undefined,
         sessionSprintFilter || undefined,
       );
-      // Sort by startedAt descending
       list.sort((a, b) => b.startedAt - a.startedAt);
       setSessions(list);
     } catch {
@@ -121,7 +126,6 @@ export default function App() {
     return Array.from(set).sort();
   }, [sessions]);
 
-  // Also derive unique sprint ids from sessions for the session sprint filter
   const sessionSprints = useMemo(() => {
     const set = new Set<string>();
     sessions.forEach((s) => {
@@ -146,6 +150,25 @@ export default function App() {
     setSessionDetail(null);
   }
 
+  async function handleDeleteSession(sessionId: string) {
+    try {
+      await deleteSession(sessionId);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (selectedSessionId === sessionId) {
+        setSelectedSessionId(null);
+        setSessionDetail(null);
+      }
+    } catch {
+      // Silently fail
+    }
+  }
+
+  const tabCounts: Record<Tab, number> = {
+    sessions: sessions.length,
+    bugs: bugs.length,
+    features: features.length,
+  };
+
   // ── Render helpers ────────────────────────────────────────────────────────
   function renderSessionsContent() {
     if (selectedSessionId) {
@@ -153,15 +176,20 @@ export default function App() {
         <div>
           <button
             data-testid="back-to-sessions"
-            className="mb-3 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+            className="mb-4 inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
             onClick={handleBackToList}
           >
-            &larr; Back to sessions
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to sessions
           </button>
           {detailLoading ? (
-            <div className="text-gray-500 py-8 text-center">Loading session...</div>
+            <div className="flex items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+            </div>
           ) : detailError ? (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {detailError}
             </div>
           ) : sessionDetail ? (
@@ -173,21 +201,23 @@ export default function App() {
 
     return (
       <div>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-5">
           <SprintSelector
             sprints={sessionSprints}
             selected={sessionSprintFilter}
             onChange={setSessionSprintFilter}
             showAll
           />
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-slate-500">
             {sessions.length} session{sessions.length !== 1 ? 's' : ''}
           </span>
         </div>
         {sessionsLoading ? (
-          <div className="text-gray-500 py-8 text-center">Loading sessions...</div>
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+          </div>
         ) : sessionsError ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {sessionsError}
           </div>
         ) : (
@@ -195,6 +225,7 @@ export default function App() {
             sessions={sessions}
             selectedId={selectedSessionId}
             onSelect={handleSessionSelect}
+            onDelete={handleDeleteSession}
           />
         )}
       </div>
@@ -202,17 +233,26 @@ export default function App() {
   }
 
   return (
-    <div data-testid="dashboard-root" className="min-h-screen bg-gray-50 flex flex-col">
+    <div data-testid="dashboard-root" className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-6 py-4 shrink-0">
+      <header className="bg-gradient-to-r from-indigo-950 to-indigo-900 px-6 py-3.5 shrink-0 shadow-lg">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-gray-900">Vigil Dashboard</h1>
+          <div className="flex items-center gap-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </div>
+              <h1 className="text-lg font-semibold text-white tracking-tight">Vigil</h1>
+            </div>
             {(activeTab === 'bugs' || activeTab === 'features') && (
               <SprintSelector
                 sprints={sprints}
                 selected={selectedSprint}
                 onChange={setSelectedSprint}
+                dark
               />
             )}
           </div>
@@ -228,42 +268,29 @@ export default function App() {
           onSelectProject={handleProjectSelect}
         />
 
-        <main className="flex-1 px-6 py-6 overflow-y-auto">
+        <main className="flex-1 px-8 py-6 overflow-y-auto custom-scrollbar">
           {/* Tab bar */}
-          <div className="flex gap-2 mb-4">
-            <button
-              data-testid="tab-sessions"
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'sessions'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-              onClick={() => setActiveTab('sessions')}
-            >
-              Sessions ({sessions.length})
-            </button>
-            <button
-              data-testid="tab-bugs"
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'bugs'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-              onClick={() => setActiveTab('bugs')}
-            >
-              Bugs ({bugs.length})
-            </button>
-            <button
-              data-testid="tab-features"
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                activeTab === 'features'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-              onClick={() => setActiveTab('features')}
-            >
-              Features ({features.length})
-            </button>
+          <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
+            {TAB_CONFIG.map(({ key, label, icon }) => (
+              <button
+                key={key}
+                data-testid={`tab-${key}`}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  activeTab === key
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+                onClick={() => setActiveTab(key)}
+              >
+                <span className="mr-1.5">{icon}</span>
+                {label}
+                <span className={`ml-1.5 text-xs ${
+                  activeTab === key ? 'text-indigo-600' : 'text-slate-400'
+                }`}>
+                  {tabCounts[key]}
+                </span>
+              </button>
+            ))}
           </div>
 
           {/* Tab content */}
@@ -272,12 +299,14 @@ export default function App() {
           ) : activeTab === 'bugs' ? (
             <>
               {dataError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
                   {dataError}
                 </div>
               )}
               {dataLoading ? (
-                <div className="text-gray-500 py-8 text-center">Loading...</div>
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                </div>
               ) : (
                 <BugList bugs={bugs} onRefresh={loadBugsAndFeatures} />
               )}
@@ -285,12 +314,14 @@ export default function App() {
           ) : (
             <>
               {dataError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
                   {dataError}
                 </div>
               )}
               {dataLoading ? (
-                <div className="text-gray-500 py-8 text-center">Loading...</div>
+                <div className="flex items-center justify-center py-16">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+                </div>
               ) : (
                 <FeatureList features={features} />
               )}

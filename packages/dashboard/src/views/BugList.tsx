@@ -36,7 +36,6 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
       await closeBug(bugId, 'Marked fixed via dashboard', true);
       onRefresh();
     } catch {
-      // fallback: try PATCH if close endpoint unavailable
       try {
         await patchBug(bugId, { status: 'resolved' });
         onRefresh();
@@ -60,24 +59,26 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
 
   if (bugs.length === 0) {
     return (
-      <div data-testid="bug-list-table" className="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
-        No bugs found for this sprint.
+      <div data-testid="bug-list-table" className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="text-4xl mb-3">🐛</div>
+        <div className="text-sm font-medium text-slate-600 mb-1">No bugs found</div>
+        <div className="text-xs text-slate-400">No bugs for this sprint. Nice work!</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
       <table data-testid="bug-list-table" className="w-full text-sm">
         <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
-            <th className="text-left px-4 py-3 font-medium text-gray-600">Title</th>
-            <th className="text-left px-4 py-3 font-medium text-gray-600">Severity</th>
-            <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-            <th className="text-left px-4 py-3 font-medium text-gray-600">Discovered</th>
-            <th className="text-left px-4 py-3 font-medium text-gray-600">Regression</th>
-            <th className="text-left px-4 py-3 font-medium text-gray-600">Actions</th>
+          <tr className="bg-slate-50 border-b border-slate-200">
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">ID</th>
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Title</th>
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Severity</th>
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Status</th>
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Discovered</th>
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Regression</th>
+            <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -89,42 +90,45 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
               <tr
                 key={bug.id}
                 data-testid={`bug-row-${bug.id}`}
-                className="border-b border-gray-100 hover:bg-gray-50"
+                className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
               >
-                <td className="px-4 py-3 font-mono text-xs">{bug.id}</td>
-                <td className="px-4 py-3">{bug.title}</td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-3 font-mono text-xs text-indigo-600">{bug.id}</td>
+                <td className="px-5 py-3 font-medium text-slate-900">{bug.title}</td>
+                <td className="px-5 py-3">
                   <SeverityBadge bugId={bug.id} severity={bug.severity} />
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-3">
                   <span
-                    className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
                       isOpen
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-800'
+                        ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+                        : 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
                     }`}
                   >
                     {bug.status.toUpperCase()}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-600 text-xs">{bug.discovered}</td>
-                <td className="px-4 py-3">
+                <td className="px-5 py-3 text-slate-500 text-xs">{bug.discovered}</td>
+                <td className="px-5 py-3">
                   {regStatus ? (
                     <span
-                      className={`text-xs ${
-                        regStatus === 'GREEN' ? 'text-green-600' : 'text-red-600'
+                      className={`inline-flex items-center gap-1 text-xs font-semibold ${
+                        regStatus === 'GREEN' ? 'text-emerald-600' : 'text-red-600'
                       }`}
                     >
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        regStatus === 'GREEN' ? 'bg-emerald-500' : 'bg-red-500'
+                      }`} />
                       {regStatus === 'GREEN' ? 'PASS' : 'FAIL'}
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-400">N/A</span>
+                    <span className="text-xs text-slate-300">N/A</span>
                   )}
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex gap-1">
+                <td className="px-5 py-3">
+                  <div className="flex gap-1.5">
                     <select
-                      className="text-xs border border-gray-300 rounded px-1 py-0.5"
+                      className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                       value={bug.severity}
                       disabled={updating === bug.id}
                       onChange={(e) =>
@@ -138,15 +142,15 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
                     </select>
                     {isOpen ? (
                       <button
-                        className="text-xs px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 disabled:opacity-50"
+                        className="text-xs px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 disabled:opacity-50 font-medium transition-colors"
                         disabled={updating === bug.id}
                         onClick={() => handleMarkFixed(bug.id)}
                       >
-                        Mark Fixed
+                        Fix
                       </button>
                     ) : (
                       <button
-                        className="text-xs px-2 py-0.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded hover:bg-yellow-100 disabled:opacity-50"
+                        className="text-xs px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 disabled:opacity-50 font-medium transition-colors"
                         disabled={updating === bug.id}
                         onClick={() => handleReopen(bug.id)}
                       >

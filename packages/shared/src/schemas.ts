@@ -137,6 +137,7 @@ export interface FeatureFile {
 export interface HealthStatus {
   status: 'ok' | 'error';
   version?: string;
+  storage?: string;
   llmMode?: string;
   port?: number;
 }
