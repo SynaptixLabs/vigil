@@ -7,6 +7,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MessageType } from '@shared/types';
 import { stopRecording } from '../recorder';
+import { safeSendMessage } from '../safe-message';
 import BugEditor from './BugEditor';
 
 interface ControlBarProps {
@@ -57,7 +58,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
   // B15: Sync startTime from background so timer survives cross-page navigation
   useEffect(() => {
-    chrome.runtime.sendMessage(
+    safeSendMessage(
       { type: MessageType.GET_SESSION_STATUS, source: 'content' },
       (response) => {
         if (response?.ok && response.data?.startedAt) {
@@ -149,11 +150,11 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
   const handlePauseResume = () => {
     if (recordingState === 'recording') {
-      chrome.runtime.sendMessage({ type: MessageType.PAUSE_RECORDING, source: 'content' });
+      safeSendMessage({ type: MessageType.PAUSE_RECORDING, source: 'content' });
       setPauseStart(Date.now());
       setRecordingState('paused');
     } else {
-      chrome.runtime.sendMessage({ type: MessageType.RESUME_RECORDING, source: 'content' });
+      safeSendMessage({ type: MessageType.RESUME_RECORDING, source: 'content' });
       if (pauseStart) setTotalPaused((p) => p + Date.now() - pauseStart);
       setPauseStart(null);
       setRecordingState('recording');
@@ -162,12 +163,9 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
   const handleStop = () => {
     stopRecording(); // flush rrweb buffer locally — works even if background tabId is stale
-    chrome.runtime.sendMessage({ type: MessageType.STOP_RECORDING, source: 'content' }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('[Refine] Stop recording failed:', chrome.runtime.lastError.message);
-      }
+    safeSendMessage({ type: MessageType.STOP_RECORDING, source: 'content' }, () => {
       // Open side panel so the user can see the session results
-      chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
+      safeSendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
     });
     // Unmount overlay immediately — don't block on background response
     // (background may await vigilSessionManager.endSession → postWithRetry which can take 6s+)
@@ -175,7 +173,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
   };
 
   const handleOpenPanel = () => {
-    chrome.runtime.sendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
+    safeSendMessage({ type: MessageType.OPEN_SIDE_PANEL, source: 'content' });
   };
 
   const handleToggleTheme = () => {
@@ -212,7 +210,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
     if (noteInput === null) return;
     const trimmed = noteInput.trim();
     if (trimmed) {
-      chrome.runtime.sendMessage(
+      safeSendMessage(
         { type: MessageType.ANNOTATE_ACTION, payload: { sessionId, note: trimmed }, source: 'content' },
         () => showToast('✓ Note added')
       );
@@ -225,7 +223,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
   }, [noteInput]);
 
   const handleScreenshot = () => {
-    chrome.runtime.sendMessage(
+    safeSendMessage(
       { type: MessageType.CAPTURE_SCREENSHOT, payload: { sessionId }, source: 'content' },
       () => showToast('✓ Screenshot captured')
     );

@@ -8,6 +8,7 @@
 import { MessageType } from '@shared/types';
 import type { InspectedElement } from '@shared/types';
 import { getBestSelector } from './selector-engine';
+import { safeSendMessage } from './safe-message';
 
 const HIGHLIGHT_STYLE = 'outline: 2px solid #6366f1 !important; outline-offset: 1px !important;';
 
@@ -59,7 +60,7 @@ function onClick(e: MouseEvent): void {
   };
 
   console.log(`[Refine] Inspector: ${selector}`);
-  chrome.runtime.sendMessage({ type: MessageType.LOG_INSPECTOR_ELEMENT, payload: el, source: 'content' });
+  safeSendMessage({ type: MessageType.LOG_INSPECTOR_ELEMENT, payload: el, source: 'content' });
 }
 
 function startInspector(): void {

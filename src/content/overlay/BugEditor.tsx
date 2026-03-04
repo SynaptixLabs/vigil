@@ -43,17 +43,22 @@ const BugEditor: React.FC<BugEditorProps> = ({
     // B17: Auto-screenshot on save if one isn't provided
     if (!finalScreenshotId) {
       finalScreenshotId = await new Promise<string | undefined>((resolve) => {
-        chrome.runtime.sendMessage(
-          { type: MessageType.CAPTURE_SCREENSHOT, payload: { sessionId }, source: 'content' },
-          (response) => {
-            if (chrome.runtime.lastError || !response?.ok) {
-              console.warn('[Refine] Auto-screenshot failed:', chrome.runtime.lastError?.message);
-              resolve(undefined);
-            } else {
-              resolve(response.data?.screenshotId as string | undefined);
+        try {
+          chrome.runtime.sendMessage(
+            { type: MessageType.CAPTURE_SCREENSHOT, payload: { sessionId }, source: 'content' },
+            (response) => {
+              if (chrome.runtime.lastError || !response?.ok) {
+                console.warn('[Refine] Auto-screenshot failed:', chrome.runtime.lastError?.message);
+                resolve(undefined);
+              } else {
+                resolve(response.data?.screenshotId as string | undefined);
+              }
             }
-          }
-        );
+          );
+        } catch {
+          // Extension context invalidated — resolve without screenshot
+          resolve(undefined);
+        }
       });
     }
 
@@ -74,7 +79,11 @@ const BugEditor: React.FC<BugEditorProps> = ({
         timestamp,
       };
       await new Promise<void>((resolve) => {
-        chrome.runtime.sendMessage({ type: MessageType.LOG_BUG, payload: bug, source: 'content' }, () => resolve());
+        try {
+          chrome.runtime.sendMessage({ type: MessageType.LOG_BUG, payload: bug, source: 'content' }, () => resolve());
+        } catch {
+          resolve(); // Extension context invalidated — bug lost but no crash
+        }
       });
     } else {
       const feature = {
@@ -91,7 +100,11 @@ const BugEditor: React.FC<BugEditorProps> = ({
         timestamp,
       };
       await new Promise<void>((resolve) => {
-        chrome.runtime.sendMessage({ type: MessageType.LOG_FEATURE, payload: feature, source: 'content' }, () => resolve());
+        try {
+          chrome.runtime.sendMessage({ type: MessageType.LOG_FEATURE, payload: feature, source: 'content' }, () => resolve());
+        } catch {
+          resolve(); // Extension context invalidated — feature lost but no crash
+        }
       });
     }
 
