@@ -26,6 +26,9 @@ export interface StorageProvider {
   getSession(sessionId: string): Promise<VIGILSession | null>;
   deleteSession(sessionId: string): Promise<boolean>;
 
+  // Maintenance
+  cleanOrphans?(): Promise<{ bugs: number; features: number }>;
+
   // Counters
   nextBugId(): Promise<string>;
   nextFeatId(): Promise<string>;

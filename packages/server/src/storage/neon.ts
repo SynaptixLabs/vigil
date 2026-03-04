@@ -266,8 +266,26 @@ export class NeonStorage implements StorageProvider {
 
   async deleteSession(sessionId: string): Promise<boolean> {
     const pool = getPool();
+    // Cascade: remove bugs/features linked to this session first
+    await pool.query('DELETE FROM bugs WHERE session_id = $1', [sessionId]);
+    await pool.query('DELETE FROM features WHERE session_id = $1', [sessionId]);
     const result = await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  /** Remove bugs/features whose session_id references a non-existent session */
+  async cleanOrphans(): Promise<{ bugs: number; features: number }> {
+    const pool = getPool();
+    const bugResult = await pool.query(
+      'DELETE FROM bugs WHERE session_id IS NOT NULL AND session_id NOT IN (SELECT id FROM sessions)',
+    );
+    const featResult = await pool.query(
+      'DELETE FROM features WHERE session_id IS NOT NULL AND session_id NOT IN (SELECT id FROM sessions)',
+    );
+    return {
+      bugs: bugResult.rowCount ?? 0,
+      features: featResult.rowCount ?? 0,
+    };
   }
 
   async nextBugId(): Promise<string> {

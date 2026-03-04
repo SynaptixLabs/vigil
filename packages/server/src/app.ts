@@ -49,6 +49,22 @@ app.use('/api/features', featuresRouter);
 app.use('/api/sprints', sprintsRouter);
 app.use('/api/vigil', suggestRouter);
 
+// Admin: clean orphaned bugs/features
+app.post('/api/admin/clean-orphans', async (_req, res) => {
+  try {
+    const storage = getStorage();
+    if (storage.cleanOrphans) {
+      const result = await storage.cleanOrphans();
+      res.json({ ok: true, cleaned: result });
+    } else {
+      res.json({ ok: true, cleaned: { bugs: 0, features: 0 }, note: 'Not supported on this storage provider' });
+    }
+  } catch (err) {
+    console.error('[vigil-server] Error cleaning orphans:', err);
+    res.status(500).json({ error: 'Failed to clean orphans' });
+  }
+});
+
 // Serve dashboard static files — resolve from compiled dist/ up to public/
 const dashboardDir = resolve(__dirname, '..', 'public');
 app.use('/dashboard', express.static(dashboardDir, { index: 'index.html' }));
