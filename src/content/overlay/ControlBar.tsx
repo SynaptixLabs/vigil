@@ -180,7 +180,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
     const next: 'dark' | 'light' = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
     applyThemeToHost(next);
-    chrome.storage.local.set({ refineTheme: next });
+    try { chrome.storage.local.set({ refineTheme: next }); } catch { /* stale context */ }
     showToast(next === 'light' ? '☀️ Light mode' : '🌙 Dark mode');
   };
 

@@ -340,7 +340,7 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
                             disabled={endingSession}
                             className="w-full text-[11px] font-semibold bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-3 py-1.5 rounded transition-colors"
                           >
-                            {endingSession ? 'Ending\u2026' : '\u23F9 End Session'}
+                            {endingSession ? 'Ending…' : '⏹ End Session'}
                           </button>
                         </div>
                       )}
@@ -392,50 +392,37 @@ interface SessionCardProps {
   onSelect: (id: string) => void;
 }
 
-const SessionCard: React.FC<SessionCardProps> = ({ session, onSelect }) => {
-  const isActive =
-    session.status === SessionStatus.RECORDING ||
-    session.status === SessionStatus.PAUSED;
-
-  return (
-    <div
-      data-testid="session-list-item"
-      onClick={() => onSelect(session.id)}
-      style={{ cursor: 'pointer' }}
-      className={`rounded-xl border p-3 transition-colors ${
-        isActive
-          ? 'border-indigo-700/60 bg-indigo-900/20 hover:bg-indigo-900/30'
-          : 'border-gray-800 bg-gray-900/60 hover:bg-gray-800/60'
-      }`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{session.name}</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {formatTimestamp(session.startedAt)}
-          </p>
-        </div>
-        <span
-          data-testid="recording-status"
-          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
-            STATUS_COLORS[session.status]
-          }`}
-        >
-          {session.status === SessionStatus.RECORDING && (
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 mr-1 animate-pulse" />
-          )}
-          {session.status}
-        </span>
+const SessionCard: React.FC<SessionCardProps> = ({ session, onSelect }) => (
+  <div
+    data-testid="session-list-item"
+    onClick={() => onSelect(session.id)}
+    style={{ cursor: 'pointer' }}
+    className="rounded-xl border border-gray-800 bg-gray-900/60 hover:bg-gray-800/60 p-3 transition-colors"
+  >
+    <div className="flex items-start justify-between gap-2">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white truncate">{session.name}</p>
+        <p className="text-xs text-gray-500 mt-0.5">
+          {formatTimestamp(session.startedAt)}
+        </p>
       </div>
-
-      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-        <span>⏱ {formatDuration(session.duration)}</span>
-        {session.bugCount > 0 && <span>🐛 {session.bugCount}</span>}
-        {session.screenshotCount > 0 && <span>📷 {session.screenshotCount}</span>}
-        {session.actionCount > 0 && <span>🖱 {session.actionCount}</span>}
-      </div>
+      <span
+        data-testid="recording-status"
+        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${
+          STATUS_COLORS[session.status]
+        }`}
+      >
+        {session.status}
+      </span>
     </div>
-  );
-};
+
+    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+      <span>⏱ {formatDuration(session.duration)}</span>
+      {session.bugCount > 0 && <span>🐛 {session.bugCount}</span>}
+      {session.screenshotCount > 0 && <span>📷 {session.screenshotCount}</span>}
+      {session.actionCount > 0 && <span>🖱 {session.actionCount}</span>}
+    </div>
+  </div>
+);
 
 export default SessionList;

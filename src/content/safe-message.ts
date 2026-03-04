@@ -5,7 +5,9 @@
  * scripts remain injected but chrome.runtime.sendMessage throws synchronously.
  * This wrapper catches that error silently.
  *
- * Used by: content-script.ts, ControlBar.tsx, BugEditor.tsx, recorder.ts
+ * Used by: content-script.ts, ControlBar.tsx, inspector.ts
+ * Note: BugEditor.tsx uses inline try/catch (needs Promise resolution on error).
+ *       recorder.ts has its own inline try/catch in sendToBackground().
  */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
