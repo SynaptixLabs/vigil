@@ -51,11 +51,16 @@ app.use('/api/vigil', suggestRouter);
 
 // Serve dashboard static files — resolve from compiled dist/ up to public/
 const dashboardDir = resolve(__dirname, '..', 'public');
-app.use('/dashboard', express.static(dashboardDir));
-// SPA fallback — serve index.html for /dashboard routes that miss static
+app.use('/dashboard', express.static(dashboardDir, { index: 'index.html' }));
+// SPA fallback — serve index.html for /dashboard and /dashboard/* routes
+app.get('/dashboard', (_req, res) => {
+  res.sendFile(resolve(dashboardDir, 'index.html'), (err) => {
+    if (err) res.status(404).json({ error: 'Dashboard not built', dir: dashboardDir });
+  });
+});
 app.get('/dashboard/*', (_req, res) => {
   res.sendFile(resolve(dashboardDir, 'index.html'), (err) => {
-    if (err) res.status(404).json({ error: 'Dashboard not built', path: dashboardDir });
+    if (err) res.status(404).json({ error: 'Dashboard not built', dir: dashboardDir });
   });
 });
 
