@@ -59,10 +59,18 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     case 'PAUSE_RECORDING':
       pauseRecording();
+      // Notify ControlBar overlay so UI shows PAUSED (Alt+Shift+V path)
+      window.dispatchEvent(new CustomEvent('vigil:recording-state-changed', {
+        detail: { recording: false },
+      }));
       sendResponse({ ok: true });
       break;
     case 'RESUME_RECORDING':
       resumeRecording();
+      // Notify ControlBar overlay so UI shows RECORDING (Alt+Shift+V path)
+      window.dispatchEvent(new CustomEvent('vigil:recording-state-changed', {
+        detail: { recording: true },
+      }));
       sendResponse({ ok: true });
       break;
     case 'STOP_RECORDING':
