@@ -1,3 +1,15 @@
+// ── Project types ─────────────────────────────────────────────────────────────
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description?: string;
+  currentSprint?: string;
+  url?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ── Re-exports from shared package (S07-11) ─────────────────────────────────
 import type { RrwebChunk as SharedRrwebChunk } from '@synaptix/vigil-shared';
 

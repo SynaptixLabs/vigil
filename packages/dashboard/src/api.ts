@@ -1,6 +1,47 @@
-import type { BugItem, BugUpdate, FeatureItem, HealthStatus, SessionSummary, SessionDetail } from './types';
+import type { BugItem, BugUpdate, FeatureItem, HealthStatus, SessionSummary, SessionDetail, ProjectItem } from './types';
 
 const BASE = '/api';
+
+// ── Projects ──────────────────────────────────────────────────────────────────
+
+export async function fetchProjects(): Promise<ProjectItem[]> {
+  const res = await fetch(`${BASE}/projects`);
+  if (!res.ok) throw new Error(`Failed to fetch projects: ${res.status}`);
+  const data = await res.json();
+  return data.projects ?? [];
+}
+
+export async function createProject(project: { id: string; name: string; description?: string; currentSprint?: string; url?: string }): Promise<ProjectItem> {
+  const res = await fetch(`${BASE}/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(project),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `Failed to create project: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.project;
+}
+
+export async function updateProject(id: string, fields: { name?: string; description?: string; currentSprint?: string; url?: string }): Promise<ProjectItem> {
+  const res = await fetch(`${BASE}/projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  });
+  if (!res.ok) throw new Error(`Failed to update project: ${res.status}`);
+  const data = await res.json();
+  return data.project;
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Failed to delete project: ${res.status}`);
+}
+
+// ── Bugs ──────────────────────────────────────────────────────────────────────
 
 export async function fetchBugs(sprint?: string, status?: string): Promise<BugItem[]> {
   const params = new URLSearchParams();

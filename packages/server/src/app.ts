@@ -9,6 +9,7 @@ import { bugsRouter } from './routes/bugs.js';
 import { featuresRouter } from './routes/features.js';
 import { sprintsRouter } from './routes/sprints.js';
 import { suggestRouter } from './routes/suggest.js';
+import { projectsRouter } from './routes/projects.js';
 import { getStorage } from './storage/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,7 @@ app.use('/api/bugs', bugsRouter);
 app.use('/api/features', featuresRouter);
 app.use('/api/sprints', sprintsRouter);
 app.use('/api/vigil', suggestRouter);
+app.use('/api/projects', projectsRouter);
 
 // Admin: clean orphaned bugs/features
 app.post('/api/admin/clean-orphans', async (_req, res) => {

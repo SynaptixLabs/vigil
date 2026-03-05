@@ -31,7 +31,7 @@ export async function initStorage(): Promise<StorageProvider> {
     console.log('[vigil-server] storage: filesystem (local)');
   }
 
-  return _storage;
+  return _storage!;
 }
 
 /**

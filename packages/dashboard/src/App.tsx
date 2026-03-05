@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchBugs, fetchFeatures, fetchSprints, fetchHealth, fetchSessions, fetchSession, deleteSession } from './api';
-import type { BugItem, FeatureItem, HealthStatus, SessionSummary, SessionDetail as SessionDetailType } from './types';
+import { fetchBugs, fetchFeatures, fetchSprints, fetchHealth, fetchSessions, fetchSession, deleteSession, fetchProjects } from './api';
+import type { BugItem, FeatureItem, HealthStatus, SessionSummary, SessionDetail as SessionDetailType, ProjectItem } from './types';
 import { Sidebar } from './components/Sidebar';
 import { SprintSelector } from './components/SprintSelector';
 import { HealthIndicator } from './components/HealthIndicator';
@@ -8,13 +8,15 @@ import { BugList } from './views/BugList';
 import { FeatureList } from './views/FeatureList';
 import { SessionList } from './views/SessionList';
 import { SessionDetail } from './views/SessionDetail';
+import { ProjectList } from './views/ProjectList';
 
-type Tab = 'bugs' | 'features' | 'sessions';
+type Tab = 'bugs' | 'features' | 'sessions' | 'projects';
 
 const TAB_CONFIG: { key: Tab; label: string; icon: string }[] = [
   { key: 'sessions', label: 'Sessions', icon: '📹' },
   { key: 'bugs', label: 'Bugs', icon: '🐛' },
   { key: 'features', label: 'Features', icon: '✨' },
+  { key: 'projects', label: 'Projects', icon: '📁' },
 ];
 
 export default function App() {
@@ -29,6 +31,10 @@ export default function App() {
   const [features, setFeatures] = useState<FeatureItem[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
+
+  // ── Projects state ───────────────────────────────────────────────────────
+  const [projectItems, setProjectItems] = useState<ProjectItem[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
 
   // ── Session state ─────────────────────────────────────────────────────────
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -57,6 +63,23 @@ export default function App() {
       })
       .catch(() => setDataError('Could not load sprints — is vigil-server running?'));
   }, [selectedSprint]);
+
+  // ── Load projects ────────────────────────────────────────────────────────
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    try {
+      const list = await fetchProjects();
+      setProjectItems(list);
+    } catch {
+      // Silently fail — projects sidebar will just be empty
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   // ── Load bugs & features (for bugs/features tabs) ─────────────────────────
   const loadBugsAndFeatures = useCallback(async () => {
@@ -117,15 +140,6 @@ export default function App() {
       .finally(() => setDetailLoading(false));
   }, [selectedSessionId]);
 
-  // ── Derive unique project names from sessions ─────────────────────────────
-  const projects = useMemo(() => {
-    const set = new Set<string>();
-    sessions.forEach((s) => {
-      if (s.project) set.add(s.project);
-    });
-    return Array.from(set).sort();
-  }, [sessions]);
-
   const sessionSprints = useMemo(() => {
     const set = new Set<string>();
     sessions.forEach((s) => {
@@ -167,6 +181,7 @@ export default function App() {
     sessions: sessions.length,
     bugs: bugs.length,
     features: features.length,
+    projects: projectItems.length,
   };
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -263,9 +278,10 @@ export default function App() {
       {/* Body: Sidebar + Main */}
       <div className="flex flex-1 min-h-0">
         <Sidebar
-          projects={projects}
+          projects={projectItems}
           selectedProject={selectedProject}
           onSelectProject={handleProjectSelect}
+          onManageProjects={() => setActiveTab('projects')}
         />
 
         <main className="flex-1 px-8 py-6 overflow-y-auto custom-scrollbar">
@@ -311,7 +327,7 @@ export default function App() {
                 <BugList bugs={bugs} onRefresh={loadBugsAndFeatures} />
               )}
             </>
-          ) : (
+          ) : activeTab === 'features' ? (
             <>
               {dataError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
@@ -326,7 +342,15 @@ export default function App() {
                 <FeatureList features={features} />
               )}
             </>
-          )}
+          ) : activeTab === 'projects' ? (
+            projectsLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
+              </div>
+            ) : (
+              <ProjectList projects={projectItems} onRefresh={loadProjects} />
+            )
+          ) : null}
         </main>
       </div>
     </div>

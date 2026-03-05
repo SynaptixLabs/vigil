@@ -1,10 +1,13 @@
+import type { ProjectItem } from '../types';
+
 interface SidebarProps {
-  projects: string[];
+  projects: ProjectItem[];
   selectedProject: string;
   onSelectProject: (project: string) => void;
+  onManageProjects?: () => void;
 }
 
-export function Sidebar({ projects, selectedProject, onSelectProject }: SidebarProps) {
+export function Sidebar({ projects, selectedProject, onSelectProject, onManageProjects }: SidebarProps) {
   return (
     <aside
       data-testid="sidebar"
@@ -33,18 +36,18 @@ export function Sidebar({ projects, selectedProject, onSelectProject }: SidebarP
           </button>
           {projects.map((project) => (
             <button
-              key={project}
-              data-testid={`sidebar-project-${project}`}
+              key={project.id}
+              data-testid={`sidebar-project-${project.id}`}
               className={`w-full text-left px-3 py-2 text-sm rounded-lg transition-all duration-150 ${
-                selectedProject === project
+                selectedProject === project.id
                   ? 'bg-indigo-600 text-white font-medium shadow-sm'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
-              onClick={() => onSelectProject(project)}
+              onClick={() => onSelectProject(project.id)}
             >
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
-                {project}
+                {project.name}
               </span>
             </button>
           ))}
@@ -56,7 +59,15 @@ export function Sidebar({ projects, selectedProject, onSelectProject }: SidebarP
         </nav>
       </div>
 
-      <div className="px-5 py-3 border-t border-slate-800">
+      <div className="px-5 py-3 border-t border-slate-800 space-y-2">
+        {onManageProjects && (
+          <button
+            className="w-full text-left text-xs text-slate-400 hover:text-indigo-400 transition-colors"
+            onClick={onManageProjects}
+          >
+            Manage Projects
+          </button>
+        )}
         <div className="text-xs text-slate-500">Vigil v2.0.0</div>
       </div>
     </aside>

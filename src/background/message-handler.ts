@@ -306,6 +306,26 @@ export function handleMessage(
       return true;
     }
 
+    // Sprint 07: Fetch projects list from vigil-server for dropdown
+    case MessageType.GET_PROJECTS: {
+      loadServerUrl()
+        .then(serverUrl => fetch(`${serverUrl}/api/projects`, { signal: AbortSignal.timeout(3000) }))
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then(data => {
+          const projects = (data.projects ?? []).map((p: Record<string, unknown>) => ({
+            id: p.id as string,
+            name: p.name as string,
+            currentSprint: (p.current_sprint ?? p.currentSprint) as string | undefined,
+          }));
+          sendResponse({ ok: true, data: { projects } });
+        })
+        .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+      return true;
+    }
+
     // Sprint 07 S07-16: Fetch sprint list for a project folder from vigil-server
     case MessageType.GET_PROJECT_SPRINTS: {
       const { projectPath } = message.payload as { projectPath: string };

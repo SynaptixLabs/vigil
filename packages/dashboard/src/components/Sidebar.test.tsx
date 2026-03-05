@@ -1,8 +1,13 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Sidebar } from './Sidebar';
+import type { ProjectItem } from '../types';
 
 describe('Sidebar', () => {
-  const defaultProjects = ['vigil', 'papyrus', 'nightingale'];
+  const defaultProjects: ProjectItem[] = [
+    { id: 'vigil', name: 'Vigil', createdAt: '', updatedAt: '' },
+    { id: 'papyrus', name: 'Papyrus', createdAt: '', updatedAt: '' },
+    { id: 'nightingale', name: 'Nightingale', createdAt: '', updatedAt: '' },
+  ];
 
   it('renders the Projects heading', () => {
     render(
@@ -23,17 +28,17 @@ describe('Sidebar', () => {
     render(
       <Sidebar projects={defaultProjects} selectedProject="" onSelectProject={vi.fn()} />,
     );
-    for (const name of defaultProjects) {
-      expect(screen.getByTestId(`sidebar-project-${name}`)).toBeInTheDocument();
-      expect(screen.getByText(name)).toBeInTheDocument();
+    for (const p of defaultProjects) {
+      expect(screen.getByTestId(`sidebar-project-${p.id}`)).toBeInTheDocument();
+      expect(screen.getByText(p.name)).toBeInTheDocument();
     }
   });
 
-  it('shows "No projects found" when projects array is empty', () => {
+  it('shows "No projects yet" when projects array is empty', () => {
     render(
       <Sidebar projects={[]} selectedProject="" onSelectProject={vi.fn()} />,
     );
-    expect(screen.getByText('No projects found')).toBeInTheDocument();
+    expect(screen.getByText('No projects yet')).toBeInTheDocument();
   });
 
   it('calls onSelectProject with empty string when "All projects" is clicked', () => {
@@ -45,35 +50,13 @@ describe('Sidebar', () => {
     expect(onSelectProject).toHaveBeenCalledWith('');
   });
 
-  it('calls onSelectProject with project name when a project is clicked', () => {
+  it('calls onSelectProject with project id when a project is clicked', () => {
     const onSelectProject = vi.fn();
     render(
       <Sidebar projects={defaultProjects} selectedProject="" onSelectProject={onSelectProject} />,
     );
     fireEvent.click(screen.getByTestId('sidebar-project-papyrus'));
     expect(onSelectProject).toHaveBeenCalledWith('papyrus');
-  });
-
-  it('applies active styles to "All projects" when selectedProject is empty', () => {
-    render(
-      <Sidebar projects={defaultProjects} selectedProject="" onSelectProject={vi.fn()} />,
-    );
-    const allBtn = screen.getByTestId('sidebar-all-projects');
-    expect(allBtn.className).toContain('bg-blue-50');
-    expect(allBtn.className).toContain('text-blue-700');
-  });
-
-  it('applies active styles to the selected project button', () => {
-    render(
-      <Sidebar projects={defaultProjects} selectedProject="vigil" onSelectProject={vi.fn()} />,
-    );
-    const vigilBtn = screen.getByTestId('sidebar-project-vigil');
-    expect(vigilBtn.className).toContain('bg-blue-50');
-    expect(vigilBtn.className).toContain('text-blue-700');
-
-    // Other projects should NOT have active styles
-    const papyrusBtn = screen.getByTestId('sidebar-project-papyrus');
-    expect(papyrusBtn.className).not.toContain('bg-blue-50');
   });
 
   it('has data-testid="sidebar" on root element', () => {

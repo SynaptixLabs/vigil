@@ -84,6 +84,8 @@ export enum MessageType {
   SESSION_SYNC_FAILED = 'SESSION_SYNC_FAILED',
   // Sprint 07 — Project-oriented sessions (S07-16)
   GET_PROJECT_SPRINTS = 'GET_PROJECT_SPRINTS',
+  // Sprint 07 — Fetch projects from server for dropdown
+  GET_PROJECTS = 'GET_PROJECTS',
   // Sprint 07 — Session resync (FAT data recovery)
   RESYNC_SESSION = 'RESYNC_SESSION',
   // Sprint 07 — Delete session from both IndexedDB + server (single source of truth)
@@ -184,4 +186,13 @@ export interface Screenshot {
   timestamp: number;
   width: number;
   height: number;
+}
+
+/**
+ * Lightweight project info returned to extension from GET_PROJECTS.
+ */
+export interface ProjectInfo {
+  id: string;
+  name: string;
+  currentSprint?: string;
 }

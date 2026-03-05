@@ -1,6 +1,17 @@
 -- Vigil PostgreSQL Schema (Neon)
 -- Run via: tsx packages/server/src/db/migrate.ts
 
+-- Projects
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  current_sprint TEXT,
+  url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Sprints
 CREATE TABLE IF NOT EXISTS sprints (
   id TEXT PRIMARY KEY,
@@ -105,6 +116,17 @@ BEGIN
   ) THEN
     CREATE TRIGGER features_updated_at
       BEFORE UPDATE ON features
+      FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger WHERE tgname = 'projects_updated_at'
+  ) THEN
+    CREATE TRIGGER projects_updated_at
+      BEFORE UPDATE ON projects
       FOR EACH ROW EXECUTE FUNCTION update_updated_at();
   END IF;
 END $$;

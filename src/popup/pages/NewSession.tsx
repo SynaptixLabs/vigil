@@ -1,12 +1,13 @@
 /**
  * @file NewSession.tsx
- * @description Project-oriented session creation form (S07-16).
- * Sends CREATE_SESSION to background with project, sprint, auto-generated name.
+ * @description Simplified session creation form — project dropdown + name + description.
+ * Projects are created/managed from the dashboard, NOT the extension.
+ * Sprint is derived from the project's currentSprint (set in dashboard).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageType } from '@shared/types';
-import type { Session } from '@shared/types';
+import type { Session, ProjectInfo } from '@shared/types';
 import { generateSessionName } from '@shared/utils';
 
 interface NewSessionProps {
@@ -14,46 +15,31 @@ interface NewSessionProps {
   onCreated: (session: Session) => void;
 }
 
-interface SprintEntry {
-  id: string;
-  name: string;
-}
-
-interface SessionHistory {
-  lastProject: string;
-  lastSprint: string;
-  recentProjects: string[];
-}
-
-const HISTORY_KEY = 'vigilSessionHistory';
+const DASHBOARD_URL = 'http://localhost:7474/dashboard';
 
 const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
   // Form state
-  const [project, setProject] = useState('');
-  const [sprint, setSprint] = useState('');
+  const [selectedProjectId, setSelectedProjectId] = useState('');
   const [name, setName] = useState('');
   const [nameEdited, setNameEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [recordMouseMove, setRecordMouseMove] = useState(false);
 
+  // Projects from server
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+
   // Tab state
   const [activeTabUrl, setActiveTabUrl] = useState('');
   const [activeTabId, setActiveTabId] = useState<number | undefined>(undefined);
-
-  // Sprint auto-detect
-  const [sprints, setSprints] = useState<SprintEntry[]>([]);
-  const [sprintsLoading, setSprintsLoading] = useState(false);
-  const [projectExists, setProjectExists] = useState<boolean | null>(null);
-
-  // History
-  const [history, setHistory] = useState<SessionHistory>({ lastProject: '', lastSprint: '', recentProjects: [] });
 
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionSequence, setSessionSequence] = useState(1);
 
-  // Load history + active tab + config sprint on mount
+  // Load projects from server + active tab on mount
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const target = tabs.find(
@@ -67,26 +53,26 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
       }
     });
 
-    chrome.storage.local.get([HISTORY_KEY], (res) => {
-      const saved = res[HISTORY_KEY] as SessionHistory | undefined;
-      if (saved) {
-        setHistory(saved);
-        if (saved.lastProject) {
-          setProject(saved.lastProject);
-          if (saved.lastSprint) setSprint(saved.lastSprint);
+    // Fetch projects from vigil-server via background
+    chrome.runtime.sendMessage(
+      { type: MessageType.GET_PROJECTS, payload: {}, source: 'popup' },
+      (response) => {
+        setProjectsLoading(false);
+        if (chrome.runtime.lastError || !response?.ok) {
+          setProjectsError('Could not load projects — is vigil-server running?');
+          return;
         }
+        const list = (response.data?.projects ?? []) as ProjectInfo[];
+        setProjects(list);
+        // Auto-select last used project
+        chrome.storage.local.get(['vigilLastProjectId'], (res) => {
+          const lastId = res.vigilLastProjectId as string | undefined;
+          if (lastId && list.some(p => p.id === lastId)) {
+            setSelectedProjectId(lastId);
+          }
+        });
       }
-    });
-
-    // Read sprintCurrent from bundled vigil.config.json as fallback
-    fetch(chrome.runtime.getURL('vigil.config.json'))
-      .then(r => r.json())
-      .then((config: { sprintCurrent?: string }) => {
-        if (config.sprintCurrent) {
-          setSprint(prev => prev || config.sprintCurrent!);
-        }
-      })
-      .catch(() => {});
+    );
 
     // Count today's sessions for auto-name sequence
     import('@core/db').then(({ getSessionsForToday }) => {
@@ -98,48 +84,15 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
 
   // Auto-generate session name when project changes (unless user edited)
   useEffect(() => {
-    if (!nameEdited && project.trim()) {
-      setName(generateSessionName(project.trim(), sessionSequence));
+    if (!nameEdited && selectedProjectId) {
+      const proj = projects.find(p => p.id === selectedProjectId);
+      if (proj) {
+        setName(generateSessionName(proj.name, sessionSequence));
+      }
     }
-  }, [project, sessionSequence, nameEdited]);
+  }, [selectedProjectId, sessionSequence, nameEdited, projects]);
 
-  // Fetch sprints when project path changes (debounced)
-  const fetchSprints = useCallback((projectPath: string) => {
-    if (!projectPath.trim()) {
-      setSprints([]);
-      setProjectExists(null);
-      return;
-    }
-
-    setSprintsLoading(true);
-    try {
-      chrome.runtime.sendMessage(
-        { type: MessageType.GET_PROJECT_SPRINTS, payload: { projectPath: projectPath.trim() }, source: 'popup' },
-        (response) => {
-          setSprintsLoading(false);
-          if (chrome.runtime.lastError || !response?.ok) {
-            setSprints([]);
-            setProjectExists(null);
-            return;
-          }
-          const data = response.data as { exists: boolean; sprints: SprintEntry[]; current: string | null };
-          setProjectExists(data.exists);
-          setSprints(data.sprints);
-          if (data.current && !sprint) {
-            setSprint(data.current);
-          }
-        }
-      );
-    } catch {
-      setSprintsLoading(false);
-    }
-  }, [sprint]);
-
-  // Debounce project path changes
-  useEffect(() => {
-    const timer = setTimeout(() => fetchSprints(project), 500);
-    return () => clearTimeout(timer);
-  }, [project, fetchSprints]);
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   const handleNameChange = (val: string) => {
     setName(val);
@@ -148,23 +101,17 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!project.trim()) return;
+    if (!selectedProjectId) return;
 
     setLoading(true);
     setError(null);
 
-    const sessionName = name.trim() || generateSessionName(project.trim(), sessionSequence);
-    const projectKey = project.trim();
-    const sprintKey = sprint.trim() || undefined;
+    const proj = projects.find(p => p.id === selectedProjectId);
+    const sessionName = name.trim() || generateSessionName(proj?.name ?? selectedProjectId, sessionSequence);
+    const sprint = proj?.currentSprint || undefined;
 
-    // Save history
-    const updatedHistory: SessionHistory = {
-      lastProject: projectKey,
-      lastSprint: sprintKey ?? '',
-      recentProjects: [projectKey, ...history.recentProjects.filter(p => p !== projectKey)].slice(0, 10),
-    };
-    chrome.storage.local.set({ [HISTORY_KEY]: updatedHistory });
-    setHistory(updatedHistory);
+    // Remember last project
+    chrome.storage.local.set({ vigilLastProjectId: selectedProjectId });
 
     try {
       chrome.runtime.sendMessage(
@@ -173,8 +120,8 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
           payload: {
             name: sessionName,
             description: description.trim(),
-            project: projectKey,
-            sprint: sprintKey,
+            project: selectedProjectId,
+            sprint,
             tags: [],
             url: activeTabUrl,
             tabId: activeTabId,
@@ -201,6 +148,11 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
     }
   };
 
+  const openDashboardProjects = () => {
+    chrome.tabs.create({ url: `${DASHBOARD_URL}#projects` });
+    window.close();
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -212,84 +164,73 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
       <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
         <div className="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2">
 
-          {/* 1. Project (REQUIRED) */}
+          {/* 1. Project dropdown (REQUIRED) */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1">
               Project <span className="text-red-400">*</span>
             </label>
-            <input
-              type="text"
-              list="projects-list"
-              data-testid="input-project-name"
-              className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-              placeholder="e.g. TaskPilot"
-              value={project}
-              onChange={(e) => setProject(e.target.value)}
-              autoFocus
-              required
-            />
-            <datalist id="projects-list">
-              {history.recentProjects.map(p => <option key={p} value={p} />)}
-            </datalist>
-            {project.trim() && projectExists === false && !sprint && (
-              <p className="mt-1 text-[10px] text-yellow-500">Folder not found — enter sprint manually</p>
-            )}
-            {project.trim() && projectExists === true && sprints.length === 0 && (
-              <p className="mt-1 text-[10px] text-gray-500">No docs/sprints/ folder found — enter sprint manually</p>
-            )}
-            <button
-              type="button"
-              className="mt-1 text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
-              onClick={() => {
-                // Save origin tab info so the standalone tab knows which tab to record
-                const info: Record<string, unknown> = {};
-                if (activeTabId) info.refineOriginTabId = activeTabId;
-                if (activeTabUrl) info.refineOriginTabUrl = activeTabUrl;
-                chrome.storage.local.set(info, () => {
-                  chrome.tabs.create({ url: chrome.runtime.getURL('src/new-session/new-session.html') });
-                  window.close();
-                });
-              }}
-            >
-              Open in tab for folder picker &rarr;
-            </button>
-          </div>
-
-          {/* 2. Sprint (auto-detected or manual) */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-400 mb-1">
-              Sprint
-              {sprintsLoading && <span className="ml-1.5 text-gray-600 font-normal">detecting...</span>}
-            </label>
-            {sprints.length > 0 ? (
+            {projectsLoading ? (
+              <div className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-gray-500">
+                Loading projects...
+              </div>
+            ) : projectsError ? (
+              <div className="w-full bg-gray-900 border border-red-800 rounded-md px-3 py-1.5 text-sm text-red-400">
+                {projectsError}
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="text-center py-3">
+                <p className="text-xs text-gray-500 mb-2">No projects yet</p>
+                <button
+                  type="button"
+                  onClick={openDashboardProjects}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                >
+                  Create your first project in the dashboard &rarr;
+                </button>
+              </div>
+            ) : (
               <select
-                data-testid="select-sprint"
-                value={sprint}
-                onChange={(e) => setSprint(e.target.value)}
+                data-testid="select-project"
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
                 className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                required
               >
-                <option value="">— Select sprint —</option>
-                {sprints.map(s => (
-                  <option key={s.name} value={s.id}>{s.name}</option>
+                <option value="">— Select project —</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
-            ) : (
-              <input
-                type="text"
-                data-testid="input-sprint"
-                className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                placeholder="e.g. sprint_07"
-                value={sprint}
-                onChange={(e) => setSprint(e.target.value)}
-              />
             )}
+            {selectedProject?.currentSprint && (
+              <p className="mt-1 text-[10px] text-gray-500">
+                Sprint: {selectedProject.currentSprint}
+              </p>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                type="button"
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                onClick={openDashboardProjects}
+              >
+                New Project
+              </button>
+              <span className="text-[10px] text-gray-700">|</span>
+              <button
+                type="button"
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+                onClick={openDashboardProjects}
+              >
+                Manage Projects
+              </button>
+            </div>
           </div>
 
-          {/* 3. Session Name (auto-generated, editable) */}
+          {/* 2. Session Name (auto-generated, editable) */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1">
               Session Name
-              {!nameEdited && project.trim() && <span className="ml-1.5 text-gray-600 font-normal">(auto)</span>}
+              {!nameEdited && selectedProjectId && <span className="ml-1.5 text-gray-600 font-normal">(auto)</span>}
             </label>
             <input
               type="text"
@@ -301,7 +242,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
             />
           </div>
 
-          {/* 4. Description */}
+          {/* 3. Description */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1">
               Description <span className="text-gray-600 font-normal">(optional)</span>
@@ -309,14 +250,14 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
             <textarea
               className="w-full bg-gray-900 border border-gray-700 rounded-md px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors resize-none"
               placeholder="What are you testing?"
-              rows={1}
+              rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               data-testid="input-description"
             />
           </div>
 
-          {/* 5. Record mouse movements */}
+          {/* 4. Record mouse movements */}
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -331,7 +272,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
             </label>
           </div>
 
-          {/* 6. Starting URL (read-only) */}
+          {/* 5. Starting URL (read-only) */}
           <div>
             <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
               Starting URL
@@ -359,7 +300,7 @@ const NewSession: React.FC<NewSessionProps> = ({ onBack, onCreated }) => {
           </button>
           <button
             type="submit"
-            disabled={!project.trim() || loading}
+            disabled={!selectedProjectId || loading}
             data-testid="btn-start-recording"
             className="flex-[2] py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors text-sm"
           >

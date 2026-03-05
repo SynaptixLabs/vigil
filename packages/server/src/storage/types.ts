@@ -5,8 +5,28 @@ export interface SprintInfo {
   name: string;
 }
 
+export interface ProjectRecord {
+  id: string;
+  name: string;
+  description?: string;
+  currentSprint?: string;
+  url?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProjectCreate = Omit<ProjectRecord, 'createdAt' | 'updatedAt'>;
+export type ProjectUpdate = Partial<Pick<ProjectRecord, 'name' | 'description' | 'currentSprint' | 'url'>>;
+
 export interface StorageProvider {
   readonly name: string;
+
+  // Projects
+  listProjects(): Promise<ProjectRecord[]>;
+  getProject(projectId: string): Promise<ProjectRecord | null>;
+  createProject(project: ProjectCreate): Promise<string>;
+  updateProject(projectId: string, fields: ProjectUpdate): Promise<boolean>;
+  deleteProject(projectId: string): Promise<boolean>;
 
   // Bugs
   listBugs(sprint?: string, status?: 'open' | 'fixed'): Promise<BugFile[]>;

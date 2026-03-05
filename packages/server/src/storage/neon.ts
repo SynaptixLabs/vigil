@@ -1,7 +1,7 @@
 import { getPool } from '../db/client.js';
 import { loadConfig } from '../config.js';
 import { TEST_STATUS } from '../types.js';
-import type { StorageProvider, SprintInfo } from './types.js';
+import type { StorageProvider, SprintInfo, ProjectRecord, ProjectCreate, ProjectUpdate } from './types.js';
 import { VIGILSessionSchema } from '../types.js';
 import type { Bug, Feature, VIGILSession, BugFile, FeatureFile, BugUpdate } from '../types.js';
 
@@ -78,8 +78,85 @@ function rowToSession(row: Record<string, unknown>): VIGILSession | null {
   return parsed.success ? parsed.data : null;
 }
 
+function rowToProject(row: Record<string, unknown>): ProjectRecord {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    description: (row.description as string | null) ?? undefined,
+    currentSprint: (row.current_sprint as string | null) ?? undefined,
+    url: (row.url as string | null) ?? undefined,
+    createdAt: (row.created_at as Date).toISOString(),
+    updatedAt: (row.updated_at as Date).toISOString(),
+  };
+}
+
 export class NeonStorage implements StorageProvider {
   readonly name = 'neon';
+
+  // ── Projects ─────────────────────────────────────────────────────────────────
+
+  async listProjects(): Promise<ProjectRecord[]> {
+    const pool = getPool();
+    const result = await pool.query('SELECT * FROM projects ORDER BY name');
+    return result.rows.map(rowToProject);
+  }
+
+  async getProject(projectId: string): Promise<ProjectRecord | null> {
+    const pool = getPool();
+    const result = await pool.query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    return result.rows.length > 0 ? rowToProject(result.rows[0]) : null;
+  }
+
+  async createProject(project: ProjectCreate): Promise<string> {
+    const pool = getPool();
+    await pool.query(
+      `INSERT INTO projects (id, name, description, current_sprint, url)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [project.id, project.name, project.description ?? null, project.currentSprint ?? null, project.url ?? null],
+    );
+    return project.id;
+  }
+
+  async updateProject(projectId: string, fields: ProjectUpdate): Promise<boolean> {
+    const pool = getPool();
+    const setClauses: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (fields.name !== undefined) {
+      setClauses.push(`name = $${idx++}`);
+      values.push(fields.name);
+    }
+    if (fields.description !== undefined) {
+      setClauses.push(`description = $${idx++}`);
+      values.push(fields.description);
+    }
+    if (fields.currentSprint !== undefined) {
+      setClauses.push(`current_sprint = $${idx++}`);
+      values.push(fields.currentSprint);
+    }
+    if (fields.url !== undefined) {
+      setClauses.push(`url = $${idx++}`);
+      values.push(fields.url);
+    }
+
+    if (setClauses.length === 0) return false;
+
+    values.push(projectId);
+    const result = await pool.query(
+      `UPDATE projects SET ${setClauses.join(', ')} WHERE id = $${idx}`,
+      values,
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async deleteProject(projectId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  // ── Bugs ──────────────────────────────────────────────────────────────────────
 
   async listBugs(sprint?: string, status?: 'open' | 'fixed'): Promise<BugFile[]> {
     const pool = getPool();

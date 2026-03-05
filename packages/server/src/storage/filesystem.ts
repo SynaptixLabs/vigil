@@ -4,7 +4,7 @@ import { listBugs, getBug, listFeatures, getFeature, listSessions, getSession } 
 import { writeBug, writeFeature, writeSessionJson, updateBug, closeBug } from '../filesystem/writer.js';
 import { nextBugId, nextFeatId, currentBugCount, currentFeatCount } from '../filesystem/counter.js';
 import { getProjectRoot, loadConfig } from '../config.js';
-import type { StorageProvider, SprintInfo } from './types.js';
+import type { StorageProvider, SprintInfo, ProjectRecord, ProjectCreate, ProjectUpdate } from './types.js';
 import type { Bug, Feature, VIGILSession, BugFile, FeatureFile, BugUpdate } from '../types.js';
 
 export class FilesystemStorage implements StorageProvider {
@@ -58,6 +58,13 @@ export class FilesystemStorage implements StorageProvider {
     // Filesystem deletion not implemented — Neon is primary storage
     return false;
   }
+
+  // ── Projects (not supported in filesystem mode — use Neon) ─────────────────
+  async listProjects(): Promise<ProjectRecord[]> { return []; }
+  async getProject(_id: string): Promise<ProjectRecord | null> { return null; }
+  async createProject(_p: ProjectCreate): Promise<string> { throw new Error('Projects require Neon storage'); }
+  async updateProject(_id: string, _f: ProjectUpdate): Promise<boolean> { return false; }
+  async deleteProject(_id: string): Promise<boolean> { return false; }
 
   nextBugId(): Promise<string> {
     return nextBugId();
