@@ -286,7 +286,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
                   <img
                     src={snap.screenshotDataUrl}
                     alt={`Snapshot at ${formatClock(snap.capturedAt)}`}
-                    className="w-full object-contain cursor-pointer"
+                    className="w-full max-h-[32rem] object-contain bg-slate-50 cursor-pointer"
                     onClick={() => openLightbox(snap.screenshotDataUrl)}
                   />
                 ) : (

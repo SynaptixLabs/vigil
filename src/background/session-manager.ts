@@ -370,15 +370,15 @@ async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void>
   const serverUrl = await loadServerUrl();
   console.log(`[Vigil] postWithRetry → ${serverUrl}/api/session (session: ${session.id}, bugs: ${session.bugs.length}, features: ${session.features.length})`);
 
-  // Downscale screenshots to small thumbnails to stay under Vercel's 4.5MB body limit.
-  // Full-res screenshots stay in extension IndexedDB; server gets ~20KB thumbnails.
+  // Downscale screenshots to stay under Vercel's 4.5MB body limit.
+  // Full-res screenshots stay in extension IndexedDB; server gets ~30-80KB versions.
   const liteSnapshots = await Promise.all(
     session.snapshots.map(async (snap) => {
       if (!snap.screenshotDataUrl || snap.screenshotDataUrl.length < 1000) {
         return snap; // already empty or tiny
       }
       try {
-        const thumb = await downsizeDataUrl(snap.screenshotDataUrl, 320, 0.5);
+        const thumb = await downsizeDataUrl(snap.screenshotDataUrl, 1280, 0.75);
         return { ...snap, screenshotDataUrl: thumb };
       } catch {
         return { ...snap, screenshotDataUrl: '' };
