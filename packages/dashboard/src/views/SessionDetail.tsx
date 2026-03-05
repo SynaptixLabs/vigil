@@ -279,14 +279,14 @@ export function SessionDetail({ session }: SessionDetailProps) {
             <span>📸</span>
             Snapshots ({session.snapshots.length})
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             {session.snapshots.map((snap) => (
               <div key={snap.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow group">
                 {snap.screenshotDataUrl ? (
                   <img
                     src={snap.screenshotDataUrl}
                     alt={`Snapshot at ${formatClock(snap.capturedAt)}`}
-                    className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                    className="w-full object-contain cursor-pointer"
                     onClick={() => openLightbox(snap.screenshotDataUrl)}
                   />
                 ) : (

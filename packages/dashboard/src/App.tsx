@@ -392,6 +392,7 @@ export default function App() {
                 onAutoCreateConsumed={() => setAutoCreateProject(false)}
                 showArchived={showArchivedProjects}
                 onToggleArchived={setShowArchivedProjects}
+                onSelectProject={handleProjectSelect}
               />
             )
           ) : null}

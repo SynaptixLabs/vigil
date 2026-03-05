@@ -548,15 +548,32 @@ export const vigilSessionManager = {
     vigilState.session.endedAt = now;
     vigilState.session.clock = now - vigilState.session.startedAt;
 
+    // Wait for the content script to flush its final recording chunk.
+    // STOP_RECORDING is sent asynchronously — the content script receives it,
+    // flushes the rrweb event buffer, and sends RECORDING_CHUNK back. Without
+    // this delay, getRecordingChunks() can run before the final chunk is written.
+    await new Promise((r) => setTimeout(r, 800));
+
     // Reconstruct recordings from IndexedDB (chunks are stored there by the
     // RECORDING_CHUNK handler but never added to the in-memory session).
     // Compress events via gzip to stay under Vercel's 4.5MB body limit.
     const legacySessionId = legacyId ?? sessionManager.getActiveSessionId() ?? vigilState.session.id;
+    const vigilSessionId = vigilState.session.id;
     try {
-      const [chunks, annotations] = await Promise.all([
+      let [chunks, annotations] = await Promise.all([
         getRecordingChunks(legacySessionId),
         getAnnotationsBySession(legacySessionId),
       ]);
+
+      // Fallback: try vigil session ID if no chunks found with legacy ID
+      // (handles case where recorder used vigil ID instead of legacy ID)
+      if (!chunks.length && legacySessionId !== vigilSessionId) {
+        console.log(`[Vigil] No chunks with legacy ID ${legacySessionId}, trying vigil ID ${vigilSessionId}`);
+        [chunks, annotations] = await Promise.all([
+          getRecordingChunks(vigilSessionId),
+          getAnnotationsBySession(vigilSessionId),
+        ]);
+      }
 
       if (chunks.length > 0) {
         const compressedChunks = await Promise.all(

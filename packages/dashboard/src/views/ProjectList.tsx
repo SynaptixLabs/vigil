@@ -13,6 +13,8 @@ interface ProjectListProps {
   onAutoCreateConsumed?: () => void;
   showArchived: boolean;
   onToggleArchived: (show: boolean) => void;
+  /** Navigate to Sessions tab filtered by this project */
+  onSelectProject?: (projectId: string) => void;
 }
 
 function slugify(name: string): string {
@@ -23,7 +25,7 @@ function slugify(name: string): string {
     .slice(0, 40);
 }
 
-export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsumed, showArchived, onToggleArchived }: ProjectListProps) {
+export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsumed, showArchived, onToggleArchived, onSelectProject }: ProjectListProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -412,10 +414,16 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
                 /* View mode */
                 <div className="px-5 py-4">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
+                    <div
+                      className="flex-1 min-w-0 cursor-pointer"
+                      onClick={() => onSelectProject?.(p.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') onSelectProject?.(p.id); }}
+                    >
                       <div className="flex items-center gap-2 mb-1">
                         <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
-                        <span className="text-sm font-semibold text-slate-900">{p.name}</span>
+                        <span className="text-sm font-semibold text-slate-900 hover:text-indigo-600 transition-colors">{p.name}</span>
                         <span className="text-xs text-slate-400 font-mono">{p.id}</span>
                         {p.archivedAt && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 ring-1 ring-slate-200">
