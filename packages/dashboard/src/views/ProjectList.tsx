@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { ProjectItem } from '../types';
 import { createProject, updateProject, deleteProject, detectProjectInfo } from '../api';
+import { SearchInput } from '../components/SearchInput';
 
 interface ProjectListProps {
   projects: ProjectItem[];
@@ -21,6 +22,19 @@ function slugify(name: string): string {
 
 export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsumed }: ProjectListProps) {
   const [showCreate, setShowCreate] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return projects;
+    const q = search.toLowerCase();
+    return projects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        (p.description && p.description.toLowerCase().includes(q)) ||
+        (p.currentSprint && p.currentSprint.includes(q)),
+    );
+  }, [projects, search]);
 
   // Auto-show create form when navigated from extension "New Project" link
   useEffect(() => {
@@ -147,9 +161,19 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
     <div data-testid="project-list">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
-        <span className="text-sm text-slate-500">
-          {projects.length} project{projects.length !== 1 ? 's' : ''}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="w-64">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search projects..."
+            />
+          </div>
+          <span className="text-sm text-slate-500">
+            {filtered.length} project{filtered.length !== 1 ? 's' : ''}
+            {filtered.length !== projects.length && ` of ${projects.length}`}
+          </span>
+        </div>
         {!showCreate && (
           <button
             data-testid="btn-create-project"
@@ -299,9 +323,15 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
             Create your first project
           </button>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="text-4xl mb-3">🔍</div>
+          <div className="text-sm font-medium text-slate-600 mb-1">No projects match</div>
+          <div className="text-xs text-slate-400">Try adjusting your search.</div>
+        </div>
       ) : (
         <div className="space-y-2">
-          {projects.map((p) => (
+          {filtered.map((p) => (
             <div
               key={p.id}
               data-testid={`project-row-${p.id}`}

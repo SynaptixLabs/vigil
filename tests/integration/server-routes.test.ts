@@ -121,6 +121,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     snapshots: [],
     bugs: [],
     features: [],
+    annotations: [],
     ...overrides,
   };
 }

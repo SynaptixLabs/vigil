@@ -17,6 +17,7 @@ function toSummary(s: VIGILSession) {
     snapshotCount: s.snapshots.length,
     bugCount: s.bugs.length,
     featureCount: s.features.length,
+    annotationCount: s.annotations.length,
   };
 }
 
@@ -65,6 +66,14 @@ function toDetail(s: VIGILSession) {
       status: f.status,
       url: f.url,
       timestamp: f.timestamp,
+    })),
+    annotations: s.annotations.map((a) => ({
+      id: a.id,
+      sessionId: a.sessionId,
+      kind: a.kind,
+      text: a.commentText,
+      url: a.pageUrl,
+      createdAt: a.createdAt,
     })),
   };
 }

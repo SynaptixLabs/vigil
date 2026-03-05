@@ -161,17 +161,23 @@ export class NeonStorage implements StorageProvider {
 
   async listBugs(sprint?: string, status?: 'open' | 'fixed'): Promise<BugFile[]> {
     const pool = getPool();
-    const s = sprint ?? loadConfig().sprintCurrent;
     const statusMap: Record<string, string> = { open: 'OPEN', fixed: 'FIXED' };
 
     let result;
-    if (status) {
+    if (sprint && status) {
       result = await pool.query(
         'SELECT * FROM bugs WHERE sprint = $1 AND UPPER(status) = $2 ORDER BY id',
-        [s, statusMap[status]],
+        [sprint, statusMap[status]],
+      );
+    } else if (sprint) {
+      result = await pool.query('SELECT * FROM bugs WHERE sprint = $1 ORDER BY id', [sprint]);
+    } else if (status) {
+      result = await pool.query(
+        'SELECT * FROM bugs WHERE UPPER(status) = $1 ORDER BY id',
+        [statusMap[status]],
       );
     } else {
-      result = await pool.query('SELECT * FROM bugs WHERE sprint = $1 ORDER BY id', [s]);
+      result = await pool.query('SELECT * FROM bugs ORDER BY id');
     }
 
     return result.rows.map(rowToBugFile);
@@ -267,17 +273,23 @@ export class NeonStorage implements StorageProvider {
 
   async listFeatures(sprint?: string, status?: 'open' | 'done'): Promise<FeatureFile[]> {
     const pool = getPool();
-    const s = sprint ?? loadConfig().sprintCurrent;
     const statusMap: Record<string, string> = { open: 'OPEN', done: 'DONE' };
 
     let result;
-    if (status) {
+    if (sprint && status) {
       result = await pool.query(
         'SELECT * FROM features WHERE sprint = $1 AND UPPER(status) = $2 ORDER BY id',
-        [s, statusMap[status]],
+        [sprint, statusMap[status]],
+      );
+    } else if (sprint) {
+      result = await pool.query('SELECT * FROM features WHERE sprint = $1 ORDER BY id', [sprint]);
+    } else if (status) {
+      result = await pool.query(
+        'SELECT * FROM features WHERE UPPER(status) = $1 ORDER BY id',
+        [statusMap[status]],
       );
     } else {
-      result = await pool.query('SELECT * FROM features WHERE sprint = $1 ORDER BY id', [s]);
+      result = await pool.query('SELECT * FROM features ORDER BY id');
     }
 
     return result.rows.map(rowToFeatureFile);

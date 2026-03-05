@@ -75,12 +75,12 @@ export default function App() {
   // ── Load sprints ──────────────────────────────────────────────────────────
   useEffect(() => {
     fetchSprints()
-      .then(({ ids, current }) => {
+      .then(({ ids }) => {
         setSprints(ids);
-        if (!selectedSprint) setSelectedSprint(current || ids[ids.length - 1] || '');
+        // selectedSprint stays "" = "All sprints" by default
       })
       .catch(() => setDataError('Could not load sprints — is vigil-server running?'));
-  }, [selectedSprint]);
+  }, []);
 
   // ── Load projects ────────────────────────────────────────────────────────
   const loadProjects = useCallback(async () => {
@@ -101,13 +101,13 @@ export default function App() {
 
   // ── Load bugs & features (for bugs/features tabs) ─────────────────────────
   const loadBugsAndFeatures = useCallback(async () => {
-    if (!selectedSprint) return;
     setDataLoading(true);
     setDataError(null);
     try {
+      const sprintArg = selectedSprint || undefined; // "" → undefined = all sprints
       const [b, f] = await Promise.all([
-        fetchBugs(selectedSprint),
-        fetchFeatures(selectedSprint),
+        fetchBugs(sprintArg),
+        fetchFeatures(sprintArg),
       ]);
       setBugs(b);
       setFeatures(f);
@@ -171,6 +171,8 @@ export default function App() {
     setSelectedProject(project);
     setSelectedSessionId(null);
     setSessionDetail(null);
+    // Navigate to sessions tab when clicking a specific project
+    if (project) setActiveTab('sessions');
   }
 
   function handleSessionSelect(sessionId: string) {
@@ -241,9 +243,6 @@ export default function App() {
             onChange={setSessionSprintFilter}
             showAll
           />
-          <span className="text-sm text-slate-500">
-            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
-          </span>
         </div>
         {sessionsLoading ? (
           <div className="flex items-center justify-center py-16">
@@ -286,6 +285,7 @@ export default function App() {
                 selected={selectedSprint}
                 onChange={setSelectedSprint}
                 dark
+                showAll
               />
             )}
           </div>

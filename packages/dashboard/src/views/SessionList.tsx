@@ -1,4 +1,6 @@
+import { useState, useMemo } from 'react';
 import type { SessionSummary } from '../types';
+import { SearchInput } from '../components/SearchInput';
 
 interface SessionListProps {
   sessions: SessionSummary[];
@@ -26,6 +28,19 @@ function formatDate(epoch: number): string {
 }
 
 export function SessionList({ sessions, selectedId, onSelect, onDelete }: SessionListProps) {
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return sessions;
+    const q = search.toLowerCase();
+    return sessions.filter(
+      (s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        (s.sprint && s.sprint.includes(q)),
+    );
+  }, [sessions, search]);
+
   if (sessions.length === 0) {
     return (
       <div
@@ -40,8 +55,31 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
   }
 
   return (
-    <div data-testid="session-list" className="space-y-2">
-      {sessions.map((session) => {
+    <div data-testid="session-list">
+      {/* Search bar */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-72">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search sessions by name or ID..."
+          />
+        </div>
+        <span className="text-sm text-slate-500">
+          {filtered.length} session{filtered.length !== 1 ? 's' : ''}
+          {filtered.length !== sessions.length && ` of ${sessions.length}`}
+        </span>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="text-4xl mb-3">🔍</div>
+          <div className="text-sm font-medium text-slate-600 mb-1">No sessions match</div>
+          <div className="text-xs text-slate-400">Try adjusting your search.</div>
+        </div>
+      ) : (
+      <div className="space-y-2">
+      {filtered.map((session) => {
         const isActive = !session.endedAt;
 
         return (
@@ -96,6 +134,11 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
                       ✨ {session.featureCount}
                     </span>
                   )}
+                  {session.annotationCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                      ✏️ {session.annotationCount}
+                    </span>
+                  )}
                   {session.snapshotCount > 0 && (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
                       📸 {session.snapshotCount}
@@ -132,6 +175,8 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
           </div>
         );
       })}
+    </div>
+      )}
     </div>
   );
 }

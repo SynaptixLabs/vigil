@@ -56,6 +56,7 @@ export interface SessionSummary {
   snapshotCount: number;
   bugCount: number;
   featureCount: number;
+  annotationCount: number;
 }
 
 /** A point-in-time screenshot captured during a session. */
@@ -76,6 +77,16 @@ export interface RecordingItem {
   mouseTracking: boolean;
 }
 
+/** Annotation as embedded in a session (visual markup). */
+export interface SessionAnnotation {
+  id: string;
+  sessionId: string;
+  kind: 'comment' | 'rectangle' | 'circle' | 'freehand';
+  text?: string;
+  url?: string;
+  createdAt: number;
+}
+
 /** Full session detail returned by GET /api/sessions/:id. */
 export interface SessionDetail {
   id: string;
@@ -90,6 +101,7 @@ export interface SessionDetail {
   snapshots: SnapshotItem[];
   bugs: SessionBug[];
   features: SessionFeature[];
+  annotations: SessionAnnotation[];
 }
 
 /** Bug as embedded in a session (from extension, not filesystem). */

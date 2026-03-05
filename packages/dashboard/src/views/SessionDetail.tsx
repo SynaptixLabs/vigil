@@ -142,10 +142,11 @@ export function SessionDetail({ session }: SessionDetailProps) {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <StatCard label="Snapshots" value={session.snapshots.length} icon="📸" />
         <StatCard label="Bugs" value={session.bugs.length} icon="🐛" />
         <StatCard label="Features" value={session.features.length} icon="✨" />
+        <StatCard label="Annotations" value={session.annotations.length} icon="✏️" />
         <StatCard label="Recordings" value={session.recordings.length} icon="🎥" />
       </div>
 
@@ -214,6 +215,38 @@ export function SessionDetail({ session }: SessionDetailProps) {
         </div>
       )}
 
+      {/* Annotations section */}
+      {session.annotations.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <span>✏️</span>
+            Annotations ({session.annotations.length})
+          </h3>
+          <div className="space-y-2">
+            {session.annotations.map((ann) => (
+              <div key={ann.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-sm transition-shadow">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${
+                    ann.kind === 'comment' ? 'bg-amber-50 text-amber-700' :
+                    ann.kind === 'rectangle' ? 'bg-blue-50 text-blue-700' :
+                    ann.kind === 'circle' ? 'bg-purple-50 text-purple-700' :
+                    'bg-slate-50 text-slate-600'
+                  }`}>
+                    {ann.kind}
+                  </span>
+                  {ann.text && (
+                    <span className="text-sm text-slate-900">{ann.text}</span>
+                  )}
+                </div>
+                {ann.url && (
+                  <div className="text-xs text-slate-400 mt-1 truncate">{ann.url}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Snapshots gallery */}
       {session.snapshots.length > 0 && (
         <div>
@@ -254,7 +287,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
       )}
 
       {/* Empty state when no data */}
-      {!showTimeline && session.bugs.length === 0 && session.features.length === 0 && session.snapshots.length === 0 && (
+      {!showTimeline && session.bugs.length === 0 && session.features.length === 0 && session.annotations.length === 0 && session.snapshots.length === 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
           <div className="text-4xl mb-3">📋</div>
           <div className="text-sm font-medium text-slate-600 mb-1">Empty session</div>
