@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ProjectItem } from '../types';
-import { createProject, updateProject, deleteProject, detectProjectInfo } from '../api';
+import { createProject, updateProject, deleteProject, detectProjectInfo, restoreProject } from '../api';
 import { SearchInput } from '../components/SearchInput';
+import { ArchiveToggle } from '../components/ArchiveToggle';
 
 interface ProjectListProps {
   projects: ProjectItem[];
@@ -10,6 +11,8 @@ interface ProjectListProps {
   autoCreate?: boolean;
   /** Called once autoCreate has been consumed so it doesn't re-trigger */
   onAutoCreateConsumed?: () => void;
+  showArchived: boolean;
+  onToggleArchived: (show: boolean) => void;
 }
 
 function slugify(name: string): string {
@@ -20,7 +23,7 @@ function slugify(name: string): string {
     .slice(0, 40);
 }
 
-export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsumed }: ProjectListProps) {
+export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsumed, showArchived, onToggleArchived }: ProjectListProps) {
   const [showCreate, setShowCreate] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -148,9 +151,18 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete project "${name}"? All its sessions, bugs, and features will be permanently deleted.`)) return;
+    if (!confirm(`Archive project "${name}"? It and its sessions will be hidden but can be restored later.`)) return;
     try {
       await deleteProject(id);
+      onRefresh();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreProject(id);
       onRefresh();
     } catch (err) {
       setError((err as Error).message);
@@ -173,6 +185,7 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
             {filtered.length} project{filtered.length !== 1 ? 's' : ''}
             {filtered.length !== projects.length && ` of ${projects.length}`}
           </span>
+          <ArchiveToggle showArchived={showArchived} onChange={onToggleArchived} />
         </div>
         {!showCreate && (
           <button
@@ -335,7 +348,7 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
             <div
               key={p.id}
               data-testid={`project-row-${p.id}`}
-              className="bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-all duration-200 hover:shadow-md"
+              className={`bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-all duration-200 hover:shadow-md ${p.archivedAt ? 'opacity-60' : ''}`}
             >
               {editingId === p.id ? (
                 /* Edit mode */
@@ -404,6 +417,11 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
                         <span className="w-2 h-2 rounded-full bg-indigo-400 shrink-0" />
                         <span className="text-sm font-semibold text-slate-900">{p.name}</span>
                         <span className="text-xs text-slate-400 font-mono">{p.id}</span>
+                        {p.archivedAt && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 ring-1 ring-slate-200">
+                            Archived
+                          </span>
+                        )}
                       </div>
                       {p.description && (
                         <p className="text-xs text-slate-500 mb-1 ml-4">{p.description}</p>
@@ -431,16 +449,29 @@ export function ProjectList({ projects, onRefresh, autoCreate, onAutoCreateConsu
                         </svg>
                         Edit
                       </button>
-                      <button
-                        className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors px-2 py-1"
-                        onClick={() => handleDelete(p.id, p.name)}
-                        data-testid={`btn-delete-project-${p.id}`}
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete
-                      </button>
+                      {p.archivedAt ? (
+                        <button
+                          className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-600 transition-colors px-2 py-1"
+                          onClick={() => handleRestore(p.id)}
+                          data-testid={`btn-restore-project-${p.id}`}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Restore
+                        </button>
+                      ) : (
+                        <button
+                          className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors px-2 py-1"
+                          onClick={() => handleDelete(p.id, p.name)}
+                          data-testid={`btn-delete-project-${p.id}`}
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                          </svg>
+                          Archive
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

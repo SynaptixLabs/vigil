@@ -87,6 +87,7 @@ function rowToProject(row: Record<string, unknown>): ProjectRecord {
     url: (row.url as string | null) ?? undefined,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
+    archivedAt: row.archived_at ? (row.archived_at as Date).toISOString() : null,
   };
 }
 
@@ -95,9 +96,10 @@ export class NeonStorage implements StorageProvider {
 
   // ── Projects ─────────────────────────────────────────────────────────────────
 
-  async listProjects(): Promise<ProjectRecord[]> {
+  async listProjects(includeArchived = false): Promise<ProjectRecord[]> {
     const pool = getPool();
-    const result = await pool.query('SELECT * FROM projects ORDER BY name');
+    const where = includeArchived ? '' : 'WHERE archived_at IS NULL';
+    const result = await pool.query(`SELECT * FROM projects ${where} ORDER BY name`);
     return result.rows.map(rowToProject);
   }
 
@@ -159,27 +161,21 @@ export class NeonStorage implements StorageProvider {
 
   // ── Bugs ──────────────────────────────────────────────────────────────────────
 
-  async listBugs(sprint?: string, status?: 'open' | 'fixed'): Promise<BugFile[]> {
+  async listBugs(sprint?: string, status?: 'open' | 'fixed', includeArchived = false): Promise<BugFile[]> {
     const pool = getPool();
     const statusMap: Record<string, string> = { open: 'OPEN', fixed: 'FIXED' };
+    const archiveFilter = includeArchived ? '' : 'archived_at IS NULL';
 
-    let result;
-    if (sprint && status) {
-      result = await pool.query(
-        'SELECT * FROM bugs WHERE sprint = $1 AND UPPER(status) = $2 ORDER BY id',
-        [sprint, statusMap[status]],
-      );
-    } else if (sprint) {
-      result = await pool.query('SELECT * FROM bugs WHERE sprint = $1 ORDER BY id', [sprint]);
-    } else if (status) {
-      result = await pool.query(
-        'SELECT * FROM bugs WHERE UPPER(status) = $1 ORDER BY id',
-        [statusMap[status]],
-      );
-    } else {
-      result = await pool.query('SELECT * FROM bugs ORDER BY id');
-    }
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
 
+    if (!includeArchived) conditions.push(archiveFilter);
+    if (sprint) { conditions.push(`sprint = $${idx++}`); values.push(sprint); }
+    if (status) { conditions.push(`UPPER(status) = $${idx++}`); values.push(statusMap[status]); }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(`SELECT * FROM bugs ${where} ORDER BY id`, values);
     return result.rows.map(rowToBugFile);
   }
 
@@ -271,27 +267,20 @@ export class NeonStorage implements StorageProvider {
     return result.rowCount !== null && result.rowCount > 0;
   }
 
-  async listFeatures(sprint?: string, status?: 'open' | 'done'): Promise<FeatureFile[]> {
+  async listFeatures(sprint?: string, status?: 'open' | 'done', includeArchived = false): Promise<FeatureFile[]> {
     const pool = getPool();
     const statusMap: Record<string, string> = { open: 'OPEN', done: 'DONE' };
 
-    let result;
-    if (sprint && status) {
-      result = await pool.query(
-        'SELECT * FROM features WHERE sprint = $1 AND UPPER(status) = $2 ORDER BY id',
-        [sprint, statusMap[status]],
-      );
-    } else if (sprint) {
-      result = await pool.query('SELECT * FROM features WHERE sprint = $1 ORDER BY id', [sprint]);
-    } else if (status) {
-      result = await pool.query(
-        'SELECT * FROM features WHERE UPPER(status) = $1 ORDER BY id',
-        [statusMap[status]],
-      );
-    } else {
-      result = await pool.query('SELECT * FROM features ORDER BY id');
-    }
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
 
+    if (!includeArchived) conditions.push('archived_at IS NULL');
+    if (sprint) { conditions.push(`sprint = $${idx++}`); values.push(sprint); }
+    if (status) { conditions.push(`UPPER(status) = $${idx++}`); values.push(statusMap[status]); }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const result = await pool.query(`SELECT * FROM features ${where} ORDER BY id`, values);
     return result.rows.map(rowToFeatureFile);
   }
 
@@ -409,12 +398,13 @@ export class NeonStorage implements StorageProvider {
     return Number(result.rows[0].last_value);
   }
 
-  async listSessions(project?: string, sprint?: string): Promise<VIGILSession[]> {
+  async listSessions(project?: string, sprint?: string, includeArchived = false): Promise<VIGILSession[]> {
     const pool = getPool();
     const conditions: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
 
+    if (!includeArchived) conditions.push('archived_at IS NULL');
     if (project) {
       conditions.push(`project_id = $${idx++}`);
       values.push(project);
@@ -448,6 +438,110 @@ export class NeonStorage implements StorageProvider {
 
     if (result.rows.length === 0) return null;
     return rowToSession(result.rows[0]);
+  }
+
+  // ── Archive / Restore ──────────────────────────────────────────────────────
+
+  async archiveProject(projectId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE projects SET archived_at = NOW() WHERE id = $1 AND archived_at IS NULL`,
+      [projectId],
+    );
+    if (result.rowCount === 0) return false;
+    // Cascade: archive all sessions + their bugs/features
+    await pool.query(`UPDATE sessions SET archived_at = NOW() WHERE project_id = $1 AND archived_at IS NULL`, [projectId]);
+    await pool.query(
+      `UPDATE bugs SET archived_at = NOW() WHERE session_id IN (SELECT id FROM sessions WHERE project_id = $1) AND archived_at IS NULL`,
+      [projectId],
+    );
+    await pool.query(
+      `UPDATE features SET archived_at = NOW() WHERE session_id IN (SELECT id FROM sessions WHERE project_id = $1) AND archived_at IS NULL`,
+      [projectId],
+    );
+    return true;
+  }
+
+  async restoreProject(projectId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE projects SET archived_at = NULL WHERE id = $1 AND archived_at IS NOT NULL`,
+      [projectId],
+    );
+    if (result.rowCount === 0) return false;
+    // Cascade: restore all sessions + their bugs/features
+    await pool.query(`UPDATE sessions SET archived_at = NULL WHERE project_id = $1`, [projectId]);
+    await pool.query(
+      `UPDATE bugs SET archived_at = NULL WHERE session_id IN (SELECT id FROM sessions WHERE project_id = $1)`,
+      [projectId],
+    );
+    await pool.query(
+      `UPDATE features SET archived_at = NULL WHERE session_id IN (SELECT id FROM sessions WHERE project_id = $1)`,
+      [projectId],
+    );
+    return true;
+  }
+
+  async archiveSession(sessionId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE sessions SET archived_at = NOW() WHERE id = $1 AND archived_at IS NULL`,
+      [sessionId],
+    );
+    if (result.rowCount === 0) return false;
+    // Cascade: archive bugs/features of this session
+    await pool.query(`UPDATE bugs SET archived_at = NOW() WHERE session_id = $1 AND archived_at IS NULL`, [sessionId]);
+    await pool.query(`UPDATE features SET archived_at = NOW() WHERE session_id = $1 AND archived_at IS NULL`, [sessionId]);
+    return true;
+  }
+
+  async restoreSession(sessionId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE sessions SET archived_at = NULL WHERE id = $1 AND archived_at IS NOT NULL`,
+      [sessionId],
+    );
+    if (result.rowCount === 0) return false;
+    // Cascade: restore bugs/features of this session
+    await pool.query(`UPDATE bugs SET archived_at = NULL WHERE session_id = $1`, [sessionId]);
+    await pool.query(`UPDATE features SET archived_at = NULL WHERE session_id = $1`, [sessionId]);
+    return true;
+  }
+
+  async archiveBug(bugId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE bugs SET archived_at = NOW() WHERE id = $1 AND archived_at IS NULL`,
+      [bugId],
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async restoreBug(bugId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE bugs SET archived_at = NULL WHERE id = $1 AND archived_at IS NOT NULL`,
+      [bugId],
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async archiveFeature(featId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE features SET archived_at = NOW() WHERE id = $1 AND archived_at IS NULL`,
+      [featId],
+    );
+    return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  async restoreFeature(featId: string): Promise<boolean> {
+    const pool = getPool();
+    const result = await pool.query(
+      `UPDATE features SET archived_at = NULL WHERE id = $1 AND archived_at IS NOT NULL`,
+      [featId],
+    );
+    return result.rowCount !== null && result.rowCount > 0;
   }
 
   async listSprints(): Promise<{ sprints: SprintInfo[]; current: string }> {

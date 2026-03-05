@@ -2,11 +2,14 @@ import { useState, useMemo } from 'react';
 import type { BugItem, BugUpdate } from '../types';
 import { SeverityBadge } from '../components/SeverityBadge';
 import { SearchInput } from '../components/SearchInput';
-import { patchBug, closeBug } from '../api';
+import { patchBug, closeBug, archiveBug, restoreBug } from '../api';
+import { ArchiveToggle } from '../components/ArchiveToggle';
 
 interface BugListProps {
   bugs: BugItem[];
   onRefresh: () => void;
+  showArchived: boolean;
+  onToggleArchived: (show: boolean) => void;
 }
 
 function parseRegressionStatus(raw?: string): 'GREEN' | 'RED' | null {
@@ -16,7 +19,7 @@ function parseRegressionStatus(raw?: string): 'GREEN' | 'RED' | null {
   return null;
 }
 
-export function BugList({ bugs, onRefresh }: BugListProps) {
+export function BugList({ bugs, onRefresh, showArchived, onToggleArchived }: BugListProps) {
   const [updating, setUpdating] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'fixed'>('all');
@@ -82,6 +85,27 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
     }
   }
 
+  async function handleArchive(bugId: string) {
+    if (!confirm('Archive this bug? It will be hidden but can be restored later.')) return;
+    setUpdating(bugId);
+    try {
+      await archiveBug(bugId);
+      onRefresh();
+    } catch { /* ignore */ } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function handleRestoreBug(bugId: string) {
+    setUpdating(bugId);
+    try {
+      await restoreBug(bugId);
+      onRefresh();
+    } catch { /* ignore */ } finally {
+      setUpdating(null);
+    }
+  }
+
   return (
     <div>
       {/* Search + filter bar */}
@@ -106,6 +130,7 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
           {filtered.length} bug{filtered.length !== 1 ? 's' : ''}
           {filtered.length !== bugs.length && ` of ${bugs.length}`}
         </span>
+        <ArchiveToggle showArchived={showArchived} onChange={onToggleArchived} />
       </div>
 
       {filtered.length === 0 ? (
@@ -140,7 +165,7 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
                   <tr
                     key={bug.id}
                     data-testid={`bug-row-${bug.id}`}
-                    className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                    className={`border-b border-slate-100 hover:bg-slate-50/50 transition-colors ${bug.archivedAt ? 'opacity-50' : ''}`}
                   >
                     <td className="px-5 py-3 font-mono text-xs text-indigo-600">{bug.id}</td>
                     <td className="px-5 py-3 font-medium text-slate-900">{bug.title}</td>
@@ -206,6 +231,23 @@ export function BugList({ bugs, onRefresh }: BugListProps) {
                             onClick={() => handleReopen(bug.id)}
                           >
                             Reopen
+                          </button>
+                        )}
+                        {bug.archivedAt ? (
+                          <button
+                            className="text-xs px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-50 font-medium transition-colors"
+                            disabled={updating === bug.id}
+                            onClick={() => handleRestoreBug(bug.id)}
+                          >
+                            Restore
+                          </button>
+                        ) : (
+                          <button
+                            className="text-xs px-3 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 font-medium transition-colors"
+                            disabled={updating === bug.id}
+                            onClick={() => handleArchive(bug.id)}
+                          >
+                            Archive
                           </button>
                         )}
                       </div>

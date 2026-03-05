@@ -10,7 +10,7 @@ import type { Bug, Feature, VIGILSession, BugFile, FeatureFile, BugUpdate } from
 export class FilesystemStorage implements StorageProvider {
   readonly name = 'filesystem';
 
-  listBugs(sprint?: string, status?: 'open' | 'fixed'): Promise<BugFile[]> {
+  listBugs(sprint?: string, status?: 'open' | 'fixed', _includeArchived?: boolean): Promise<BugFile[]> {
     return listBugs(sprint, status);
   }
 
@@ -30,7 +30,7 @@ export class FilesystemStorage implements StorageProvider {
     return closeBug(bugId, resolution, keepTest, sprint);
   }
 
-  listFeatures(sprint?: string, status?: 'open' | 'done'): Promise<FeatureFile[]> {
+  listFeatures(sprint?: string, status?: 'open' | 'done', _includeArchived?: boolean): Promise<FeatureFile[]> {
     return listFeatures(sprint, status);
   }
 
@@ -46,7 +46,7 @@ export class FilesystemStorage implements StorageProvider {
     return writeSessionJson(session);
   }
 
-  listSessions(project?: string, sprint?: string): Promise<VIGILSession[]> {
+  listSessions(project?: string, sprint?: string, _includeArchived?: boolean): Promise<VIGILSession[]> {
     return listSessions(project, sprint);
   }
 
@@ -60,11 +60,21 @@ export class FilesystemStorage implements StorageProvider {
   }
 
   // ── Projects (not supported in filesystem mode — use Neon) ─────────────────
-  async listProjects(): Promise<ProjectRecord[]> { return []; }
+  async listProjects(_includeArchived?: boolean): Promise<ProjectRecord[]> { return []; }
   async getProject(_id: string): Promise<ProjectRecord | null> { return null; }
   async createProject(_p: ProjectCreate): Promise<string> { throw new Error('Projects require Neon storage'); }
   async updateProject(_id: string, _f: ProjectUpdate): Promise<boolean> { return false; }
   async deleteProject(_id: string): Promise<boolean> { return false; }
+
+  // ── Archive / Restore (not supported in filesystem mode — use Neon) ────────
+  async archiveProject(_id: string): Promise<boolean> { return false; }
+  async restoreProject(_id: string): Promise<boolean> { return false; }
+  async archiveSession(_id: string): Promise<boolean> { return false; }
+  async restoreSession(_id: string): Promise<boolean> { return false; }
+  async archiveBug(_id: string): Promise<boolean> { return false; }
+  async restoreBug(_id: string): Promise<boolean> { return false; }
+  async archiveFeature(_id: string): Promise<boolean> { return false; }
+  async restoreFeature(_id: string): Promise<boolean> { return false; }
 
   nextBugId(): Promise<string> {
     return nextBugId();

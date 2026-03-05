@@ -209,3 +209,70 @@ BEGIN
       FOR EACH ROW EXECUTE FUNCTION update_updated_at();
   END IF;
 END $$;
+
+-- ============================================================================
+-- Sprint 07: Soft-delete / Archive support
+-- Add archived_at column to all 4 entity tables (idempotent).
+-- NULL = active, non-NULL = archived timestamp.
+-- ============================================================================
+
+-- 1. projects.archived_at
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'projects' AND column_name = 'archived_at'
+  ) THEN
+    ALTER TABLE projects ADD COLUMN archived_at TIMESTAMPTZ NULL;
+  END IF;
+END $$;
+
+-- 2. sessions.archived_at
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'sessions' AND column_name = 'archived_at'
+  ) THEN
+    ALTER TABLE sessions ADD COLUMN archived_at TIMESTAMPTZ NULL;
+  END IF;
+END $$;
+
+-- 3. bugs.archived_at
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'bugs' AND column_name = 'archived_at'
+  ) THEN
+    ALTER TABLE bugs ADD COLUMN archived_at TIMESTAMPTZ NULL;
+  END IF;
+END $$;
+
+-- 4. features.archived_at
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'features' AND column_name = 'archived_at'
+  ) THEN
+    ALTER TABLE features ADD COLUMN archived_at TIMESTAMPTZ NULL;
+  END IF;
+END $$;
+
+-- Partial indexes: efficient queries for default (non-archived) view
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_projects_active') THEN
+    CREATE INDEX idx_projects_active ON projects (name) WHERE archived_at IS NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_sessions_active') THEN
+    CREATE INDEX idx_sessions_active ON sessions (started_at) WHERE archived_at IS NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_bugs_active') THEN
+    CREATE INDEX idx_bugs_active ON bugs (id) WHERE archived_at IS NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_features_active') THEN
+    CREATE INDEX idx_features_active ON features (id) WHERE archived_at IS NULL;
+  END IF;
+END $$;

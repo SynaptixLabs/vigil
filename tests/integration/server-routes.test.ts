@@ -30,6 +30,15 @@ const { mockStorage } = vi.hoisted(() => ({
     listSessions: vi.fn(),
     getSession: vi.fn(),
     deleteSession: vi.fn(),
+    // Archive / Restore
+    archiveProject: vi.fn(),
+    restoreProject: vi.fn(),
+    archiveSession: vi.fn(),
+    restoreSession: vi.fn(),
+    archiveBug: vi.fn(),
+    restoreBug: vi.fn(),
+    archiveFeature: vi.fn(),
+    restoreFeature: vi.fn(),
     // Counters
     nextBugId: vi.fn(),
     nextFeatId: vi.fn(),
@@ -230,7 +239,7 @@ describe('GET /api/sessions', () => {
   it('passes query params to storage', async () => {
     mockStorage.listSessions.mockResolvedValue([]);
     await request(app).get('/api/sessions?project=myproj&sprint=07');
-    expect(mockStorage.listSessions).toHaveBeenCalledWith('myproj', '07');
+    expect(mockStorage.listSessions).toHaveBeenCalledWith('myproj', '07', false);
   });
 
   it('returns 500 on storage error', async () => {
@@ -285,7 +294,7 @@ describe('GET /api/bugs', () => {
   it('passes query params to storage', async () => {
     mockStorage.listBugs.mockResolvedValue([]);
     await request(app).get('/api/bugs?sprint=06&status=open');
-    expect(mockStorage.listBugs).toHaveBeenCalledWith('06', 'open');
+    expect(mockStorage.listBugs).toHaveBeenCalledWith('06', 'open', false);
   });
 
   it('returns 500 on storage error', async () => {
@@ -434,7 +443,7 @@ describe('GET /api/features', () => {
   it('passes query params to storage', async () => {
     mockStorage.listFeatures.mockResolvedValue([]);
     await request(app).get('/api/features?sprint=06&status=done');
-    expect(mockStorage.listFeatures).toHaveBeenCalledWith('06', 'done');
+    expect(mockStorage.listFeatures).toHaveBeenCalledWith('06', 'done', false);
   });
 
   it('returns 500 on storage error', async () => {

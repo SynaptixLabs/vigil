@@ -4,13 +4,14 @@ import { BugUpdateSchema } from '@synaptix/vigil-shared';
 
 export const bugsRouter = Router();
 
-// GET /api/bugs?sprint=06&status=open
+// GET /api/bugs?sprint=06&status=open&archived=true
 bugsRouter.get('/', async (req, res) => {
   const sprint = req.query.sprint as string | undefined;
   const status = req.query.status as 'open' | 'fixed' | undefined;
+  const includeArchived = req.query.archived === 'true';
 
   try {
-    const bugs = await getStorage().listBugs(sprint, status);
+    const bugs = await getStorage().listBugs(sprint, status, includeArchived);
     res.json({ bugs, count: bugs.length });
   } catch (err) {
     console.error('[vigil-server] Error listing bugs:', err);
@@ -81,5 +82,35 @@ bugsRouter.post('/:id/close', async (req, res) => {
   } catch (err) {
     console.error('[vigil-server] Error closing bug:', err);
     res.status(500).json({ error: 'Failed to close bug' });
+  }
+});
+
+// PATCH /api/bugs/:id/archive — archive a bug (soft-delete)
+bugsRouter.patch('/:id/archive', async (req, res) => {
+  try {
+    const archived = await getStorage().archiveBug(req.params.id);
+    if (!archived) {
+      res.status(404).json({ error: `Bug ${req.params.id} not found` });
+      return;
+    }
+    res.json({ ok: true, archivedId: req.params.id });
+  } catch (err) {
+    console.error('[vigil-server] Error archiving bug:', err);
+    res.status(500).json({ error: 'Failed to archive bug' });
+  }
+});
+
+// PATCH /api/bugs/:id/restore — restore an archived bug
+bugsRouter.patch('/:id/restore', async (req, res) => {
+  try {
+    const restored = await getStorage().restoreBug(req.params.id);
+    if (!restored) {
+      res.status(404).json({ error: `Bug ${req.params.id} not found or not archived` });
+      return;
+    }
+    res.json({ ok: true, restoredId: req.params.id });
+  } catch (err) {
+    console.error('[vigil-server] Error restoring bug:', err);
+    res.status(500).json({ error: 'Failed to restore bug' });
   }
 });

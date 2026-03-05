@@ -1,12 +1,16 @@
 import { useState, useMemo } from 'react';
 import type { SessionSummary } from '../types';
 import { SearchInput } from '../components/SearchInput';
+import { ArchiveToggle } from '../components/ArchiveToggle';
 
 interface SessionListProps {
   sessions: SessionSummary[];
   selectedId: string | null;
   onSelect: (sessionId: string) => void;
   onDelete?: (sessionId: string) => void;
+  onRestore?: (sessionId: string) => void;
+  showArchived: boolean;
+  onToggleArchived: (show: boolean) => void;
 }
 
 function formatDuration(startedAt: number, endedAt?: number): string {
@@ -27,7 +31,7 @@ function formatDate(epoch: number): string {
   });
 }
 
-export function SessionList({ sessions, selectedId, onSelect, onDelete }: SessionListProps) {
+export function SessionList({ sessions, selectedId, onSelect, onDelete, onRestore, showArchived, onToggleArchived }: SessionListProps) {
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -69,6 +73,7 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
           {filtered.length} session{filtered.length !== 1 ? 's' : ''}
           {filtered.length !== sessions.length && ` of ${sessions.length}`}
         </span>
+        <ArchiveToggle showArchived={showArchived} onChange={onToggleArchived} />
       </div>
 
       {filtered.length === 0 ? (
@@ -90,7 +95,7 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
               selectedId === session.id
                 ? 'border-indigo-300 ring-2 ring-indigo-100 shadow-sm'
                 : 'border-slate-200 hover:border-slate-300'
-            }`}
+            } ${session.archivedAt ? 'opacity-60' : ''}`}
           >
             <button
               className="w-full text-left px-5 py-4"
@@ -108,6 +113,11 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
                     <span className="text-sm font-semibold text-slate-900 truncate">
                       {session.name}
                     </span>
+                    {session.archivedAt && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 ring-1 ring-slate-200">
+                        Archived
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-400">
                     <span>{formatDate(session.startedAt)}</span>
@@ -153,25 +163,42 @@ export function SessionList({ sessions, selectedId, onSelect, onDelete }: Sessio
               </div>
             </button>
 
-            {/* Delete button — always visible */}
-            {onDelete && (
-              <div className="px-5 pb-3 -mt-1 flex justify-end">
-                <button
-                  className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm(`Delete session "${session.name}"? Its bugs and features will also be permanently deleted.`)) {
-                      onDelete(session.id);
-                    }
-                  }}
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Delete
-                </button>
-              </div>
-            )}
+            {/* Archive / Restore button */}
+            <div className="px-5 pb-3 -mt-1 flex justify-end">
+              {session.archivedAt ? (
+                onRestore && (
+                  <button
+                    className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-600 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRestore(session.id);
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Restore
+                  </button>
+                )
+              ) : (
+                onDelete && (
+                  <button
+                    className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-red-600 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`Archive session "${session.name}"? It will be hidden but can be restored later.`)) {
+                        onDelete(session.id);
+                      }
+                    }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Archive
+                  </button>
+                )
+              )}
+            </div>
           </div>
         );
       })}

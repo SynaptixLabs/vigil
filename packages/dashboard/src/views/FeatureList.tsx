@@ -1,14 +1,41 @@
 import { useState, useMemo } from 'react';
 import type { FeatureItem } from '../types';
 import { SearchInput } from '../components/SearchInput';
+import { ArchiveToggle } from '../components/ArchiveToggle';
+import { archiveFeature, restoreFeature } from '../api';
 
 interface FeatureListProps {
   features: FeatureItem[];
+  onRefresh: () => void;
+  showArchived: boolean;
+  onToggleArchived: (show: boolean) => void;
 }
 
-export function FeatureList({ features }: FeatureListProps) {
+export function FeatureList({ features, onRefresh, showArchived, onToggleArchived }: FeatureListProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'done'>('all');
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  async function handleArchive(featId: string) {
+    if (!confirm('Archive this feature? It will be hidden but can be restored later.')) return;
+    setUpdating(featId);
+    try {
+      await archiveFeature(featId);
+      onRefresh();
+    } catch { /* ignore */ } finally {
+      setUpdating(null);
+    }
+  }
+
+  async function handleRestore(featId: string) {
+    setUpdating(featId);
+    try {
+      await restoreFeature(featId);
+      onRefresh();
+    } catch { /* ignore */ } finally {
+      setUpdating(null);
+    }
+  }
 
   const filtered = useMemo(() => {
     let list = features;
@@ -56,6 +83,7 @@ export function FeatureList({ features }: FeatureListProps) {
           {filtered.length} feature{filtered.length !== 1 ? 's' : ''}
           {filtered.length !== features.length && ` of ${features.length}`}
         </span>
+        <ArchiveToggle showArchived={showArchived} onChange={onToggleArchived} />
       </div>
 
       {filtered.length === 0 ? (
@@ -76,13 +104,14 @@ export function FeatureList({ features }: FeatureListProps) {
                 <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Priority</th>
                 <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Status</th>
                 <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Sprint</th>
+                <th className="text-left px-5 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((feat) => (
                 <tr
                   key={feat.id}
-                  className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors"
+                  className={`border-b border-slate-100 hover:bg-slate-50/50 transition-colors ${feat.archivedAt ? 'opacity-50' : ''}`}
                 >
                   <td className="px-5 py-3 font-mono text-xs text-indigo-600">{feat.id}</td>
                   <td className="px-5 py-3 font-medium text-slate-900">{feat.title}</td>
@@ -115,6 +144,25 @@ export function FeatureList({ features }: FeatureListProps) {
                     </span>
                   </td>
                   <td className="px-5 py-3 text-indigo-500 text-xs font-medium">{feat.sprint}</td>
+                  <td className="px-5 py-3">
+                    {feat.archivedAt ? (
+                      <button
+                        className="text-xs px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg hover:bg-indigo-100 disabled:opacity-50 font-medium transition-colors"
+                        disabled={updating === feat.id}
+                        onClick={() => handleRestore(feat.id)}
+                      >
+                        Restore
+                      </button>
+                    ) : (
+                      <button
+                        className="text-xs px-3 py-1 bg-slate-50 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 font-medium transition-colors"
+                        disabled={updating === feat.id}
+                        onClick={() => handleArchive(feat.id)}
+                      >
+                        Archive
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

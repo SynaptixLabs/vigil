@@ -1,8 +1,10 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import type { SessionDetail as SessionDetailType, SnapshotItem, SessionBug } from '../types';
 import { SessionTimeline } from '../components/SessionTimeline';
 import { RecordingPlayer } from '../components/RecordingPlayer';
 import type { RecordingPlayerHandle } from '../components/RecordingPlayer';
+import { ImageLightbox } from '../components/ImageLightbox';
+import type { LightboxImage } from '../components/ImageLightbox';
 
 interface SessionDetailProps {
   session: SessionDetailType;
@@ -25,7 +27,7 @@ function formatDate(epoch: number): string {
   });
 }
 
-function ScreenshotInline({ snapshot }: { snapshot: SnapshotItem }) {
+function ScreenshotInline({ snapshot, onImageClick }: { snapshot: SnapshotItem; onImageClick?: () => void }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -40,14 +42,15 @@ function ScreenshotInline({ snapshot }: { snapshot: SnapshotItem }) {
         <img
           src={snapshot.screenshotDataUrl}
           alt="Bug screenshot"
-          className="mt-2 rounded-lg border border-slate-200 max-w-full max-h-64 object-contain shadow-sm"
+          className="mt-2 rounded-lg border border-slate-200 max-w-full max-h-64 object-contain shadow-sm cursor-pointer hover:ring-2 hover:ring-indigo-300 transition-all"
+          onClick={onImageClick}
         />
       )}
     </div>
   );
 }
 
-function BugCard({ bug, snapshots }: { bug: SessionBug; snapshots: SnapshotItem[] }) {
+function BugCard({ bug, snapshots, onScreenshotClick }: { bug: SessionBug; snapshots: SnapshotItem[]; onScreenshotClick?: (src: string) => void }) {
   const linkedSnapshot = bug.screenshotId
     ? snapshots.find((s) => s.id === bug.screenshotId)
     : undefined;
@@ -76,7 +79,12 @@ function BugCard({ bug, snapshots }: { bug: SessionBug; snapshots: SnapshotItem[
           {bug.priority}
         </span>
       </div>
-      {linkedSnapshot && <ScreenshotInline snapshot={linkedSnapshot} />}
+      {linkedSnapshot && (
+        <ScreenshotInline
+          snapshot={linkedSnapshot}
+          onImageClick={() => onScreenshotClick?.(linkedSnapshot.screenshotDataUrl)}
+        />
+      )}
     </div>
   );
 }
@@ -104,10 +112,27 @@ function hasTimelineContent(session: SessionDetailType): boolean {
 
 export function SessionDetail({ session }: SessionDetailProps) {
   const playerRef = useRef<RecordingPlayerHandle>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const handleTimelineSeek = useCallback((timeOffset: number) => {
     playerRef.current?.goto(timeOffset);
   }, []);
+
+  const lightboxImages: LightboxImage[] = useMemo(() =>
+    session.snapshots
+      .filter((snap) => snap.screenshotDataUrl)
+      .map((snap) => ({
+        src: snap.screenshotDataUrl,
+        alt: `Snapshot at ${formatClock(snap.capturedAt)}`,
+        caption: `${formatClock(snap.capturedAt)}  ·  ${snap.triggeredBy}`,
+      })),
+    [session.snapshots],
+  );
+
+  const openLightbox = useCallback((src: string) => {
+    const idx = lightboxImages.findIndex((img) => img.src === src);
+    if (idx >= 0) setLightboxIndex(idx);
+  }, [lightboxImages]);
 
   const showTimeline = hasTimelineContent(session);
   const showPlayer = session.recordings.length > 0;
@@ -189,7 +214,7 @@ export function SessionDetail({ session }: SessionDetailProps) {
           </h3>
           <div className="space-y-2">
             {session.bugs.map((bug) => (
-              <BugCard key={bug.id} bug={bug} snapshots={session.snapshots} />
+              <BugCard key={bug.id} bug={bug} snapshots={session.snapshots} onScreenshotClick={openLightbox} />
             ))}
           </div>
         </div>
@@ -261,7 +286,8 @@ export function SessionDetail({ session }: SessionDetailProps) {
                   <img
                     src={snap.screenshotDataUrl}
                     alt={`Snapshot at ${formatClock(snap.capturedAt)}`}
-                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                    onClick={() => openLightbox(snap.screenshotDataUrl)}
                   />
                 ) : (
                   <div className="w-full h-32 bg-slate-100 flex items-center justify-center text-slate-400 text-2xl">
@@ -293,6 +319,15 @@ export function SessionDetail({ session }: SessionDetailProps) {
           <div className="text-sm font-medium text-slate-600 mb-1">Empty session</div>
           <div className="text-xs text-slate-400">This session has no bugs, features, recordings, or snapshots.</div>
         </div>
+      )}
+
+      {/* Screenshot lightbox */}
+      {lightboxIndex !== null && lightboxImages.length > 0 && (
+        <ImageLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
       )}
     </div>
   );

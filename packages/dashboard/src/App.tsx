@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { fetchBugs, fetchFeatures, fetchSprints, fetchHealth, fetchSessions, fetchSession, deleteSession, fetchProjects } from './api';
+import { fetchBugs, fetchFeatures, fetchSprints, fetchHealth, fetchSessions, fetchSession, deleteSession, fetchProjects, restoreSession } from './api';
 import type { BugItem, FeatureItem, HealthStatus, SessionSummary, SessionDetail as SessionDetailType, ProjectItem } from './types';
 import { Sidebar } from './components/Sidebar';
 import { SprintSelector } from './components/SprintSelector';
@@ -25,6 +25,12 @@ export default function App() {
   const [selectedSprint, setSelectedSprint] = useState<string>('');
   const [health, setHealth] = useState<HealthStatus>({ status: 'error' });
   const [autoCreateProject, setAutoCreateProject] = useState(false);
+
+  // ── Archive toggle state ────────────────────────────────────────────────
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+  const [showArchivedSessions, setShowArchivedSessions] = useState(false);
+  const [showArchivedBugs, setShowArchivedBugs] = useState(false);
+  const [showArchivedFeatures, setShowArchivedFeatures] = useState(false);
 
   // Derive initial tab + auto-create from URL hash (#new-project, #projects, #sessions, etc.)
   const [activeTab, setActiveTab] = useState<Tab>(() => {
@@ -86,14 +92,14 @@ export default function App() {
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
     try {
-      const list = await fetchProjects();
+      const list = await fetchProjects(showArchivedProjects);
       setProjectItems(list);
     } catch {
       // Silently fail — projects sidebar will just be empty
     } finally {
       setProjectsLoading(false);
     }
-  }, []);
+  }, [showArchivedProjects]);
 
   useEffect(() => {
     loadProjects();
@@ -106,8 +112,8 @@ export default function App() {
     try {
       const sprintArg = selectedSprint || undefined; // "" → undefined = all sprints
       const [b, f] = await Promise.all([
-        fetchBugs(sprintArg),
-        fetchFeatures(sprintArg),
+        fetchBugs(sprintArg, undefined, showArchivedBugs),
+        fetchFeatures(sprintArg, undefined, showArchivedFeatures),
       ]);
       setBugs(b);
       setFeatures(f);
@@ -116,7 +122,7 @@ export default function App() {
     } finally {
       setDataLoading(false);
     }
-  }, [selectedSprint]);
+  }, [selectedSprint, showArchivedBugs, showArchivedFeatures]);
 
   useEffect(() => {
     loadBugsAndFeatures();
@@ -130,6 +136,7 @@ export default function App() {
       const list = await fetchSessions(
         selectedProject || undefined,
         sessionSprintFilter || undefined,
+        showArchivedSessions,
       );
       list.sort((a, b) => b.startedAt - a.startedAt);
       setSessions(list);
@@ -138,7 +145,7 @@ export default function App() {
     } finally {
       setSessionsLoading(false);
     }
-  }, [selectedProject, sessionSprintFilter]);
+  }, [selectedProject, sessionSprintFilter, showArchivedSessions]);
 
   useEffect(() => {
     loadSessions();
@@ -187,11 +194,20 @@ export default function App() {
   async function handleDeleteSession(sessionId: string) {
     try {
       await deleteSession(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       if (selectedSessionId === sessionId) {
         setSelectedSessionId(null);
         setSessionDetail(null);
       }
+      loadSessions();
+    } catch {
+      // Silently fail
+    }
+  }
+
+  async function handleRestoreSession(sessionId: string) {
+    try {
+      await restoreSession(sessionId);
+      loadSessions();
     } catch {
       // Silently fail
     }
@@ -258,6 +274,9 @@ export default function App() {
             selectedId={selectedSessionId}
             onSelect={handleSessionSelect}
             onDelete={handleDeleteSession}
+            onRestore={handleRestoreSession}
+            showArchived={showArchivedSessions}
+            onToggleArchived={setShowArchivedSessions}
           />
         )}
       </div>
@@ -342,7 +361,7 @@ export default function App() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
                 </div>
               ) : (
-                <BugList bugs={bugs} onRefresh={loadBugsAndFeatures} />
+                <BugList bugs={bugs} onRefresh={loadBugsAndFeatures} showArchived={showArchivedBugs} onToggleArchived={setShowArchivedBugs} />
               )}
             </>
           ) : activeTab === 'features' ? (
@@ -357,7 +376,7 @@ export default function App() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" />
                 </div>
               ) : (
-                <FeatureList features={features} />
+                <FeatureList features={features} onRefresh={loadBugsAndFeatures} showArchived={showArchivedFeatures} onToggleArchived={setShowArchivedFeatures} />
               )}
             </>
           ) : activeTab === 'projects' ? (
@@ -371,6 +390,8 @@ export default function App() {
                 onRefresh={loadProjects}
                 autoCreate={autoCreateProject}
                 onAutoCreateConsumed={() => setAutoCreateProject(false)}
+                showArchived={showArchivedProjects}
+                onToggleArchived={setShowArchivedProjects}
               />
             )
           ) : null}

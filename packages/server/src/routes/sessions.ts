@@ -78,14 +78,15 @@ function toDetail(s: VIGILSession) {
   };
 }
 
-// GET /api/sessions?project=X&sprint=Y
+// GET /api/sessions?project=X&sprint=Y&archived=true
 sessionsRouter.get('/', async (req, res) => {
   const project = req.query.project as string | undefined;
   const sprint = req.query.sprint as string | undefined;
+  const includeArchived = req.query.archived === 'true';
   const storage = getStorage();
 
   try {
-    const sessions = await storage.listSessions(project, sprint);
+    const sessions = await storage.listSessions(project, sprint, includeArchived);
     res.json({ sessions: sessions.map(toSummary) });
   } catch (err) {
     console.error('[vigil-server] Error listing sessions:', err);
@@ -93,20 +94,37 @@ sessionsRouter.get('/', async (req, res) => {
   }
 });
 
-// DELETE /api/sessions/:id
+// DELETE /api/sessions/:id — archive a session (soft-delete; cascades to bugs/features)
 sessionsRouter.delete('/:id', async (req, res) => {
   const storage = getStorage();
 
   try {
-    const deleted = await storage.deleteSession(req.params.id);
-    if (!deleted) {
+    const archived = await storage.archiveSession(req.params.id);
+    if (!archived) {
       res.status(404).json({ error: 'Session not found' });
       return;
     }
-    res.json({ ok: true, deletedId: req.params.id });
+    res.json({ ok: true, archivedId: req.params.id });
   } catch (err) {
-    console.error('[vigil-server] Error deleting session:', err);
-    res.status(500).json({ error: 'Failed to delete session' });
+    console.error('[vigil-server] Error archiving session:', err);
+    res.status(500).json({ error: 'Failed to archive session' });
+  }
+});
+
+// PATCH /api/sessions/:id/restore — restore an archived session
+sessionsRouter.patch('/:id/restore', async (req, res) => {
+  const storage = getStorage();
+
+  try {
+    const restored = await storage.restoreSession(req.params.id);
+    if (!restored) {
+      res.status(404).json({ error: 'Session not found or not archived' });
+      return;
+    }
+    res.json({ ok: true, restoredId: req.params.id });
+  } catch (err) {
+    console.error('[vigil-server] Error restoring session:', err);
+    res.status(500).json({ error: 'Failed to restore session' });
   }
 });
 

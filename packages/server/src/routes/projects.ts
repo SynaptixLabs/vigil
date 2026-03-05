@@ -107,10 +107,11 @@ projectsRouter.post('/detect', async (req, res) => {
   }
 });
 
-// GET /api/projects — list all projects
-projectsRouter.get('/', async (_req, res) => {
+// GET /api/projects — list all projects (?archived=true to include archived)
+projectsRouter.get('/', async (req, res) => {
+  const includeArchived = req.query.archived === 'true';
   try {
-    const projects = await getStorage().listProjects();
+    const projects = await getStorage().listProjects(includeArchived);
     res.json({ projects });
   } catch (err) {
     console.error('[vigil-server] Error listing projects:', err);
@@ -194,24 +195,35 @@ projectsRouter.patch('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/projects/:id — delete a project (cascades to sessions → bugs/features)
+// DELETE /api/projects/:id — archive a project (soft-delete; cascades to sessions → bugs/features)
 projectsRouter.delete('/:id', async (req, res) => {
   const storage = getStorage();
   try {
-    // Count what will be cascade-deleted for response
-    const sessions = await storage.listSessions(req.params.id);
-    const deleted = await storage.deleteProject(req.params.id);
-    if (!deleted) {
+    const archived = await storage.archiveProject(req.params.id);
+    if (!archived) {
       res.status(404).json({ error: 'Project not found' });
       return;
     }
-    res.json({
-      ok: true,
-      deletedId: req.params.id,
-      cascaded: { sessions: sessions.length },
-    });
+    res.json({ ok: true, archivedId: req.params.id });
   } catch (err) {
-    console.error('[vigil-server] Error deleting project:', err);
-    res.status(500).json({ error: 'Failed to delete project' });
+    console.error('[vigil-server] Error archiving project:', err);
+    res.status(500).json({ error: 'Failed to archive project' });
+  }
+});
+
+// PATCH /api/projects/:id/restore — restore an archived project
+projectsRouter.patch('/:id/restore', async (req, res) => {
+  const storage = getStorage();
+  try {
+    const restored = await storage.restoreProject(req.params.id);
+    if (!restored) {
+      res.status(404).json({ error: 'Project not found or not archived' });
+      return;
+    }
+    const project = await storage.getProject(req.params.id);
+    res.json({ ok: true, project });
+  } catch (err) {
+    console.error('[vigil-server] Error restoring project:', err);
+    res.status(500).json({ error: 'Failed to restore project' });
   }
 });

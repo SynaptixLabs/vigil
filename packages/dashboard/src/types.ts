@@ -8,6 +8,7 @@ export interface ProjectItem {
   url?: string;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string | null;
 }
 
 // ── Re-exports from shared package (S07-11) ─────────────────────────────────
@@ -30,6 +31,7 @@ export interface BugItem {
   actual?: string;
   regressionTest?: string;  // raw text from markdown section
   resolution?: string;
+  archivedAt?: string | null;
 }
 
 /** Feature as rendered in dashboard list views. Maps from server FeatureFile. */
@@ -40,6 +42,7 @@ export interface FeatureItem {
   priority: string;     // 'P0'-'P3' or 'ENHANCEMENT' etc.
   sprint: string;
   description?: string;
+  archivedAt?: string | null;
 }
 
 // ── Sprint 07: Session-oriented types (S07-17a/17b) ────────────────────────
@@ -57,6 +60,7 @@ export interface SessionSummary {
   bugCount: number;
   featureCount: number;
   annotationCount: number;
+  archivedAt?: string | null;
 }
 
 /** A point-in-time screenshot captured during a session. */

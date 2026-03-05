@@ -4,8 +4,10 @@ const BASE = '/api';
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-export async function fetchProjects(): Promise<ProjectItem[]> {
-  const res = await fetch(`${BASE}/projects`);
+export async function fetchProjects(includeArchived = false): Promise<ProjectItem[]> {
+  const params = new URLSearchParams();
+  if (includeArchived) params.set('archived', 'true');
+  const res = await fetch(`${BASE}/projects?${params}`);
   if (!res.ok) throw new Error(`Failed to fetch projects: ${res.status}`);
   const data = await res.json();
   return data.projects ?? [];
@@ -56,20 +58,22 @@ export async function detectProjectInfo(path: string): Promise<{ sprint: string 
 
 // ── Bugs ──────────────────────────────────────────────────────────────────────
 
-export async function fetchBugs(sprint?: string, status?: string): Promise<BugItem[]> {
+export async function fetchBugs(sprint?: string, status?: string, includeArchived = false): Promise<BugItem[]> {
   const params = new URLSearchParams();
   if (sprint) params.set('sprint', sprint);
   if (status) params.set('status', status);
+  if (includeArchived) params.set('archived', 'true');
   const res = await fetch(`${BASE}/bugs?${params}`);
   if (!res.ok) throw new Error(`Failed to fetch bugs: ${res.status}`);
   const data = await res.json();
   return data.bugs ?? [];
 }
 
-export async function fetchFeatures(sprint?: string, status?: string): Promise<FeatureItem[]> {
+export async function fetchFeatures(sprint?: string, status?: string, includeArchived = false): Promise<FeatureItem[]> {
   const params = new URLSearchParams();
   if (sprint) params.set('sprint', sprint);
   if (status) params.set('status', status);
+  if (includeArchived) params.set('archived', 'true');
   const res = await fetch(`${BASE}/features?${params}`);
   if (!res.ok) throw new Error(`Failed to fetch features: ${res.status}`);
   const data = await res.json();
@@ -116,10 +120,12 @@ export async function closeBug(bugId: string, resolution: string, keepTest: bool
 export async function fetchSessions(
   project?: string,
   sprint?: string,
+  includeArchived = false,
 ): Promise<SessionSummary[]> {
   const params = new URLSearchParams();
   if (project) params.set('project', project);
   if (sprint) params.set('sprint', sprint);
+  if (includeArchived) params.set('archived', 'true');
   const res = await fetch(`${BASE}/sessions?${params}`);
   if (!res.ok) throw new Error(`Failed to fetch sessions: ${res.status}`);
   const data = await res.json();
@@ -146,4 +152,36 @@ export async function fetchHealth(): Promise<HealthStatus> {
   } catch {
     return { status: 'error' };
   }
+}
+
+// ── Archive / Restore ────────────────────────────────────────────────────────
+
+export async function restoreProject(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/projects/${encodeURIComponent(id)}/restore`, { method: 'PATCH' });
+  if (!res.ok) throw new Error(`Failed to restore project: ${res.status}`);
+}
+
+export async function restoreSession(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/sessions/${encodeURIComponent(id)}/restore`, { method: 'PATCH' });
+  if (!res.ok) throw new Error(`Failed to restore session: ${res.status}`);
+}
+
+export async function archiveBug(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/bugs/${encodeURIComponent(id)}/archive`, { method: 'PATCH' });
+  if (!res.ok) throw new Error(`Failed to archive bug: ${res.status}`);
+}
+
+export async function restoreBug(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/bugs/${encodeURIComponent(id)}/restore`, { method: 'PATCH' });
+  if (!res.ok) throw new Error(`Failed to restore bug: ${res.status}`);
+}
+
+export async function archiveFeature(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/features/${encodeURIComponent(id)}/archive`, { method: 'PATCH' });
+  if (!res.ok) throw new Error(`Failed to archive feature: ${res.status}`);
+}
+
+export async function restoreFeature(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/features/${encodeURIComponent(id)}/restore`, { method: 'PATCH' });
+  if (!res.ok) throw new Error(`Failed to restore feature: ${res.status}`);
 }
