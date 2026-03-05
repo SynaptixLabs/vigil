@@ -80,6 +80,8 @@ export enum MessageType {
   SESSION_SYNC_FAILED = 'SESSION_SYNC_FAILED',
   // Sprint 07 — Project-oriented sessions (S07-16)
   GET_PROJECT_SPRINTS = 'GET_PROJECT_SPRINTS',
+  // Sprint 07 — Session resync (FAT data recovery)
+  RESYNC_SESSION = 'RESYNC_SESSION',
 }
 
 /**

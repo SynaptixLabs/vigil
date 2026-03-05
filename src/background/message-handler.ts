@@ -22,7 +22,12 @@ import {
   incrementSessionActionCount,
   incrementSessionBugCount,
   incrementSessionFeatureCount,
+  getBugsBySession,
+  getFeaturesBySession,
+  getScreenshotsBySession,
+  getRecordingChunks,
 } from '@core/db';
+import type { VIGILSession, VIGILRecording, VIGILSnapshot } from '@shared/types';
 
 export function handleMessage(
   message: ChromeMessage,
@@ -310,6 +315,96 @@ export function handleMessage(
         .then(r => r.json())
         .then(data => sendResponse({ ok: true, data }))
         .catch(() => sendResponse({ ok: true, data: { exists: false, sprints: [], current: null } }));
+      return true;
+    }
+
+    // Sprint 07 FAT: Re-sync a completed session that failed to POST
+    case MessageType.RESYNC_SESSION: {
+      const { sessionId } = message.payload as { sessionId: string };
+      if (!sessionId) {
+        sendResponse({ ok: false, error: 'Missing sessionId' });
+        return false;
+      }
+
+      (async () => {
+        try {
+          const session = await getSession(sessionId);
+          if (!session) {
+            sendResponse({ ok: false, error: `Session ${sessionId} not found in IndexedDB` });
+            return;
+          }
+
+          // Reconstruct VIGILSession from IndexedDB tables
+          const [bugs, features, screenshots, chunks] = await Promise.all([
+            getBugsBySession(sessionId),
+            getFeaturesBySession(sessionId),
+            getScreenshotsBySession(sessionId),
+            getRecordingChunks(sessionId),
+          ]);
+
+          // Group recording chunks into a single VIGILRecording
+          const recordings: VIGILRecording[] = [];
+          if (chunks.length > 0) {
+            recordings.push({
+              id: `rec-${sessionId}`,
+              startedAt: session.startedAt,
+              endedAt: session.stoppedAt ?? (session.startedAt + (session.duration ?? 0)),
+              rrwebChunks: chunks.map((c) => ({
+                chunkIndex: c.chunkIndex,
+                pageUrl: c.pageUrl,
+                events: c.events ?? [],
+                createdAt: c.createdAt,
+              })),
+              mouseTracking: session.recordMouseMove ?? false,
+            });
+          }
+
+          // Map screenshots to VIGILSnapshot
+          const snapshots: VIGILSnapshot[] = screenshots.map((s) => ({
+            id: s.id,
+            capturedAt: s.timestamp,
+            screenshotDataUrl: s.dataUrl ?? '',
+            url: s.url ?? '',
+            triggeredBy: 'manual' as const,
+          }));
+
+          const vigilSession: VIGILSession = {
+            id: session.id,
+            name: session.name,
+            projectId: session.project ?? '',
+            sprint: undefined,
+            description: session.description,
+            startedAt: session.startedAt,
+            endedAt: session.stoppedAt,
+            clock: session.duration ?? 0,
+            recordings,
+            snapshots,
+            bugs,
+            features,
+          };
+
+          // POST to server
+          const serverUrl = await loadServerUrl();
+          const res = await fetch(`${serverUrl}/api/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(vigilSession),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            console.log(`[Vigil] Resync success for session ${sessionId}:`, data);
+            sendResponse({ ok: true, data });
+          } else {
+            const errText = await res.text().catch(() => '');
+            console.error(`[Vigil] Resync POST failed (${res.status}):`, errText);
+            sendResponse({ ok: false, error: `POST failed: ${res.status} ${errText}` });
+          }
+        } catch (e) {
+          console.error('[Vigil] Resync error:', e);
+          sendResponse({ ok: false, error: (e as Error).message });
+        }
+      })();
       return true;
     }
 
