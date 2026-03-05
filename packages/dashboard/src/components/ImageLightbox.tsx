@@ -110,7 +110,7 @@ export function ImageLightbox({ images, initialIndex, onClose }: ImageLightboxPr
         <img
           src={image.src}
           alt={image.alt}
-          className="max-w-4xl max-h-[85vh] object-contain rounded-lg shadow-2xl"
+          className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         />
 
