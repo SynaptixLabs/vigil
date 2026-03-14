@@ -28,3 +28,14 @@ Read in order:
 | `/project:plan` | Plan mode |
 | `/project:sprint-report` | Sprint status |
 | `/project:release-gate` | Pre-prod gate |
+
+
+## Windows Development: Python Bytecache
+
+**All Python projects on Windows MUST set `PYTHONDONTWRITEBYTECODE=1`.**
+Add to your start script: `$env:PYTHONDONTWRITEBYTECODE = "1"`
+Add to your `.env`: `PYTHONDONTWRITEBYTECODE=1`
+
+Windows locks .pyc files while processes run. On restart, old .pyc can't be deleted,
+so Python loads stale cached code. This variable prevents .pyc creation entirely.
+Cost: ~0.5s slower startup. See AGENTS project D-10c2a-WIN-001 for the full incident.
