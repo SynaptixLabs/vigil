@@ -19,6 +19,7 @@
 | **AIcademy** | `AIcademy/` | — | — | 🔵 Planned |
 | **Arcane Vault** | `memory-game-demo/` | React single-file + Arcane UI Kit | 05→06 | 🔵 Planned (3D Maze) |
 | **Vigil** | `vigil/` | — | — | 🔵 Planned |
+| **Family Finance** | `family-finance/` | — | — | 🔵 Planned |
 
 ### Platform & Infrastructure
 
@@ -88,6 +89,26 @@ claude
 
 Unified billing unit across all SynaptixLabs products ($0.001 × 1.3x markup).
 See `agents/project_management/docs/20_TOKEN_KEY_INFRASTRUCTURE.md`.
+
+## Platform Consolidation (Active — March 2026)
+
+All SynaptixLabs products are becoming AGENTS platform customers.
+No product calls LLM providers directly — every LLM interaction routes through Nightingale AGENTS.
+See `agents/project_management/docs/21_PLATFORM_CONSOLIDATION.md`.
+
+| Phase | What | Timeline |
+|-------|------|----------|
+| 0 | Consolidate all Google API keys to SynaptixLabs GCP ($25K credits) | Done |
+| 1 | KeyVault core in AGENTS (key mgmt, auto-provisioning) | Sprint 10a (Mar) |
+| 2 | First customer: HappySeniors migrates to AGENTS API | Sprint 11 (Apr) |
+| 3 | Vigil + Showroom migrate | Sprint 11-12 (Apr-May) |
+| 4 | Website token portal (dashboard, BYOK, billing UI) | Sprint 12 (May) |
+| 5 | Railway/Vercel → Cloud Run (all services) | Sprint 12 (May) |
+
+## GCP Migration
+
+$25K in Google Cloud credits (GFS Ecosystem Partner, valid through Feb 2028).
+See `agents/project_management/docs/19_GCP_MIGRATION_PLAN.md`.
 
 ## Internal Docs
 
