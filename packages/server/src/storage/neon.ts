@@ -326,13 +326,19 @@ export class NeonStorage implements StorageProvider {
       `INSERT INTO sessions (id, name, project_id, started_at, ended_at, clock, recordings, snapshots, bugs, features, annotations, sprint, description)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         project_id = EXCLUDED.project_id,
+         started_at = EXCLUDED.started_at,
          ended_at = EXCLUDED.ended_at,
          clock = EXCLUDED.clock,
          recordings = EXCLUDED.recordings,
          snapshots = EXCLUDED.snapshots,
          bugs = EXCLUDED.bugs,
          features = EXCLUDED.features,
-         annotations = EXCLUDED.annotations`,
+         annotations = EXCLUDED.annotations,
+         sprint = EXCLUDED.sprint,
+         description = EXCLUDED.description,
+         archived_at = NULL`,
       [
         session.id,
         session.name,

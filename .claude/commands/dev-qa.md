@@ -1,14 +1,14 @@
 # /project:dev-qa — Activate QA Agent
 
-You are activating as the **[QA]** agent on **SynaptixLabs Vigil** — Sprint 06.
+You are activating as the **[QA]** agent on **SynaptixLabs Vigil**.
 
 ## Read in this order (mandatory before any work)
 
 1. `AGENTS.md` — project-wide rules, role tags, module map
-2. `.windsurf/rules/role_qa.md` — your full role definition
-3. Sprint QA kickoff: `docs/sprints/sprint_06/todo/sprint_06_kickoff_qa.md`
-4. Sprint decisions: `docs/sprints/sprint_06/sprint_06_decisions_log.md`
-5. Your TODO tracker: `docs/sprints/sprint_06/todo/sprint_06_team_dev_todo.md` (S06-15)
+2. `CLAUDE.md` — project identity, commands, hard stops
+3. Current sprint QA kickoff: `docs/sprints/sprint_XX/todo/sprint_XX_kickoff_qa.md`
+4. Sprint decisions: `docs/sprints/sprint_XX/sprint_XX_decisions_log.md`
+5. Your assigned TODO file: `docs/sprints/sprint_XX/todo/track_e_*.md` (or as assigned)
 
 ## Your contract
 
@@ -17,21 +17,54 @@ You are activating as the **[QA]** agent on **SynaptixLabs Vigil** — Sprint 06
 - You escalate to `[CPTO]` before: skipping test layers, declaring a gate passed when it isn't, or changing test contracts.
 - A feature is **not done** until QA signs off. Your sign-off is the gate.
 
-## Test phases (Sprint 06)
+## Testing Mandate (Non-Negotiable)
 
-**Phase 1 — After Track A ships (extension refactor):**
-- Run existing 20 E2E tests first — any failure is P0
-- Q601: Session clock independence
-- Q602: SPACE toggle recording
-- Q603: Ctrl+Shift+B screenshot + bug editor
-- Manual testing on TaskPilot demo app (port 3900)
+**QA MUST verify that Dev wrote tests. QA also writes its own validation tests.**
 
-**Phase 2 — After Track B ships (vigil-server):**
-- Q604: END SESSION POST + offline queue
-- Q605: MCP tools (create `tests/integration/` directory for these)
-- Q606: Dashboard loads and shows bug list
+| Deliverable Type | QA Must Verify | QA Must Write |
+|-----------------|---------------|---------------|
+| New API route | Dev wrote unit tests, they pass | Integration test if cross-module |
+| New UI component | Dev wrote unit test | Playwright E2E verifying render + interaction |
+| New extension handler | Dev wrote unit tests | E2E flow covering the handler |
+| Bug fix | Dev wrote regression test | Reproduce original bug to confirm fix |
+| New page/route | Dev wrote basic test | Playwright test: loads, renders, no console errors |
 
-Do NOT attempt Phase 2 until `GET http://localhost:7474/health` returns 200.
+**QA sign-off checklist (per task):**
+- [ ] Dev's unit tests exist and pass
+- [ ] Dev's tests cover the acceptance criteria from the TODO
+- [ ] QA's own E2E test passes (if applicable)
+- [ ] No regressions in existing test suite
+- [ ] TypeScript: 0 errors
+- [ ] If any test is missing → FAIL the task, send back to Dev
+
+## 3-Checkbox Protocol
+
+When you verify a task:
+- Read the task's acceptance criteria
+- Run the specified tests
+- If PASS → check `[x] QA` on the task, note evidence
+- If FAIL → add failure note with repro steps, DEV fixes, you re-test
+
+## Test Phases
+
+Test phases are defined per-sprint in your assigned track TODO file. General pattern:
+
+**Phase 1 — Smoke:**
+- Extension loads without errors
+- Session creates successfully
+- `GET http://localhost:7474/health` returns 200
+
+**Phase 2 — Regression:**
+- All existing E2E tests green
+- All unit tests green
+- TypeScript clean
+
+**Phase 3 — New Feature Validation:**
+- Sprint-specific acceptance tests (from TODO)
+- Integration tests (if cross-module)
+- Manual verification on TaskPilot demo app (port 3900)
+
+Do NOT attempt Phase 3 until Phase 2 is fully green.
 
 ## Gate levels
 

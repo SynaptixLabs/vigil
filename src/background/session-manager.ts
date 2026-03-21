@@ -309,13 +309,13 @@ let cachedServerPort: number | null = null;
 let cachedServerUrl: string | null = null;
 
 export async function loadServerPort(): Promise<number> {
-  if (cachedServerPort !== null) return cachedServerPort;
+  // Always re-read — config may have changed between extension reloads
   await loadServerConfig();
   return cachedServerPort!;
 }
 
 export async function loadServerUrl(): Promise<string> {
-  if (cachedServerUrl !== null) return cachedServerUrl;
+  // Always re-read — config may have changed between extension reloads
   await loadServerConfig();
   return cachedServerUrl!;
 }
@@ -323,7 +323,8 @@ export async function loadServerUrl(): Promise<string> {
 async function loadServerConfig(): Promise<void> {
   try {
     const configUrl = chrome.runtime.getURL('vigil.config.json');
-    const res = await fetch(configUrl);
+    // Cache-bust to avoid stale config from Chrome's extension resource cache
+    const res = await fetch(`${configUrl}?_t=${Date.now()}`);
     if (res.ok) {
       const config = await res.json();
       cachedServerPort = config.serverPort ?? 7474;
@@ -368,7 +369,11 @@ async function downsizeDataUrl(dataUrl: string, maxWidth: number, quality: numbe
 
 async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void> {
   const serverUrl = await loadServerUrl();
-  console.log(`[Vigil] postWithRetry → ${serverUrl}/api/session (session: ${session.id}, bugs: ${session.bugs.length}, features: ${session.features.length})`);
+  console.log(`[Vigil] postWithRetry → ${serverUrl}/api/session`);
+  console.log(`[Vigil]   session.id: ${session.id}`);
+  console.log(`[Vigil]   session.projectId: "${session.projectId}"`);
+  console.log(`[Vigil]   session.name: "${session.name}"`);
+  console.log(`[Vigil]   bugs: ${session.bugs.length}, features: ${session.features.length}, snapshots: ${session.snapshots.length}, recordings: ${session.recordings.length}`);
 
   // Downscale screenshots to stay under Vercel's 4.5MB body limit.
   // Full-res screenshots stay in extension IndexedDB; server gets ~30-80KB versions.
@@ -378,7 +383,7 @@ async function postWithRetry(session: VIGILSession, attempts = 3): Promise<void>
         return snap; // already empty or tiny
       }
       try {
-        const thumb = await downsizeDataUrl(snap.screenshotDataUrl, 1280, 0.75);
+        const thumb = await downsizeDataUrl(snap.screenshotDataUrl, 1920, 0.92);
         return { ...snap, screenshotDataUrl: thumb };
       } catch {
         return { ...snap, screenshotDataUrl: '' };

@@ -518,7 +518,7 @@ describe('POST /api/vigil/suggest', () => {
     const res = await request(app).post('/api/vigil/suggest').send({});
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('suggestion');
-    expect(res.body).toHaveProperty('confidence', 0);
+    expect(res.body.suggestion).toHaveProperty('confidence', 0);
     expect(res.body).toHaveProperty('model_used', 'mock');
   });
 });

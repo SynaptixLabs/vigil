@@ -147,11 +147,18 @@ Status: ⬜ | 🔴 | 🟢
 
 | Command | Purpose | Who runs it |
 |---|---|---|
-| `/project:cpto` | **Activate CPTO session** — load context, orient, show menu | `[CPTO]` |
-| `/project:dev` | **Activate DEV agent** — load sprint context, await track assignment | `[DEV:*]` |
+| `/project:cpto` | **Activate CPTO** — unified CTO+CPO, load context, orient, show menu | `[CPTO]` |
+| `/project:cto` | **Activate CTO** — execution lead, runs agent teams, ships code | `[CTO]` |
+| `/project:dev` | **Activate DEV agent** — generic, load sprint context, await track | `[DEV:*]` |
+| `/project:dev-ext` | **Activate Extension DEV** — Chrome Extension track | `[DEV:ext]` |
+| `/project:dev-server` | **Activate Server DEV** — vigil-server + MCP track | `[DEV:server]` |
+| `/project:dev-dashboard` | **Activate Dashboard DEV** — React dashboard track | `[DEV:dashboard]` |
+| `/project:dev-devops` | **Activate DevOps agent** — builds, scripts, infra, CI/CD | `[DEV:devops]` |
 | `/project:dev-qa` | **Activate QA agent** — load test plan, run gates | `[QA]` |
-| `/project:design-review` | Good/Bad/Ugly design review on a topic | `[CTO]` |
+| `/project:gbu` | **GBU review** — 7-phase post-development quality review & fix | `[CPTO]` / `[CTO]` |
+| `/project:design-review` | Alias for `/project:gbu` | `[CTO]` |
 | `/project:sprint-plan` | Plan next sprint scope + produce all artifacts | `[CPTO]` |
+| `/project:sprint-kickoff` | Create new sprint scaffold + TODOs | `[CPTO]` |
 | `/project:sprint-report` | Current sprint status report | `[CPTO]` |
 | `/project:release-gate` | Pre-release / sprint closure checklist | `[CPTO]` |
 | `/project:bug-review` | Sprint closure bug gate | `[CPTO]` / `[QA]` |

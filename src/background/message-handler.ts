@@ -206,7 +206,25 @@ export function handleMessage(
     case MessageType.CAPTURE_SCREENSHOT: {
       const { sessionId } = message.payload as { sessionId: string };
       captureScreenshot(sessionId, tabId)
-        .then((screenshot) => sendResponse({ ok: true, data: screenshot }))
+        .then((screenshot) => {
+          // Also add to vigil session so it's included in POST payload
+          // (Bug-editor screenshots go through shortcuts.ts which already calls addSnapshot,
+          // but control-bar / popup camera-button screenshots go through this handler.)
+          if (vigilSessionManager.hasActiveSession()) {
+            const vigilSession = vigilSessionManager.getActiveSession();
+            const snapshot: VIGILSnapshot = {
+              id: screenshot.id,
+              capturedAt: vigilSession
+                ? screenshot.timestamp - vigilSession.startedAt
+                : screenshot.timestamp,
+              screenshotDataUrl: screenshot.dataUrl,
+              url: screenshot.url,
+              triggeredBy: 'manual',
+            };
+            vigilSessionManager.addSnapshot(snapshot);
+          }
+          sendResponse({ ok: true, data: screenshot });
+        })
         .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
       return true;
     }

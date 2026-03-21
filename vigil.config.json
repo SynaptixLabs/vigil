@@ -3,7 +3,7 @@
   "projectId": "my-project",
   "sprintCurrent": "07",
   "serverPort": 7474,
-  "serverUrl": "https://vigil-synaptixlabs-projects.vercel.app",
+  "serverUrl": "http://localhost:7474",
   "maxFixIterations": 3,
   "llmMode": "mock",
   "agentsApiUrl": "http://localhost:8000"

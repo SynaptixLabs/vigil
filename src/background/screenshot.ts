@@ -1,7 +1,8 @@
 /**
  * @file screenshot.ts
  * @description Screenshot capture via chrome.tabs.captureVisibleTab().
- * Stores PNG data URLs in Dexie. Compression (JPEG 80%) is a Sprint 02 optimization.
+ * Stores lossless PNG data URLs in Dexie. JPEG compression only happens at POST time
+ * (in postWithRetry → downsizeDataUrl) to avoid double lossy compression.
  */
 
 import { generateScreenshotId } from '@shared/utils';
@@ -24,7 +25,7 @@ export async function captureScreenshot(
   }
 
   const dataUrl = await new Promise<string>((resolve) => {
-    chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (result) => {
+    chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (result) => {
       if (chrome.runtime.lastError || !result) {
         console.warn('[Vigil] captureVisibleTab unavailable:', chrome.runtime.lastError?.message ?? 'empty result');
         // Fallback: store a 1×1 placeholder so the session screenshot count is still recorded

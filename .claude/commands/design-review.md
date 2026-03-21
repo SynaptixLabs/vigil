@@ -1,60 +1,6 @@
-# /project:design-review — CTO Design Review
+# /project:design-review — Alias for /project:gbu
 
-Perform a design review using the Good/Bad/Ugly method.
+> **This command is an alias.** Use `/project:gbu` for the full 7-phase GBU review protocol.
+> See `.claude/commands/gbu.md` for the complete review process.
 
-## Steps
-
-1. **Identify scope** — what is being reviewed? (sprint deliverable, module, architecture change, PR)
-2. **Read** all relevant source files, specs, and docs
-3. **Assess** using the framework below
-4. **Output** the review document to `docs/sprints/sprint_06/reports/DR_<topic>_<date>.md`
-
-## Review Framework
-
-### GOOD (keep)
-What works well and should be preserved. Give explicit credit.
-
-### BAD (fix)
-What needs fixing. Categorize by priority:
-- **P0** — blocks merge/release
-- **P1** — fix this sprint
-- **P2** — fix next sprint
-- **P3** — backlog / nice-to-have
-
-### UGLY (systemic)
-Patterns or architectural issues that aren't broken today but will cause pain. Needs strategic attention.
-
-## For each issue
-
-```
-- ID: B01 / U01
-- Severity: P0/P1/P2/P3
-- Location: exact file path + line range
-- Problem: what's wrong
-- Fix: concrete recommendation
-- Effort: ~X vibes
-```
-
-## Standard checks (Vigil-specific)
-
-- [ ] TypeScript: no `any`, no suppressed errors
-- [ ] Chrome Manifest V3 compliance (no V2 APIs)
-- [ ] Shadow DOM for all injected extension UI
-- [ ] rrweb for recording (no custom DOM capture)
-- [ ] Dexie.js for extension-side IndexedDB
-- [ ] vigil-server on port 7474 (no hardcoded alternatives)
-- [ ] No secrets in `vigil.config.json` or source files
-- [ ] Unit tests for all new logic
-- [ ] E2E coverage for new user-facing flows
-- [ ] No regressions on previously accepted features
-- [ ] Module boundaries respected (no cross-module direct imports)
-- [ ] Required data-testid attributes on new UI components
-- [ ] No new dependencies added without CPTO FLAG
-
-## Output
-
-End with:
-- Overall grade (A / B / C / D / F with +/-)
-- Prioritized fix list (P0 first)
-- What to cut or defer
-- Explicit next steps
+Run `/project:gbu` instead.

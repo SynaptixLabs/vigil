@@ -52,7 +52,7 @@ export function initShortcuts(): void {
             const windowId = tab?.windowId ?? chrome.windows.WINDOW_ID_CURRENT;
             const pageUrl = tab?.url ?? 'unknown';
             const dataUrl = await new Promise<string>((resolve) => {
-              chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (result) => {
+              chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (result) => {
                 if (chrome.runtime.lastError || !result) {
                   resolve('');
                 } else {
@@ -106,7 +106,7 @@ export function initShortcuts(): void {
           const pageUrl = tab?.url ?? 'unknown';
 
           const dataUrl = await new Promise<string>((resolve) => {
-            chrome.tabs.captureVisibleTab(windowId, { format: 'jpeg', quality: 80 }, (result) => {
+            chrome.tabs.captureVisibleTab(windowId, { format: 'png' }, (result) => {
               if (chrome.runtime.lastError || !result) {
                 resolve('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
               } else {

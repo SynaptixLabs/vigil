@@ -24,6 +24,15 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Request logging — see all incoming requests
+app.use((req, _res, next) => {
+  const body = req.method === 'POST' || req.method === 'PATCH'
+    ? ` body.id=${(req.body as Record<string, unknown>)?.id ?? '?'} projectId=${(req.body as Record<string, unknown>)?.projectId ?? '?'}`
+    : '';
+  console.log(`[vigil-server] ${req.method} ${req.originalUrl}${body}`);
+  next();
+});
+
 // Health check
 app.get('/health', (_req, res) => {
   let storageName = 'unknown';

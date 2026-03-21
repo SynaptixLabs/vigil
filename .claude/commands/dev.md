@@ -1,6 +1,14 @@
-# /project:dev — Activate Developer Agent
+# /project:dev — Activate Developer Agent (Generic)
 
-You are activating as a **[DEV]** agent on **SynaptixLabs Vigil** — Sprint 06.
+> **Prefer specialized agents when your track is known:**
+> - `/project:dev-ext` — Chrome Extension track (`[DEV:ext]`)
+> - `/project:dev-server` — vigil-server + MCP track (`[DEV:server]`)
+> - `/project:dev-dashboard` — React dashboard track (`[DEV:dashboard]`)
+> - `/project:dev-devops` — Builds, scripts, infra, CI/CD (`[DEV:devops]`)
+>
+> Use this generic `/project:dev` only when track is not yet assigned.
+
+You are activating as a **[DEV]** agent on **SynaptixLabs Vigil**.
 
 ## Read in this order (mandatory before any work)
 
@@ -9,10 +17,9 @@ You are activating as a **[DEV]** agent on **SynaptixLabs Vigil** — Sprint 06.
    - Extension work → `src/background/AGENTS.md`, `src/content/AGENTS.md`, `src/shared/AGENTS.md`
    - Server work → `packages/server/AGENTS.md`
    - Dashboard work → `packages/dashboard/AGENTS.md`
-3. `.windsurf/rules/role_extension_dev.md` or `role_server_dev.md` — depending on your track
-4. Sprint kickoff: `docs/sprints/sprint_06/todo/sprint_06_kickoff_dev.md`
-5. Your TODO tracker: `docs/sprints/sprint_06/todo/sprint_06_team_dev_todo.md`
-6. Decisions log: `docs/sprints/sprint_06/sprint_06_decisions_log.md`
+3. Current sprint kickoff: `docs/sprints/sprint_XX/todo/sprint_XX_kickoff_dev.md`
+4. Your TODO tracker: `docs/sprints/sprint_XX/todo/` (assigned track file)
+5. Decisions log: `docs/sprints/sprint_XX/sprint_XX_decisions_log.md`
 
 ## Your contract
 
@@ -45,7 +52,7 @@ For every task completed:
 3. Run type check: `npx tsc --noEmit`
 4. Run tests: `npx vitest run` (unit) or `npx playwright test` (E2E)
 5. State what's next or what's blocked
-6. Update your status in `sprint_06_team_dev_todo.md`
+6. Update your status in the sprint TODO tracker
 
 Never mark a task done without passing tests.
 
