@@ -12,7 +12,7 @@ import {
   handleNavigation,
   recordCrossPageNavigation,
 } from './recorder';
-import { mountOverlay, unmountOverlay } from './overlay/mount';
+import { mountOverlay, unmountOverlay, isOverlayMounted } from './overlay/mount';
 import './inspector'; // R023: registers refine:toggle-inspector listener
 import { SHORTCUT_MAP } from '@shared/constants';
 import { safeSendMessage } from './safe-message';
@@ -121,6 +121,44 @@ window.addEventListener('popstate', () => {
     handleNavigation(currentUrl);
     lastUrl = currentUrl;
   }
+});
+
+// ── BUG-030: Re-validate session after popup close / tab refocus ────────────
+// When a window.open() popup opens and closes, the parent tab's overlay can
+// get detached. Listen for visibility + focus changes and re-mount if needed.
+
+function recoverSessionState(): void {
+  safeSendMessage(
+    { type: 'GET_SESSION_STATUS', source: 'content' },
+    (response) => {
+      if (!response?.ok || !response.data?.sessionId) return;
+      const sid = response.data.sessionId as string;
+      const isRec = response.data.isRecording as boolean;
+
+      // Re-mount overlay if it was lost from DOM
+      if (!isOverlayMounted()) {
+        console.log('[Vigil] BUG-030: Overlay lost — re-mounting for session:', sid);
+        mountOverlay(sid);
+      }
+
+      // Re-sync recording state with ControlBar
+      if (isRec) {
+        window.dispatchEvent(new CustomEvent('vigil:recording-state-changed', {
+          detail: { recording: true },
+        }));
+      }
+    },
+  );
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    recoverSessionState();
+  }
+});
+
+window.addEventListener('focus', () => {
+  recoverSessionState();
 });
 
 // ── Sprint 06: SPACE shortcut — toggle recording (outside input fields) ─────

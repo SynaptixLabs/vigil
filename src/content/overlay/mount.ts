@@ -21,8 +21,21 @@ interface OverlayOptions {
   sessionName?: string;
 }
 
+export function isOverlayMounted(): boolean {
+  return document.getElementById('refine-root') !== null;
+}
+
 export function mountOverlay(sessionId: string, options: OverlayOptions = {}): void {
-  if (hostElement) return; // already mounted
+  // BUG-030: Check actual DOM presence, not just variable — hostElement can go stale
+  // after window.open() popup steals and returns focus
+  if (isOverlayMounted()) return;
+
+  // Clear stale references if the DOM element was removed but variables weren't cleaned
+  if (hostElement) {
+    reactRoot?.unmount();
+    reactRoot = null;
+    hostElement = null;
+  }
 
   hostElement = document.createElement('div');
   hostElement.id = 'refine-root';
