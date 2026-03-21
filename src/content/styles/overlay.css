@@ -462,6 +462,75 @@
   gap: 8px;
 }
 
+/* ── Cancel/discard session button (Sprint 08) ─────────────────────────────── */
+
+.refine-btn--discard {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.refine-btn--discard:hover {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* ── Cancel confirmation dialog (Sprint 08) ───────────────────────────────── */
+
+.refine-cancel-confirm {
+  position: fixed;
+  bottom: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  width: 320px;
+  background: var(--refine-bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 14px;
+  padding: 16px 18px;
+  color: var(--refine-text);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  animation: refine-slide-up 0.2s ease;
+  pointer-events: auto;
+}
+
+.refine-cancel-confirm__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f87171;
+  margin-bottom: 6px;
+}
+
+.refine-cancel-confirm__body {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.refine-cancel-confirm__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.refine-btn--danger-solid {
+  flex: 1;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.refine-btn--danger-solid:hover {
+  background: #ef4444;
+}
+
 /* ── High-contrast mode (PRD §NFR Accessibility) ─────────────────────────────── */
 
 @media (prefers-contrast: high) {

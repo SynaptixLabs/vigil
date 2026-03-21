@@ -90,6 +90,8 @@ export enum MessageType {
   RESYNC_SESSION = 'RESYNC_SESSION',
   // Sprint 07 — Delete session from both IndexedDB + server (single source of truth)
   DELETE_SESSION = 'DELETE_SESSION',
+  // Sprint 08 — Cancel active session (discard without saving to server)
+  CANCEL_SESSION = 'CANCEL_SESSION',
   // Sprint 07 — Annotation overlay (visual markup)
   LOG_ANNOTATION = 'LOG_ANNOTATION',
   UPDATE_ANNOTATION = 'UPDATE_ANNOTATION',

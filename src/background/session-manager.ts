@@ -657,6 +657,24 @@ export const vigilSessionManager = {
     return finalSession;
   },
 
+  /** Cancel (discard) the active session without POSTing to server. */
+  cancelSession(): void {
+    if (!vigilState.session) return;
+
+    const sessionId = vigilState.session.id;
+    this.stopRecording();
+    stopKeepAlive();
+    notifyTab(vigilState.tabId, 'STOP_RECORDING');
+
+    console.log('[Vigil] Session cancelled (discarded):', sessionId);
+
+    // Reset state — no POST
+    vigilState.session = null;
+    vigilState.activeRecordingId = null;
+    vigilState.tabId = undefined;
+    clearPersistedState();
+  },
+
   getActiveSession(): VIGILSession | null {
     return vigilState.session;
   },

@@ -474,6 +474,33 @@ export function handleMessage(
       return true;
     }
 
+    // Sprint 08: Cancel active session — discard without saving to server
+    case MessageType.CANCEL_SESSION: {
+      const cancelSessionId = vigilSessionManager.getActiveSessionId() ?? sessionManager.getActiveSessionId();
+      if (!cancelSessionId) {
+        sendResponse({ ok: false, error: 'No active session to cancel' });
+        return false;
+      }
+
+      (async () => {
+        try {
+          // 1. Cancel in-memory session (no POST)
+          vigilSessionManager.cancelSession();
+          sessionManager.stopSession();
+
+          // 2. Delete from local IndexedDB
+          await deleteSessionFromDb(cancelSessionId);
+          console.log(`[Vigil] Session ${cancelSessionId} cancelled and deleted from IndexedDB`);
+
+          sendResponse({ ok: true, data: { sessionId: cancelSessionId } });
+        } catch (e) {
+          console.error('[Vigil] Cancel session error:', e);
+          sendResponse({ ok: false, error: (e as Error).message });
+        }
+      })();
+      return true;
+    }
+
     // Sprint 07 FAT: Delete session from IndexedDB + Neon (single source of truth)
     case MessageType.DELETE_SESSION: {
       const { sessionId } = message.payload as { sessionId: string };
