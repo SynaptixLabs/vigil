@@ -224,10 +224,10 @@ export default function App() {
   function renderSessionsContent() {
     if (selectedSessionId) {
       return (
-        <div>
+        <div className="flex flex-col h-[calc(100vh-10rem)]">
           <button
             data-testid="back-to-sessions"
-            className="mb-4 inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+            className="mb-3 inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors shrink-0"
             onClick={handleBackToList}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -4,7 +4,7 @@
  * Routes incoming ChromeMessages to the appropriate handler by MessageType.
  */
 
-import { MessageType } from '@shared/types';
+import { MessageType, SessionStatus } from '@shared/types';
 import type { ChromeMessage, ChromeResponse } from '@shared/messages';
 import type { Bug, Feature, RecordingChunk, InspectedElement, Annotation } from '@shared/types';
 import { sessionManager, vigilSessionManager, loadServerUrl } from './session-manager';
@@ -27,6 +27,7 @@ import {
   getScreenshotsBySession,
   getRecordingChunks,
   deleteSession as deleteSessionFromDb,
+  getAllSessions,
   addAnnotation as addAnnotationToDb,
   getAnnotationsBySession,
   updateAnnotation as updateAnnotationInDb,
@@ -152,7 +153,49 @@ export function handleMessage(
             // No listeners (popup/sidepanel closed) — expected, ignore
           }
         })
-        .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+        .catch(async (err: Error) => {
+          // Fallback: if sessionManager lost state (service worker restart), force-complete
+          // any orphaned RECORDING/PAUSED sessions in Dexie and notify the content script.
+          console.warn('[Vigil] STOP_RECORDING primary path failed:', err.message, '— trying fallback');
+          try {
+            const { getAllSessions, updateSession: updateDbSession } = await import('@core/db');
+            const all = await getAllSessions();
+            const orphaned = all.filter(s => s.status === SessionStatus.RECORDING || s.status === SessionStatus.PAUSED);
+            if (orphaned.length > 0) {
+              const now = Date.now();
+              for (const s of orphaned) {
+                const duration = Math.max(0, now - s.startedAt);
+                await updateDbSession(s.id, { status: SessionStatus.COMPLETED, stoppedAt: now, duration });
+                console.log('[Vigil] Force-completed orphaned session:', s.id);
+              }
+              // Notify content script on the active tab to unmount overlay
+              chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+                const target = tabs.find(t => t.id && t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+                if (target?.id) {
+                  chrome.tabs.sendMessage(target.id, { type: 'STOP_RECORDING', source: 'background' }, () => {
+                    void chrome.runtime.lastError; // suppress
+                  });
+                }
+              });
+              // Also end vigil session if active
+              if (vigilSessionManager.hasActiveSession()) {
+                try {
+                  startKeepAlive();
+                  await vigilSessionManager.endSession(orphaned[0].id);
+                } catch { /* best effort */ }
+              }
+              sendResponse({ ok: true, data: { ...orphaned[0], status: SessionStatus.COMPLETED, stoppedAt: now } });
+              // Notify sidepanel to refresh
+              try {
+                chrome.runtime.sendMessage({ type: 'SESSION_COMPLETED', payload: { sessionId: orphaned[0].id } }).catch(() => {});
+              } catch { /* no listeners */ }
+              return;
+            }
+          } catch (fallbackErr) {
+            console.error('[Vigil] STOP_RECORDING fallback failed:', fallbackErr);
+          }
+          sendResponse({ ok: false, error: err.message });
+        });
       return true;
 
     case MessageType.RECORDING_CHUNK: {
@@ -245,6 +288,44 @@ export function handleMessage(
             },
           }))
           .catch(() => sendResponse({ ok: true, data: { sessionId: activeId, status: sessionManager.getStatus(), isRecording: sessionManager.isRecording(), startedAt: null, lastPageUrl: null } }));
+      } else if (vigilSessionManager.hasActiveSession()) {
+        // Fallback: service worker restarted — legacy sessionManager lost state
+        // but vigilSessionManager restored from chrome.storage.local.
+        // Return the legacy Dexie session ID (from vigil session name/lookup)
+        // so content scripts record with the correct ID for chunk lookup.
+        const vigilSession = vigilSessionManager.getActiveSession()!;
+        const isRec = vigilSessionManager.isRecordingActive();
+        // Find the legacy session in Dexie by matching name or status
+        getAllSessions().then((all) => {
+          const legacySession = all.find(s =>
+            (s.status === SessionStatus.RECORDING || s.status === SessionStatus.PAUSED) &&
+            s.project === vigilSession.projectId
+          );
+          const sid = legacySession?.id ?? vigilSession.id;
+          sendResponse({
+            ok: true,
+            data: {
+              sessionId: sid,
+              status: isRec ? 'RECORDING' : 'PAUSED',
+              isRecording: isRec,
+              startedAt: vigilSession.startedAt,
+              lastPageUrl: null,
+              recordMouseMove: vigilSession.recordings[0]?.mouseTracking ?? false,
+            },
+          });
+        }).catch(() => {
+          sendResponse({
+            ok: true,
+            data: {
+              sessionId: vigilSession.id,
+              status: isRec ? 'RECORDING' : 'PAUSED',
+              isRecording: isRec,
+              startedAt: vigilSession.startedAt,
+              lastPageUrl: null,
+              recordMouseMove: false,
+            },
+          });
+        });
       } else {
         sendResponse({ ok: true, data: { sessionId: null, status: sessionManager.getStatus(), isRecording: false, startedAt: null, lastPageUrl: null } });
       }
@@ -591,6 +672,37 @@ export function handleMessage(
       deleteAnnotationsBySession(sessionId)
         .then(() => sendResponse({ ok: true }))
         .catch((err: Error) => sendResponse({ ok: false, error: err.message }));
+      return true;
+    }
+
+    // Sprint 08 BUG-032: Forward resurface request from popup to content script on active tab
+    case MessageType.RESURFACE_OVERLAY: {
+      const activeTabId = sessionManager.getTabId() ?? null;
+      if (activeTabId) {
+        chrome.tabs.sendMessage(activeTabId, { type: 'RESURFACE_OVERLAY' }, () => {
+          if (chrome.runtime.lastError) {
+            sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+          } else {
+            sendResponse({ ok: true });
+          }
+        });
+      } else {
+        // Fallback: query active tab and send there
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, (tabs) => {
+          const target = tabs.find(t => t.id && t.url && !t.url.startsWith('chrome-extension://') && !t.url.startsWith('chrome://'));
+          if (target?.id) {
+            chrome.tabs.sendMessage(target.id, { type: 'RESURFACE_OVERLAY' }, () => {
+              if (chrome.runtime.lastError) {
+                sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+              } else {
+                sendResponse({ ok: true });
+              }
+            });
+          } else {
+            sendResponse({ ok: false, error: 'No active tab found' });
+          }
+        });
+      }
       return true;
     }
 

@@ -4,6 +4,8 @@ import type { SessionDetail, TimelineEvent } from '../types';
 export interface SessionTimelineProps {
   session: SessionDetail;
   onSeek?: (timeOffset: number) => void;
+  onEventClick?: (event: TimelineEvent, index: number) => void;
+  selectedIndex?: number | null;
 }
 
 function buildTimeline(session: SessionDetail): TimelineEvent[] {
@@ -73,7 +75,7 @@ function eventBadgeStyle(type: TimelineEvent['type']): string {
   }
 }
 
-export function SessionTimeline({ session, onSeek }: SessionTimelineProps) {
+export function SessionTimeline({ session, onSeek, onEventClick, selectedIndex }: SessionTimelineProps) {
   const events = useMemo(() => buildTimeline(session), [session]);
 
   if (events.length === 0) {
@@ -89,8 +91,8 @@ export function SessionTimeline({ session, onSeek }: SessionTimelineProps) {
   }
 
   return (
-    <div data-testid="session-timeline" className="bg-white rounded-xl border border-slate-200">
-      <div className="px-5 py-3 border-b border-slate-100">
+    <div data-testid="session-timeline" className="bg-white rounded-xl border border-slate-200 flex flex-col h-full">
+      <div className="px-5 py-3 border-b border-slate-100 shrink-0">
         <h3 className="text-sm font-semibold text-slate-900">
           Timeline
           <span className="ml-2 text-xs font-normal text-slate-400">
@@ -98,13 +100,20 @@ export function SessionTimeline({ session, onSeek }: SessionTimelineProps) {
           </span>
         </h3>
       </div>
-      <div className="max-h-96 overflow-y-auto custom-scrollbar">
-        {events.map((event, index) => (
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {events.map((event, index) => {
+          const isSelected = selectedIndex === index;
+          return (
           <button
             key={`${event.type}-${index}`}
             data-testid={`timeline-event-${index}`}
-            className="w-full text-left px-5 py-3 hover:bg-slate-50 transition-colors flex items-center gap-3 border-b border-slate-50 last:border-0"
-            onClick={() => onSeek?.(event.time)}
+            className={`w-full text-left px-5 py-3 transition-colors flex items-center gap-3 border-b border-slate-50 last:border-0 ${
+              isSelected ? 'bg-indigo-50 border-l-2 border-l-indigo-500' : 'hover:bg-slate-50'
+            }`}
+            onClick={() => {
+              onSeek?.(event.time);
+              onEventClick?.(event, index);
+            }}
             type="button"
           >
             <span className="text-base shrink-0 w-6 text-center" aria-hidden="true">
@@ -122,7 +131,8 @@ export function SessionTimeline({ session, onSeek }: SessionTimelineProps) {
                 : event.type}
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

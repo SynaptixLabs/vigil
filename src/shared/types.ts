@@ -92,6 +92,8 @@ export enum MessageType {
   DELETE_SESSION = 'DELETE_SESSION',
   // Sprint 08 — Cancel active session (discard without saving to server)
   CANCEL_SESSION = 'CANCEL_SESSION',
+  // Sprint 08 — BUG-032: Resurface control bar overlay (GOD MODE)
+  RESURFACE_OVERLAY = 'RESURFACE_OVERLAY',
   // Sprint 07 — Annotation overlay (visual markup)
   LOG_ANNOTATION = 'LOG_ANNOTATION',
   UPDATE_ANNOTATION = 'UPDATE_ANNOTATION',

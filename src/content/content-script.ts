@@ -12,7 +12,7 @@ import {
   handleNavigation,
   recordCrossPageNavigation,
 } from './recorder';
-import { mountOverlay, unmountOverlay, isOverlayMounted } from './overlay/mount';
+import { mountOverlay, unmountOverlay, isOverlayMounted, resurfaceOverlay } from './overlay/mount';
 import './inspector'; // R023: registers refine:toggle-inspector listener
 import { SHORTCUT_MAP } from '@shared/constants';
 import { safeSendMessage } from './safe-message';
@@ -90,6 +90,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       const { message: feedbackMsg } = (payload ?? {}) as { message?: string };
       if (feedbackMsg) {
         window.dispatchEvent(new CustomEvent('vigil:show-toast', { detail: { message: feedbackMsg } }));
+      }
+      sendResponse({ ok: true });
+      break;
+    }
+    case 'RESURFACE_OVERLAY': {
+      // BUG-032: Force-resurface the control bar overlay (GOD MODE fallback)
+      if (isOverlayMounted()) {
+        resurfaceOverlay();
+      } else {
+        // Overlay not in DOM — try to re-mount by checking session status
+        recoverSessionState();
       }
       sendResponse({ ok: true });
       break;

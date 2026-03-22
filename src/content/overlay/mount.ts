@@ -16,6 +16,7 @@ import { initAnnotationState, destroyAnnotationState } from '../annotation-state
 
 let hostElement: HTMLDivElement | null = null;
 let reactRoot: Root | null = null;
+let overlayObserver: MutationObserver | null = null;
 
 interface OverlayOptions {
   sessionName?: string;
@@ -66,10 +67,16 @@ export function mountOverlay(sessionId: string, options: OverlayOptions = {}): v
   mountAnnotationCanvas();
   initAnnotationState(sessionId);
 
+  // BUG-032: Start MutationObserver to keep overlay on top of app modals (GOD MODE)
+  startOverlayObserver();
+
   console.log('[Vigil] Overlay mounted for session:', sessionId);
 }
 
 export function unmountOverlay(): void {
+  // BUG-032: Tear down GOD MODE observer
+  stopOverlayObserver();
+
   // Sprint 07: Tear down annotations first
   destroyAnnotationState();
   unmountAnnotationCanvas();
@@ -83,4 +90,47 @@ export function unmountOverlay(): void {
     hostElement = null;
   }
   console.log('[Vigil] Overlay unmounted');
+}
+
+/**
+ * BUG-032: Re-append #refine-root as the last child of document.body so it
+ * renders on top of any modals/overlays the page has added. Safe to call at
+ * any time — no-ops if already last or not mounted.
+ */
+export function resurfaceOverlay(): void {
+  const el = document.getElementById('refine-root');
+  if (!el) return;
+  if (document.body.lastElementChild !== el) {
+    document.body.appendChild(el); // moves existing node to the end
+    console.log('[Vigil] BUG-032: Resurfaced control bar overlay');
+  }
+}
+
+// ── BUG-032: MutationObserver — keep overlay as last body child (GOD MODE) ──
+
+function startOverlayObserver(): void {
+  stopOverlayObserver(); // ensure no duplicate
+
+  overlayObserver = new MutationObserver((mutations) => {
+    // Only act when nodes were actually added (modals, dialogs, overlays)
+    const hasAddedNodes = mutations.some(m => m.addedNodes.length > 0);
+    if (!hasAddedNodes) return;
+
+    const el = document.getElementById('refine-root');
+    if (!el) return;
+
+    // Re-append only when we're no longer the last child
+    if (document.body.lastElementChild !== el) {
+      document.body.appendChild(el);
+    }
+  });
+
+  overlayObserver.observe(document.body, { childList: true });
+}
+
+function stopOverlayObserver(): void {
+  if (overlayObserver) {
+    overlayObserver.disconnect();
+    overlayObserver = null;
+  }
 }

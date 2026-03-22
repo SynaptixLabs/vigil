@@ -16,6 +16,9 @@ import {
   getSessionsForToday,
   getRecordingChunks,
   getAnnotationsBySession,
+  getBugsBySession,
+  getFeaturesBySession,
+  getScreenshotsBySession,
 } from '@core/db';
 import { compressEvents } from '@core/compression';
 import { startKeepAlive, stopKeepAlive } from './keep-alive';
@@ -253,6 +256,11 @@ export const sessionManager = {
 
   isRecording(): boolean {
     return state.status === SessionStatus.RECORDING;
+  },
+
+  /** BUG-032: Return active session tab ID so background can forward messages to it. */
+  getTabId(): number | undefined {
+    return state.tabId;
   },
 };
 
@@ -564,10 +572,19 @@ export const vigilSessionManager = {
     const legacySessionId = legacyId ?? sessionManager.getActiveSessionId() ?? vigilState.session.id;
     const vigilSessionId = vigilState.session.id;
     try {
-      // Poll for recording chunks (max 2s, check every 200ms)
+      // Collect recording chunks from BOTH session IDs and merge.
+      // After service worker restart, content scripts on new pages may record
+      // with either the legacy or vigil session ID depending on which was
+      // returned by GET_SESSION_STATUS. Merging ensures no chunks are lost.
       let chunks = await getRecordingChunks(legacySessionId);
-      if (!chunks.length && legacySessionId !== vigilSessionId) {
-        chunks = await getRecordingChunks(vigilSessionId);
+      if (legacySessionId !== vigilSessionId) {
+        const vigilChunks = await getRecordingChunks(vigilSessionId);
+        if (vigilChunks.length > 0) {
+          chunks = [...chunks, ...vigilChunks];
+          // Re-index after merge
+          chunks.sort((a, b) => a.createdAt - b.createdAt);
+          chunks.forEach((c, i) => { c.chunkIndex = i; });
+        }
       }
       const pollStart = Date.now();
       while (chunks.length === 0 && Date.now() - pollStart < 2000) {
@@ -633,6 +650,39 @@ export const vigilSessionManager = {
         vigilState.session.annotations = annotations;
         console.log(`[Vigil] Merged ${annotations.length} annotations from IndexedDB`);
       }
+
+      // Reconstruct bugs, screenshots, and features from IndexedDB.
+      // In-memory arrays can be empty if service worker restarted and
+      // chrome.storage.local restoration was incomplete (size limits, race conditions).
+      try {
+        const dbBugs = await getBugsBySession(legacySessionId);
+        if (vigilState.session.bugs.length === 0 && dbBugs.length > 0) {
+          vigilState.session.bugs = dbBugs;
+          console.log(`[Vigil] Merged ${dbBugs.length} bugs from IndexedDB`);
+        }
+      } catch { /* best effort */ }
+
+      try {
+        const dbScreenshots = await getScreenshotsBySession(legacySessionId);
+        if (vigilState.session.snapshots.length === 0 && dbScreenshots.length > 0) {
+          vigilState.session.snapshots = dbScreenshots.map(s => ({
+            id: s.id,
+            capturedAt: s.timestamp - vigilState.session!.startedAt,
+            screenshotDataUrl: s.dataUrl,
+            url: s.url,
+            triggeredBy: 'manual' as const,
+          }));
+          console.log(`[Vigil] Merged ${dbScreenshots.length} screenshots from IndexedDB`);
+        }
+      } catch { /* best effort */ }
+
+      try {
+        const dbFeatures = await getFeaturesBySession(legacySessionId);
+        if (vigilState.session.features.length === 0 && dbFeatures.length > 0) {
+          vigilState.session.features = dbFeatures;
+          console.log(`[Vigil] Merged ${dbFeatures.length} features from IndexedDB`);
+        }
+      } catch { /* best effort */ }
     } catch (e) {
       console.warn('[Vigil] Failed to reconstruct recordings from IndexedDB:', (e as Error).message);
       // Proceed with whatever is in-memory (may have empty recordings)

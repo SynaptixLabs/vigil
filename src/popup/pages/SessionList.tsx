@@ -5,14 +5,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { SessionStatus, MessageType } from '@shared/types';
-import type { Session } from '@shared/types';
+import type { Session, ProjectInfo } from '@shared/types';
 import { getAllSessions, getSession, countScreenshotsBySession, countRecordingChunksBySession } from '@core/db';
 import { formatDuration, formatTimestamp } from '@shared/utils';
 import { StorageIndicator } from '../components/StorageIndicator';
 import { ChangelogModal } from '../components/ChangelogModal';
 import { ShortcutsLegend } from '../components/ShortcutsLegend';
 import { VERSION } from '@shared/constants';
-import ProjectSettings from './ProjectSettings';
 
 interface SessionListProps {
   onNewSession: () => void;
@@ -34,11 +33,13 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
   const [tagFilter, setTagFilter] = useState<string>('');
   const [showChangelog, setShowChangelog] = useState(false);
   const [hasNewVersion, setHasNewVersion] = useState(false);
-  const [selectedProjectSettings, setSelectedProjectSettings] = useState<string | null>(null);
 
   // S07-18: Ghost session detection
   const [ghostSessionId, setGhostSessionId] = useState<string | null>(null);
   const [endingGhost, setEndingGhost] = useState(false);
+
+  // BUG-031: Server-side projects for filter dropdown (instead of deriving from sessions only)
+  const [serverProjects, setServerProjects] = useState<ProjectInfo[]>([]);
 
   // FEAT-SP-002/003: End Session button + live session counters
   const [activeCounters, setActiveCounters] = useState<{ screenshots: number; bugs: number; recordings: number } | null>(null);
@@ -49,6 +50,20 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
       const seen = result.refineLastSeenVersion as string | undefined;
       if (seen !== VERSION) setHasNewVersion(true);
     });
+  }, []);
+
+  // BUG-031: Fetch projects from server so filter works even with no sessions
+  useEffect(() => {
+    try {
+      chrome.runtime.sendMessage(
+        { type: MessageType.GET_PROJECTS, payload: {}, source: 'popup' },
+        (response) => {
+          if (chrome.runtime.lastError || !response?.ok) return;
+          const list = (response.data?.projects ?? []) as ProjectInfo[];
+          setServerProjects(list);
+        }
+      );
+    } catch { /* extension context invalidated */ }
   }, []);
 
   const handleOpenChangelog = () => {
@@ -125,10 +140,21 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
     return () => chrome.runtime.onMessage.removeListener(listener);
   }, [loadSessions]);
 
-  const uniqueProjects = Array.from(new Set(sessions.map(s => s.project).filter(Boolean))) as string[];
+  // BUG-031: Merge server projects with session-derived projects so the filter
+  // shows all known projects even when there are no sessions yet.
+  const uniqueProjects = Array.from(new Set([
+    ...serverProjects.map(p => p.id),
+    ...sessions.map(s => s.project).filter(Boolean) as string[],
+  ]));
 
   const filteredSessions = sessions.filter(s => {
-    if (projectFilter !== 'all' && s.project !== projectFilter) return false;
+    if (projectFilter !== 'all') {
+      // Match by project ID or project name (handles legacy sessions that stored name instead of ID)
+      const proj = serverProjects.find(sp => sp.id === projectFilter);
+      const matchesId = s.project === projectFilter;
+      const matchesName = proj && s.project === proj.name;
+      if (!matchesId && !matchesName) return false;
+    }
     if (tagFilter && !s.tags?.some(t => t.toLowerCase().includes(tagFilter.toLowerCase()))) return false;
     return true;
   });
@@ -176,28 +202,36 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
     try {
       chrome.runtime.sendMessage(
         { type: MessageType.STOP_RECORDING, source: 'popup' },
-        (response) => {
+        () => {
           setEndingSession(false);
-          if (chrome.runtime.lastError || !response?.ok) return;
+          if (chrome.runtime.lastError) {
+            console.warn('[Vigil] End session error:', chrome.runtime.lastError.message);
+          }
+          // Always refresh — the fallback handler may have force-completed orphaned sessions
           loadSessions();
         }
       );
     } catch {
       setEndingSession(false);
+      loadSessions();
     }
   };
 
-  if (selectedProjectSettings) {
-    return (
-      <ProjectSettings 
-        project={selectedProjectSettings} 
-        onBack={() => {
-          setSelectedProjectSettings(null);
-          loadSessions(); // Reload in case dashboard HTML generation failed or something
-        }} 
-      />
-    );
-  }
+  // BUG-032: Resurface control bar above page modals (GOD MODE fallback)
+  const handleResurfaceOverlay = () => {
+    try {
+      chrome.runtime.sendMessage(
+        { type: MessageType.RESURFACE_OVERLAY, source: 'popup' },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.warn('[Vigil] Resurface failed:', chrome.runtime.lastError.message);
+          }
+        }
+      );
+    } catch {
+      // Extension context invalidated
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -226,20 +260,11 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
           className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
         >
           <option value="all">All Projects</option>
-          {uniqueProjects.map(p => (
-            <option key={p} value={p}>{p}</option>
-          ))}
+          {uniqueProjects.map(p => {
+            const proj = serverProjects.find(sp => sp.id === p);
+            return <option key={p} value={p}>{proj?.name ?? p}</option>;
+          })}
         </select>
-        {projectFilter !== 'all' && (
-          <button 
-            onClick={() => setSelectedProjectSettings(projectFilter)}
-            data-testid="btn-project-settings"
-            className="shrink-0 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 px-2 py-1 rounded text-xs transition-colors"
-            title="Project Settings"
-          >
-            ⚙️
-          </button>
-        )}
         <input
           type="text"
           placeholder="Filter by tag..."
@@ -340,14 +365,22 @@ const SessionList: React.FC<SessionListProps> = ({ onNewSession, onSelectSession
                       </div>
 
                       {s.id === activeSessionId && (
-                        <div className="mt-2 pt-2 border-t border-indigo-700/30">
+                        <div className="mt-2 pt-2 border-t border-indigo-700/30 flex gap-2">
+                          <button
+                            data-testid="btn-resurface-overlay"
+                            onClick={(e) => { e.stopPropagation(); handleResurfaceOverlay(); }}
+                            title="Bring control bar above page modals"
+                            className="flex-1 text-[11px] font-semibold bg-indigo-700 hover:bg-indigo-600 text-white px-3 py-1.5 rounded transition-colors"
+                          >
+                            Resurface Bar
+                          </button>
                           <button
                             data-testid="btn-end-session"
                             onClick={(e) => { e.stopPropagation(); handleEndSession(); }}
                             disabled={endingSession}
-                            className="w-full text-[11px] font-semibold bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-3 py-1.5 rounded transition-colors"
+                            className="flex-1 text-[11px] font-semibold bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-3 py-1.5 rounded transition-colors"
                           >
-                            {endingSession ? 'Ending…' : '⏹ End Session'}
+                            {endingSession ? 'Ending…' : 'End Session'}
                           </button>
                         </div>
                       )}
