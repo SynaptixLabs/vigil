@@ -42,21 +42,22 @@ export function mountOverlay(sessionId: string, options: OverlayOptions = {}): v
   hostElement.id = 'refine-root';
   hostElement.style.cssText = 'all: initial; position: fixed; z-index: 2147483647; pointer-events: none;';
 
-  // GOD MODE: Stop ALL mouse/pointer/keyboard events from propagating to the
-  // host page. Without this, clicks on Vigil UI (bug editor, annotations)
-  // bubble through #refine-root to the page, triggering "click outside"
-  // listeners that close the app's popups/modals.
+  // GOD MODE: Stop events from bubbling out of #refine-root to the host page.
+  // Without this, clicks on Vigil UI (bug editor, annotations) bubble through
+  // to the page, triggering "click outside" listeners that close app popups.
+  // Uses BUBBLE phase (not capture) so events reach Shadow DOM children first,
+  // then are stopped on the way back up before reaching the page DOM.
   const stopPropagation = (e: Event) => e.stopPropagation();
   for (const eventType of [
-    'click', 'dblclick', 'mousedown', 'mouseup', 'mouseover', 'mouseout',
-    'pointerdown', 'pointerup', 'pointerover', 'pointerout',
-    'touchstart', 'touchend', 'touchmove',
+    'click', 'dblclick', 'mousedown', 'mouseup',
+    'pointerdown', 'pointerup',
+    'touchstart', 'touchend',
     'keydown', 'keyup', 'keypress',
-    'focusin', 'focusout', 'focus', 'blur',
+    'focusin', 'focusout',
     'input', 'change',
-    'contextmenu', 'wheel',
+    'contextmenu',
   ]) {
-    hostElement.addEventListener(eventType, stopPropagation, true);
+    hostElement.addEventListener(eventType, stopPropagation, false);
   }
 
   const shadow = hostElement.attachShadow({ mode: 'open' });
