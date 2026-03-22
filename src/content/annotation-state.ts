@@ -116,7 +116,7 @@ export function selectAnnotation(id: string | null): void {
 // ── CRUD ──────────────────────────────────────────────────────────────────────
 
 export function addAnnotation(annotation: Annotation): void {
-  state.annotations.push(annotation);
+  state.annotations = [...state.annotations, annotation];
   dispatch(ANNOTATION_EVENTS.UPDATED);
 
   // Persist via background
@@ -129,7 +129,9 @@ export function addAnnotation(annotation: Annotation): void {
 export function updateAnnotation(id: string, patch: Partial<Annotation>): void {
   const idx = state.annotations.findIndex((a) => a.id === id);
   if (idx === -1) return;
-  state.annotations[idx] = { ...state.annotations[idx], ...patch, updatedAt: Date.now() };
+  state.annotations = state.annotations.map((a, i) =>
+    i === idx ? { ...a, ...patch, updatedAt: Date.now() } : a
+  );
   dispatch(ANNOTATION_EVENTS.UPDATED);
 
   chrome.runtime.sendMessage(

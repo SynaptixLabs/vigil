@@ -57,7 +57,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, onClose 
   // Sync with annotation state
   useEffect(() => {
     const handleUpdate = () => {
-      setAnnotations(getAnnotations());
+      setAnnotations([...getAnnotations()]);
     };
     const handleToolChange = () => {
       setActiveTool(getTool());
