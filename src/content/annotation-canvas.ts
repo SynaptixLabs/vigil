@@ -157,13 +157,13 @@ function enableDrawMode(_tool: AnnotationTool): void {
   svgCanvas.addEventListener('mousemove', onMouseMove);
   svgCanvas.addEventListener('mouseup', onMouseUp);
 
-  // GOD MODE: Stop events from reaching the host app during annotation draw mode.
-  // Without this, clicks on the canvas propagate to the page and close its popups.
-  svgCanvas.addEventListener('click', stopPropagationHandler, true);
-  svgCanvas.addEventListener('mousedown', stopPropagationHandler, true);
-  svgCanvas.addEventListener('mouseup', stopPropagationHandler, true);
-  svgCanvas.addEventListener('pointerdown', stopPropagationHandler, true);
-  svgCanvas.addEventListener('pointerup', stopPropagationHandler, true);
+  // GOD MODE: Stop events from bubbling to the host app during annotation draw mode.
+  // Uses BUBBLE phase so draw handlers (onMouseDown/Move/Up) fire first.
+  svgCanvas.addEventListener('click', stopPropagationHandler, false);
+  svgCanvas.addEventListener('mousedown', stopPropagationHandler, false);
+  svgCanvas.addEventListener('mouseup', stopPropagationHandler, false);
+  svgCanvas.addEventListener('pointerdown', stopPropagationHandler, false);
+  svgCanvas.addEventListener('pointerup', stopPropagationHandler, false);
 }
 
 function disableDrawMode(): void {
@@ -174,11 +174,11 @@ function disableDrawMode(): void {
   svgCanvas.removeEventListener('mousedown', onMouseDown);
   svgCanvas.removeEventListener('mousemove', onMouseMove);
   svgCanvas.removeEventListener('mouseup', onMouseUp);
-  svgCanvas.removeEventListener('click', stopPropagationHandler, true);
-  svgCanvas.removeEventListener('mousedown', stopPropagationHandler, true);
-  svgCanvas.removeEventListener('mouseup', stopPropagationHandler, true);
-  svgCanvas.removeEventListener('pointerdown', stopPropagationHandler, true);
-  svgCanvas.removeEventListener('pointerup', stopPropagationHandler, true);
+  svgCanvas.removeEventListener('click', stopPropagationHandler, false);
+  svgCanvas.removeEventListener('mousedown', stopPropagationHandler, false);
+  svgCanvas.removeEventListener('mouseup', stopPropagationHandler, false);
+  svgCanvas.removeEventListener('pointerdown', stopPropagationHandler, false);
+  svgCanvas.removeEventListener('pointerup', stopPropagationHandler, false);
 
   // Clean up preview
   if (draw.previewEl) {
@@ -203,10 +203,10 @@ function enableCommentMode(): void {
   svgCanvas.removeEventListener('mousemove', onMouseMove);
   svgCanvas.removeEventListener('mouseup', onMouseUp);
 
-  // GOD MODE: Stop events from reaching the host app during comment mode
-  svgCanvas.addEventListener('click', stopPropagationHandler, true);
-  svgCanvas.addEventListener('mousedown', stopPropagationHandler, true);
-  svgCanvas.addEventListener('pointerdown', stopPropagationHandler, true);
+  // GOD MODE: Stop events from bubbling to the host app during comment mode
+  svgCanvas.addEventListener('click', stopPropagationHandler, false);
+  svgCanvas.addEventListener('mousedown', stopPropagationHandler, false);
+  svgCanvas.addEventListener('pointerdown', stopPropagationHandler, false);
 }
 
 function disableCommentMode(): void {
@@ -217,9 +217,9 @@ function disableCommentMode(): void {
     svgCanvas.style.cursor = 'default';
   }
   // GOD MODE: Remove propagation blockers
-  svgCanvas.removeEventListener('click', stopPropagationHandler, true);
-  svgCanvas.removeEventListener('mousedown', stopPropagationHandler, true);
-  svgCanvas.removeEventListener('pointerdown', stopPropagationHandler, true);
+  svgCanvas.removeEventListener('click', stopPropagationHandler, false);
+  svgCanvas.removeEventListener('mousedown', stopPropagationHandler, false);
+  svgCanvas.removeEventListener('pointerdown', stopPropagationHandler, false);
 }
 
 // ── Mouse handlers ────────────────────────────────────────────────────────────

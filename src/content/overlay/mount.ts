@@ -52,12 +52,22 @@ export function mountOverlay(sessionId: string, options: OverlayOptions = {}): v
     'click', 'dblclick', 'mousedown', 'mouseup',
     'pointerdown', 'pointerup',
     'touchstart', 'touchend',
-    'keydown', 'keyup', 'keypress',
     'focusin', 'focusout',
-    'input', 'change',
     'contextmenu',
   ]) {
     hostElement.addEventListener(eventType, stopPropagation, false);
+  }
+  // Keyboard + input: only stop when a Vigil input/textarea is focused
+  // (prevents host app from reacting to typing in bug editor).
+  // Unblocked otherwise so Delete/Backspace can reach document listeners
+  // for annotation deletion.
+  for (const eventType of ['keydown', 'keyup', 'keypress', 'input', 'change']) {
+    hostElement.addEventListener(eventType, (e: Event) => {
+      const target = (e as KeyboardEvent).target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable)) {
+        e.stopPropagation();
+      }
+    }, false);
   }
 
   const shadow = hostElement.attachShadow({ mode: 'open' });
