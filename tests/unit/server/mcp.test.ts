@@ -102,14 +102,16 @@ describe('MCP tools', () => {
     await rm(TEST_ROOT, { recursive: true, force: true });
   });
 
-  it('registers all 6 tools', () => {
-    expect(registeredTools.size).toBe(6);
+  it('registers all 8 tools', () => {
+    expect(registeredTools.size).toBe(8);
     expect(registeredTools.has('vigil_list_bugs')).toBe(true);
     expect(registeredTools.has('vigil_get_bug')).toBe(true);
     expect(registeredTools.has('vigil_update_bug')).toBe(true);
     expect(registeredTools.has('vigil_close_bug')).toBe(true);
     expect(registeredTools.has('vigil_list_features')).toBe(true);
     expect(registeredTools.has('vigil_get_feature')).toBe(true);
+    expect(registeredTools.has('vigil_list_sessions')).toBe(true);
+    expect(registeredTools.has('vigil_read_session')).toBe(true);
   });
 
   describe('vigil_list_bugs', () => {
