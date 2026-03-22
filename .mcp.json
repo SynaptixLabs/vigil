@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "vigil": {
+      "command": "npx",
+      "args": ["tsx", "packages/server/src/mcp/server.ts"],
+      "env": {
+        "DOTENV_CONFIG_PATH": ".env"
+      }
+    }
+  }
+}
