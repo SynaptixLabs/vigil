@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vigil UI/UX Kit — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   VIGIL DESIGN TOKENS — Single Source of Truth
+   All values here map to tailwind.config.ts extensions.
+   ═══════════════════════════════════════════════════════ */
+:root {
+  /* ── Background Surfaces ── */
+  --v-bg-void:       #050507;
+  --v-bg-base:       #0a0a0f;
+  --v-bg-raised:     #111118;
+  --v-bg-overlay:    #16161f;
+  --v-bg-elevated:   #1c1c28;
+  --v-bg-hover:      #22222f;
+
+  /* ── Text ── */
+  --v-text-primary:  #e8eaed;
+  --v-text-secondary:#9ca3af;
+  --v-text-tertiary: #6b7280;
+  --v-text-ghost:    #374151;
+
+  /* ── Borders ── */
+  --v-border-subtle: #1f2937;
+  --v-border-default:#2d3748;
+  --v-border-strong: #4b5563;
+
+  /* ── Brand Accent: Electric Cyan ── */
+  --v-accent-50:     #ecfeff;
+  --v-accent-100:    #cffafe;
+  --v-accent-200:    #a5f3fc;
+  --v-accent-300:    #67e8f9;
+  --v-accent-400:    #22d3ee;
+  --v-accent-500:    #06b6d4;
+  --v-accent-600:    #0891b2;
+  --v-accent-700:    #0e7490;
+  --v-accent-glow:   rgba(34, 211, 238, 0.15);
+
+  /* ── Severity Spectrum ── */
+  --v-p0:            #ef4444;
+  --v-p0-bg:         rgba(239, 68, 68, 0.12);
+  --v-p1:            #f97316;
+  --v-p1-bg:         rgba(249, 115, 22, 0.12);
+  --v-p2:            #eab308;
+  --v-p2-bg:         rgba(234, 179, 8, 0.12);
+  --v-p3:            #22c55e;
+  --v-p3-bg:         rgba(34, 197, 94, 0.12);
+
+  /* ── Status ── */
+  --v-success:       #22c55e;
+  --v-success-bg:    rgba(34, 197, 94, 0.12);
+  --v-warning:       #eab308;
+  --v-warning-bg:    rgba(234, 179, 8, 0.12);
+  --v-error:         #ef4444;
+  --v-error-bg:      rgba(239, 68, 68, 0.12);
+  --v-info:          #3b82f6;
+  --v-info-bg:       rgba(59, 130, 246, 0.12);
+
+  /* ── Typography ── */
+  --v-font-ui:       'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --v-font-mono:     'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+
+  /* ── Spacing (4px grid) ── */
+  --v-space-1: 4px;   --v-space-2: 8px;   --v-space-3: 12px;
+  --v-space-4: 16px;  --v-space-5: 20px;  --v-space-6: 24px;
+  --v-space-8: 32px;  --v-space-10: 40px; --v-space-12: 48px;
+  --v-space-16: 64px; --v-space-20: 80px;
+
+  /* ── Radius ── */
+  --v-radius-sm: 4px;  --v-radius-md: 6px;  --v-radius-lg: 8px;
+  --v-radius-xl: 12px; --v-radius-2xl: 16px; --v-radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --v-shadow-sm:   0 1px 2px rgba(0,0,0,0.4);
+  --v-shadow-md:   0 4px 12px rgba(0,0,0,0.5);
+  --v-shadow-lg:   0 8px 24px rgba(0,0,0,0.6);
+  --v-shadow-glow: 0 0 20px rgba(34, 211, 238, 0.2);
+
+  /* ── Transitions ── */
+  --v-transition-fast:   120ms ease-out;
+  --v-transition-normal: 200ms ease-out;
+  --v-transition-slow:   320ms ease-in-out;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BASE STYLES
+   ═══════════════════════════════════════════════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--v-font-ui); background: var(--v-bg-base); color: var(--v-text-primary); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.kit { max-width: 1280px; margin: 0 auto; padding: var(--v-space-10); }
+
+/* ── Section scaffolding ── */
+.kit-section { margin-bottom: var(--v-space-16); }
+.kit-section h2 { font-size: 1.5rem; font-weight: 700; color: var(--v-accent-400); margin-bottom: var(--v-space-2); letter-spacing: -0.02em; }
+.kit-section .section-desc { color: var(--v-text-secondary); font-size: 0.875rem; margin-bottom: var(--v-space-8); }
+.kit-section h3 { font-size: 1rem; font-weight: 600; color: var(--v-text-primary); margin: var(--v-space-6) 0 var(--v-space-3); }
+
+.row { display: flex; flex-wrap: wrap; gap: var(--v-space-4); align-items: flex-start; margin-bottom: var(--v-space-6); }
+.col { flex: 1; min-width: 200px; }
+
+/* ═══════════════════════════════════════════════════════
+   0. HEADER
+   ═══════════════════════════════════════════════════════ */
+.kit-header { text-align: center; padding: var(--v-space-20) 0 var(--v-space-16); border-bottom: 1px solid var(--v-border-subtle); margin-bottom: var(--v-space-16); }
+.kit-header h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em; background: linear-gradient(135deg, var(--v-accent-300), var(--v-accent-500)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: var(--v-space-2); }
+.kit-header p { color: var(--v-text-secondary); font-size: 1.1rem; }
+
+/* ═══════════════════════════════════════════════════════
+   1. LOGO
+   ═══════════════════════════════════════════════════════ */
+.logo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--v-space-6); }
+.logo-card { background: var(--v-bg-raised); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-xl); padding: var(--v-space-10) var(--v-space-6); display: flex; flex-direction: column; align-items: center; gap: var(--v-space-4); }
+.logo-card.light { background: #f8fafc; }
+.logo-card span { font-size: 0.75rem; color: var(--v-text-tertiary); font-family: var(--v-font-mono); }
+.logo-card.light span { color: #64748b; }
+
+/* ═══════════════════════════════════════════════════════
+   2. COLORS
+   ═══════════════════════════════════════════════════════ */
+.swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--v-space-3); }
+.swatch { border-radius: var(--v-radius-lg); overflow: hidden; border: 1px solid var(--v-border-subtle); }
+.swatch-color { height: 64px; }
+.swatch-info { padding: var(--v-space-2) var(--v-space-3); background: var(--v-bg-raised); }
+.swatch-info .name { font-size: 0.7rem; font-weight: 600; color: var(--v-text-primary); }
+.swatch-info .hex { font-size: 0.65rem; font-family: var(--v-font-mono); color: var(--v-text-tertiary); }
+
+/* ═══════════════════════════════════════════════════════
+   3. TYPOGRAPHY
+   ═══════════════════════════════════════════════════════ */
+.type-sample { padding: var(--v-space-4) 0; border-bottom: 1px solid var(--v-border-subtle); }
+.type-sample .meta { font-family: var(--v-font-mono); font-size: 0.7rem; color: var(--v-text-tertiary); margin-bottom: var(--v-space-1); }
+
+/* ═══════════════════════════════════════════════════════
+   4. COMPONENTS
+   ═══════════════════════════════════════════════════════ */
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: var(--v-space-2); padding: var(--v-space-2) var(--v-space-4); border-radius: var(--v-radius-md); font-family: var(--v-font-ui); font-size: 0.875rem; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: all var(--v-transition-fast); text-decoration: none; line-height: 1.4; }
+.btn:focus-visible { outline: 2px solid var(--v-accent-400); outline-offset: 2px; }
+.btn-primary { background: var(--v-accent-500); color: #000; border-color: var(--v-accent-500); }
+.btn-primary:hover { background: var(--v-accent-400); box-shadow: var(--v-shadow-glow); }
+.btn-secondary { background: transparent; color: var(--v-text-primary); border-color: var(--v-border-default); }
+.btn-secondary:hover { background: var(--v-bg-hover); border-color: var(--v-border-strong); }
+.btn-ghost { background: transparent; color: var(--v-text-secondary); }
+.btn-ghost:hover { color: var(--v-text-primary); background: var(--v-bg-hover); }
+.btn-danger { background: var(--v-error-bg); color: var(--v-error); border-color: rgba(239,68,68,0.3); }
+.btn-danger:hover { background: rgba(239,68,68,0.2); }
+.btn-sm { padding: var(--v-space-1) var(--v-space-3); font-size: 0.8rem; }
+.btn-lg { padding: var(--v-space-3) var(--v-space-6); font-size: 1rem; }
+
+/* Inputs */
+.input { display: block; width: 100%; padding: var(--v-space-2) var(--v-space-3); background: var(--v-bg-void); border: 1px solid var(--v-border-default); border-radius: var(--v-radius-md); color: var(--v-text-primary); font-family: var(--v-font-ui); font-size: 0.875rem; transition: border-color var(--v-transition-fast); outline: none; }
+.input::placeholder { color: var(--v-text-ghost); }
+.input:focus { border-color: var(--v-accent-500); box-shadow: 0 0 0 3px var(--v-accent-glow); }
+.input-error { border-color: var(--v-error); }
+.input-error:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.15); }
+.input-label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--v-text-secondary); margin-bottom: var(--v-space-1); }
+.input-hint { font-size: 0.75rem; color: var(--v-text-tertiary); margin-top: var(--v-space-1); }
+.input-error-msg { font-size: 0.75rem; color: var(--v-error); margin-top: var(--v-space-1); }
+
+/* Cards */
+.card { background: var(--v-bg-raised); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-lg); padding: var(--v-space-5); transition: border-color var(--v-transition-fast); }
+.card:hover { border-color: var(--v-border-default); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--v-space-3); }
+.card-title { font-weight: 600; font-size: 0.95rem; }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; gap: var(--v-space-1); padding: 2px 8px; border-radius: var(--v-radius-full); font-size: 0.7rem; font-weight: 600; font-family: var(--v-font-mono); letter-spacing: 0.02em; }
+.badge-p0 { background: var(--v-p0-bg); color: var(--v-p0); }
+.badge-p1 { background: var(--v-p1-bg); color: var(--v-p1); }
+.badge-p2 { background: var(--v-p2-bg); color: var(--v-p2); }
+.badge-p3 { background: var(--v-p3-bg); color: var(--v-p3); }
+.badge-success { background: var(--v-success-bg); color: var(--v-success); }
+.badge-warning { background: var(--v-warning-bg); color: var(--v-warning); }
+.badge-error { background: var(--v-error-bg); color: var(--v-error); }
+.badge-info { background: var(--v-info-bg); color: var(--v-info); }
+.badge-neutral { background: var(--v-bg-elevated); color: var(--v-text-secondary); }
+.badge-accent { background: var(--v-accent-glow); color: var(--v-accent-400); }
+
+/* Dot indicator */
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot-pulse { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) { .dot-pulse { animation: none; } }
+
+/* Alerts */
+.alert { display: flex; align-items: flex-start; gap: var(--v-space-3); padding: var(--v-space-3) var(--v-space-4); border-radius: var(--v-radius-md); border: 1px solid; font-size: 0.85rem; }
+.alert-icon { flex-shrink: 0; margin-top: 2px; }
+.alert-success { background: var(--v-success-bg); border-color: rgba(34,197,94,0.2); color: var(--v-success); }
+.alert-warning { background: var(--v-warning-bg); border-color: rgba(234,179,8,0.2); color: var(--v-warning); }
+.alert-error { background: var(--v-error-bg); border-color: rgba(239,68,68,0.2); color: var(--v-error); }
+.alert-info { background: var(--v-info-bg); border-color: rgba(59,130,246,0.2); color: var(--v-info); }
+
+/* Tables */
+.table-wrap { overflow-x: auto; border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-lg); }
+table.v-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table.v-table th { text-align: left; padding: var(--v-space-3) var(--v-space-4); background: var(--v-bg-overlay); color: var(--v-text-secondary); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--v-border-subtle); }
+table.v-table td { padding: var(--v-space-3) var(--v-space-4); border-bottom: 1px solid var(--v-border-subtle); }
+table.v-table tr:last-child td { border-bottom: none; }
+table.v-table tr:hover td { background: var(--v-bg-hover); }
+table.v-table .mono { font-family: var(--v-font-mono); font-size: 0.8rem; color: var(--v-text-secondary); }
+
+/* Empty States */
+.empty-state { text-align: center; padding: var(--v-space-16) var(--v-space-8); }
+.empty-state svg { margin: 0 auto var(--v-space-4); opacity: 0.3; }
+.empty-state h4 { font-size: 1rem; font-weight: 600; margin-bottom: var(--v-space-2); }
+.empty-state p { color: var(--v-text-tertiary); font-size: 0.875rem; max-width: 320px; margin: 0 auto var(--v-space-4); }
+
+/* Pricing Cards */
+.pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--v-space-4); }
+.pricing-card { background: var(--v-bg-raised); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-xl); padding: var(--v-space-6); display: flex; flex-direction: column; }
+.pricing-card.featured { border-color: var(--v-accent-500); box-shadow: var(--v-shadow-glow); position: relative; }
+.pricing-card.featured::before { content: 'POPULAR'; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--v-accent-500); color: #000; font-size: 0.65rem; font-weight: 700; padding: 2px 12px; border-radius: var(--v-radius-full); letter-spacing: 0.05em; }
+.pricing-tier { font-size: 0.8rem; font-weight: 600; color: var(--v-accent-400); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--v-space-2); }
+.pricing-price { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: var(--v-space-1); }
+.pricing-price span { font-size: 0.9rem; font-weight: 400; color: var(--v-text-tertiary); }
+.pricing-sxc { font-family: var(--v-font-mono); font-size: 0.8rem; color: var(--v-text-secondary); margin-bottom: var(--v-space-4); }
+.pricing-features { list-style: none; flex: 1; margin-bottom: var(--v-space-5); }
+.pricing-features li { padding: var(--v-space-1) 0; font-size: 0.85rem; color: var(--v-text-secondary); display: flex; align-items: center; gap: var(--v-space-2); }
+.pricing-features li::before { content: ''; width: 16px; height: 16px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2322c55e'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E") no-repeat center; flex-shrink: 0; }
+
+/* Auth Form */
+.auth-card { background: var(--v-bg-raised); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-xl); padding: var(--v-space-8); max-width: 400px; }
+.auth-card h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: var(--v-space-1); text-align: center; }
+.auth-card .subtitle { color: var(--v-text-secondary); font-size: 0.875rem; text-align: center; margin-bottom: var(--v-space-6); }
+.auth-card .form-group { margin-bottom: var(--v-space-4); }
+.auth-card .divider { text-align: center; color: var(--v-text-ghost); font-size: 0.8rem; margin: var(--v-space-4) 0; position: relative; }
+.auth-card .footer-link { text-align: center; font-size: 0.85rem; color: var(--v-text-secondary); margin-top: var(--v-space-4); }
+.auth-card .footer-link a { color: var(--v-accent-400); text-decoration: none; }
+.auth-card .footer-link a:hover { text-decoration: underline; }
+
+/* SXC Balance */
+.sxc-balance { display: flex; align-items: center; gap: var(--v-space-3); padding: var(--v-space-3) var(--v-space-4); background: var(--v-bg-overlay); border-radius: var(--v-radius-lg); border: 1px solid var(--v-border-subtle); }
+.sxc-balance .amount { font-size: 1.5rem; font-weight: 700; font-family: var(--v-font-mono); color: var(--v-accent-400); }
+.sxc-balance .label { font-size: 0.75rem; color: var(--v-text-tertiary); }
+.sxc-bar { height: 4px; background: var(--v-bg-elevated); border-radius: 2px; margin-top: var(--v-space-2); overflow: hidden; }
+.sxc-bar-fill { height: 100%; border-radius: 2px; transition: width var(--v-transition-slow); }
+
+/* Skeleton loading */
+.skeleton { background: linear-gradient(90deg, var(--v-bg-elevated) 25%, var(--v-bg-hover) 50%, var(--v-bg-elevated) 75%); background-size: 200% 100%; border-radius: var(--v-radius-md); animation: shimmer 1.5s infinite; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; background: var(--v-bg-elevated); } }
+
+/* Spacing showcase */
+.space-bar { background: var(--v-accent-glow); border: 1px solid rgba(34,211,238,0.3); border-radius: 2px; height: 24px; display: flex; align-items: center; justify-content: center; font-family: var(--v-font-mono); font-size: 0.65rem; color: var(--v-accent-400); }
+
+/* Nav */
+.v-nav { display: flex; align-items: center; justify-content: space-between; padding: var(--v-space-3) var(--v-space-6); background: var(--v-bg-raised); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-lg); }
+.v-nav-logo { display: flex; align-items: center; gap: var(--v-space-2); font-weight: 700; font-size: 1.1rem; }
+.v-nav-links { display: flex; gap: var(--v-space-5); }
+.v-nav-links a { color: var(--v-text-secondary); text-decoration: none; font-size: 0.875rem; font-weight: 500; transition: color var(--v-transition-fast); }
+.v-nav-links a:hover { color: var(--v-text-primary); }
+.v-nav-actions { display: flex; gap: var(--v-space-2); }
+
+/* Code block */
+.code-block { background: var(--v-bg-void); border: 1px solid var(--v-border-subtle); border-radius: var(--v-radius-lg); padding: var(--v-space-4); font-family: var(--v-font-mono); font-size: 0.8rem; color: var(--v-text-secondary); overflow-x: auto; line-height: 1.7; }
+.code-block .keyword { color: var(--v-accent-400); }
+.code-block .string { color: var(--v-p3); }
+.code-block .comment { color: var(--v-text-ghost); }
+.code-block .number { color: var(--v-p1); }
+</style>
+</head>
+<body>
+<div class="kit">
+
+<!-- ═══════════════════════════════════════════════ HEADER ═══ -->
+<div class="kit-header">
+  <div style="margin-bottom:24px;">
+    <!-- VIGIL LOGO — SVG -->
+    <svg width="200" height="56" viewBox="0 0 200 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="logoGrad" x1="0" y1="0" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#67e8f9"/>
+          <stop offset="1" stop-color="#06b6d4"/>
+        </linearGradient>
+        <linearGradient id="eyeGrad" x1="16" y1="16" x2="32" y2="40" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#22d3ee"/>
+          <stop offset="1" stop-color="#0891b2"/>
+        </linearGradient>
+      </defs>
+      <!-- The Eye Mark -->
+      <g transform="translate(4,4)">
+        <!-- Outer eye shape -->
+        <path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="url(#logoGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Iris -->
+        <circle cx="24" cy="24" r="9" fill="none" stroke="url(#eyeGrad)" stroke-width="2"/>
+        <!-- Pupil -->
+        <circle cx="24" cy="24" r="4" fill="#22d3ee"/>
+        <!-- Scan line (the V) -->
+        <path d="M16 14L24 30L32 14" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+        <!-- Corner brackets — watchful -->
+        <path d="M8 12L4 12L4 18" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <path d="M40 12L44 12L44 18" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <path d="M8 36L4 36L4 30" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <path d="M40 36L44 36L44 30" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      </g>
+      <!-- Wordmark -->
+      <text x="64" y="37" font-family="Inter, sans-serif" font-weight="800" font-size="28" fill="#e8eaed" letter-spacing="-1">VIGIL</text>
+    </svg>
+  </div>
+  <h1>UI / UX Design Kit</h1>
+  <p>Design system for Vigil — Bug Discovery & Resolution Platform</p>
+  <p style="font-family:var(--v-font-mono);font-size:0.75rem;color:var(--v-text-ghost);margin-top:8px;">v1.0 — Sprint 09 | 2026-03-23 | ARIA</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 1. LOGO ═══ -->
+<div class="kit-section">
+  <h2>1. Logo</h2>
+  <p class="section-desc">The Vigil eye — always watching, always finding. The V-scan line inside the iris represents bug detection. Corner brackets evoke a viewport or inspector frame.</p>
+  <div class="logo-grid">
+    <div class="logo-card">
+      <svg width="120" height="120" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="url(#logoGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="24" cy="24" r="9" fill="none" stroke="#22d3ee" stroke-width="2"/>
+        <circle cx="24" cy="24" r="4" fill="#22d3ee"/>
+        <path d="M16 14L24 30L32 14" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+        <path d="M8 12L4 12L4 18" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <path d="M40 12L44 12L44 18" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <path d="M8 36L4 36L4 30" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        <path d="M40 36L44 36L44 30" fill="none" stroke="#67e8f9" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+      </svg>
+      <span>Mark — Dark bg</span>
+    </div>
+    <div class="logo-card light">
+      <svg width="120" height="120" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="#0e7490" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="24" cy="24" r="9" fill="none" stroke="#0891b2" stroke-width="2"/>
+        <circle cx="24" cy="24" r="4" fill="#0891b2"/>
+        <path d="M16 14L24 30L32 14" fill="none" stroke="#0891b2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.5"/>
+        <path d="M8 12L4 12L4 18" fill="none" stroke="#0e7490" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <path d="M40 12L44 12L44 18" fill="none" stroke="#0e7490" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <path d="M8 36L4 36L4 30" fill="none" stroke="#0e7490" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <path d="M40 36L44 36L44 30" fill="none" stroke="#0e7490" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+      <span style="color:#475569;">Mark — Light bg</span>
+    </div>
+    <div class="logo-card">
+      <svg width="200" height="48" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(4,0)">
+          <path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="24" cy="24" r="7" fill="none" stroke="#22d3ee" stroke-width="1.5"/>
+          <circle cx="24" cy="24" r="3" fill="#22d3ee"/>
+          <path d="M17 15L24 28L31 15" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+        </g>
+        <text x="58" y="31" font-family="Inter, sans-serif" font-weight="800" font-size="22" fill="#e8eaed" letter-spacing="-0.5">VIGIL</text>
+        <text x="120" y="31" font-family="Inter, sans-serif" font-weight="400" font-size="10" fill="#6b7280" letter-spacing="0.5">by SynaptixLabs</text>
+      </svg>
+      <span>Full lockup</span>
+    </div>
+    <div class="logo-card" style="background:var(--v-bg-void);">
+      <div style="font-size:2rem;font-weight:800;letter-spacing:-2px;color:var(--v-accent-400);font-family:var(--v-font-ui);">V</div>
+      <span>Favicon / monogram</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 2. COLORS ═══ -->
+<div class="kit-section">
+  <h2>2. Color System</h2>
+  <p class="section-desc">All values are CSS custom properties. Map to Tailwind via theme extension.</p>
+
+  <h3>Surfaces</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#050507"></div><div class="swatch-info"><div class="name">Void</div><div class="hex">#050507</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#0a0a0f"></div><div class="swatch-info"><div class="name">Base</div><div class="hex">#0a0a0f</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#111118"></div><div class="swatch-info"><div class="name">Raised</div><div class="hex">#111118</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#16161f"></div><div class="swatch-info"><div class="name">Overlay</div><div class="hex">#16161f</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#1c1c28"></div><div class="swatch-info"><div class="name">Elevated</div><div class="hex">#1c1c28</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#22222f"></div><div class="swatch-info"><div class="name">Hover</div><div class="hex">#22222f</div></div></div>
+  </div>
+
+  <h3>Brand Accent</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#ecfeff"></div><div class="swatch-info"><div class="name">50</div><div class="hex">#ecfeff</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#cffafe"></div><div class="swatch-info"><div class="name">100</div><div class="hex">#cffafe</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#a5f3fc"></div><div class="swatch-info"><div class="name">200</div><div class="hex">#a5f3fc</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#67e8f9"></div><div class="swatch-info"><div class="name">300</div><div class="hex">#67e8f9</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#22d3ee"></div><div class="swatch-info"><div class="name">400 PRIMARY</div><div class="hex">#22d3ee</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#06b6d4"></div><div class="swatch-info"><div class="name">500</div><div class="hex">#06b6d4</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#0891b2"></div><div class="swatch-info"><div class="name">600</div><div class="hex">#0891b2</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#0e7490"></div><div class="swatch-info"><div class="name">700</div><div class="hex">#0e7490</div></div></div>
+  </div>
+
+  <h3>Severity Spectrum</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#ef4444"></div><div class="swatch-info"><div class="name">P0 Critical</div><div class="hex">#ef4444</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#f97316"></div><div class="swatch-info"><div class="name">P1 High</div><div class="hex">#f97316</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#eab308"></div><div class="swatch-info"><div class="name">P2 Medium</div><div class="hex">#eab308</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#22c55e"></div><div class="swatch-info"><div class="name">P3 Low</div><div class="hex">#22c55e</div></div></div>
+  </div>
+
+  <h3>Status</h3>
+  <div class="swatch-grid">
+    <div class="swatch"><div class="swatch-color" style="background:#22c55e"></div><div class="swatch-info"><div class="name">Success</div><div class="hex">#22c55e</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#eab308"></div><div class="swatch-info"><div class="name">Warning</div><div class="hex">#eab308</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#ef4444"></div><div class="swatch-info"><div class="name">Error</div><div class="hex">#ef4444</div></div></div>
+    <div class="swatch"><div class="swatch-color" style="background:#3b82f6"></div><div class="swatch-info"><div class="name">Info</div><div class="hex">#3b82f6</div></div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 3. TYPOGRAPHY ═══ -->
+<div class="kit-section">
+  <h2>3. Typography</h2>
+  <p class="section-desc">Inter for UI. JetBrains Mono for data, code, and technical content.</p>
+
+  <div class="type-sample"><div class="meta">Display — Inter 800 / 2.5rem / -0.03em</div><div style="font-size:2.5rem;font-weight:800;letter-spacing:-0.03em;">Find bugs before your users do</div></div>
+  <div class="type-sample"><div class="meta">H1 — Inter 700 / 2rem / -0.02em</div><div style="font-size:2rem;font-weight:700;letter-spacing:-0.02em;">Session Analysis</div></div>
+  <div class="type-sample"><div class="meta">H2 — Inter 600 / 1.5rem / -0.01em</div><div style="font-size:1.5rem;font-weight:600;letter-spacing:-0.01em;">Bug Reports</div></div>
+  <div class="type-sample"><div class="meta">H3 — Inter 600 / 1.125rem</div><div style="font-size:1.125rem;font-weight:600;">Feature Requests</div></div>
+  <div class="type-sample"><div class="meta">Body — Inter 400 / 0.875rem / 1.6</div><div style="font-size:0.875rem;">Vigil records your testing sessions with full DOM replay, captures screenshots, and logs bugs inline while you test.</div></div>
+  <div class="type-sample"><div class="meta">Small — Inter 500 / 0.8rem</div><div style="font-size:0.8rem;font-weight:500;color:var(--v-text-secondary);">Last updated 3 minutes ago</div></div>
+  <div class="type-sample"><div class="meta">Caption — Inter 400 / 0.75rem</div><div style="font-size:0.75rem;color:var(--v-text-tertiary);">Session ID: vigil-SESSION-20260323-042</div></div>
+  <div class="type-sample"><div class="meta">Mono Data — JetBrains Mono 500 / 0.85rem</div><div style="font-family:var(--v-font-mono);font-size:0.85rem;font-weight:500;color:var(--v-accent-400);">BUG-042 | P0 | OPEN | 2026-03-23</div></div>
+  <div class="type-sample"><div class="meta">Mono Code — JetBrains Mono 400 / 0.8rem</div><div style="font-family:var(--v-font-mono);font-size:0.8rem;color:var(--v-text-secondary);">POST /api/auth/register → 201 { userId, emailVerified: false }</div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 4. SPACING ═══ -->
+<div class="kit-section">
+  <h2>4. Spacing</h2>
+  <p class="section-desc">4px base grid. All spacing is a multiple of 4.</p>
+  <div style="display:flex;flex-direction:column;gap:8px;max-width:600px;">
+    <div class="space-bar" style="width:16px;">4</div>
+    <div class="space-bar" style="width:32px;">8</div>
+    <div class="space-bar" style="width:48px;">12</div>
+    <div class="space-bar" style="width:64px;">16</div>
+    <div class="space-bar" style="width:96px;">24</div>
+    <div class="space-bar" style="width:128px;">32</div>
+    <div class="space-bar" style="width:192px;">48</div>
+    <div class="space-bar" style="width:256px;">64</div>
+    <div class="space-bar" style="width:320px;">80</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 5. BUTTONS ═══ -->
+<div class="kit-section">
+  <h2>5. Buttons</h2>
+  <p class="section-desc">Primary action, secondary, ghost, danger. Three sizes.</p>
+
+  <h3>Variants</h3>
+  <div class="row">
+    <button class="btn btn-primary">Start Free</button>
+    <button class="btn btn-secondary">View Sessions</button>
+    <button class="btn btn-ghost">Cancel</button>
+    <button class="btn btn-danger">Delete Bug</button>
+  </div>
+
+  <h3>Sizes</h3>
+  <div class="row">
+    <button class="btn btn-primary btn-sm">Small</button>
+    <button class="btn btn-primary">Default</button>
+    <button class="btn btn-primary btn-lg">Large CTA</button>
+  </div>
+
+  <h3>With Icons</h3>
+  <div class="row">
+    <button class="btn btn-primary"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg> Record Session</button>
+    <button class="btn btn-secondary"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 8h8M8 4v8"/></svg> New Bug</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 6. INPUTS ═══ -->
+<div class="kit-section">
+  <h2>6. Form Inputs</h2>
+  <p class="section-desc">Used across auth pages, bug editor, settings.</p>
+  <div style="max-width:400px; display:flex; flex-direction:column; gap:16px;">
+    <div>
+      <label class="input-label">Email</label>
+      <input class="input" type="email" placeholder="you@company.com" />
+    </div>
+    <div>
+      <label class="input-label">Password</label>
+      <input class="input" type="password" placeholder="8+ characters" />
+      <div class="input-hint">Must be at least 8 characters</div>
+    </div>
+    <div>
+      <label class="input-label">Bug Title</label>
+      <input class="input input-error" value="Login button" />
+      <div class="input-error-msg">Title must be at least 10 characters</div>
+    </div>
+    <div>
+      <label class="input-label">Session Name</label>
+      <input class="input" value="Sprint 09 — Auth flow testing" disabled style="opacity:0.5;cursor:not-allowed;" />
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 7. BADGES ═══ -->
+<div class="kit-section">
+  <h2>7. Badges & Severity</h2>
+  <p class="section-desc">Severity is the core visual language of Vigil.</p>
+
+  <h3>Severity</h3>
+  <div class="row">
+    <span class="badge badge-p0"><span class="dot" style="background:var(--v-p0)"></span> P0 Critical</span>
+    <span class="badge badge-p1"><span class="dot" style="background:var(--v-p1)"></span> P1 High</span>
+    <span class="badge badge-p2"><span class="dot" style="background:var(--v-p2)"></span> P2 Medium</span>
+    <span class="badge badge-p3"><span class="dot" style="background:var(--v-p3)"></span> P3 Low</span>
+  </div>
+
+  <h3>Status</h3>
+  <div class="row">
+    <span class="badge badge-success">Fixed</span>
+    <span class="badge badge-warning">In Progress</span>
+    <span class="badge badge-error">Open</span>
+    <span class="badge badge-info">Queued</span>
+    <span class="badge badge-neutral">Archived</span>
+    <span class="badge badge-accent"><span class="dot dot-pulse" style="background:var(--v-accent-400)"></span> Analyzing</span>
+  </div>
+
+  <h3>Plan Badges</h3>
+  <div class="row">
+    <span class="badge badge-neutral">Free</span>
+    <span class="badge badge-accent">Pro</span>
+    <span class="badge" style="background:rgba(168,85,247,0.12);color:#a855f7;">Team</span>
+    <span class="badge" style="background:rgba(234,179,8,0.12);color:#eab308;">Enterprise</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 8. ALERTS ═══ -->
+<div class="kit-section">
+  <h2>8. Alerts</h2>
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:600px;">
+    <div class="alert alert-success"><span class="alert-icon">&#10003;</span> Session saved successfully. 3 bugs, 1 feature captured.</div>
+    <div class="alert alert-warning"><span class="alert-icon">&#9888;</span> SXC balance below 15%. Consider upgrading your plan.</div>
+    <div class="alert alert-error"><span class="alert-icon">&#10007;</span> Session upload failed. Server returned 503. Retrying...</div>
+    <div class="alert alert-info"><span class="alert-icon">&#8505;</span> AI analysis complete. 2 proactive suggestions await your review.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 9. CARDS ═══ -->
+<div class="kit-section">
+  <h2>9. Cards</h2>
+  <p class="section-desc">Session cards, bug cards, feature cards — the primary content unit.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
+    <!-- Session card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Sprint 09 — Auth Flow</span>
+        <span class="badge badge-accent"><span class="dot dot-pulse" style="background:var(--v-accent-400)"></span> Analyzing</span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--v-text-secondary);margin-bottom:12px;">vigil-SESSION-20260323-042</div>
+      <div style="display:flex;gap:16px;font-size:0.8rem;color:var(--v-text-tertiary);">
+        <span>3 bugs</span> <span>1 feature</span> <span>4:32 duration</span> <span>12 pages</span>
+      </div>
+    </div>
+    <!-- Bug card -->
+    <div class="card" style="border-left:3px solid var(--v-p0);">
+      <div class="card-header">
+        <span class="card-title">Login button unresponsive on mobile</span>
+        <span class="badge badge-p0">P0</span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--v-text-secondary);margin-bottom:8px;">BUG-042 | /auth/login | Chrome 122</div>
+      <div style="font-size:0.8rem;color:var(--v-text-tertiary);">Rage click detected: 7 clicks in 2s on .btn-submit with no DOM response.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 10. NAVIGATION ═══ -->
+<div class="kit-section">
+  <h2>10. Navigation</h2>
+  <div class="v-nav">
+    <div class="v-nav-logo">
+      <svg width="28" height="28" viewBox="0 0 48 48" fill="none"><path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="#22d3ee" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#22d3ee"/></svg>
+      <span>Vigil</span>
+    </div>
+    <div class="v-nav-links">
+      <a href="#">Features</a>
+      <a href="#">Pricing</a>
+      <a href="#">Docs</a>
+    </div>
+    <div class="v-nav-actions">
+      <button class="btn btn-ghost btn-sm">Sign In</button>
+      <button class="btn btn-primary btn-sm">Start Free</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 11. TABLE ═══ -->
+<div class="kit-section">
+  <h2>11. Data Table</h2>
+  <div class="table-wrap">
+    <table class="v-table">
+      <thead><tr><th>ID</th><th>Bug</th><th>Severity</th><th>Status</th><th>Session</th><th>Detected</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">BUG-042</td><td>Login button unresponsive on mobile</td><td><span class="badge badge-p0">P0</span></td><td><span class="badge badge-error">Open</span></td><td class="mono">SESSION-042</td><td class="mono">2026-03-23</td></tr>
+        <tr><td class="mono">BUG-041</td><td>Dashboard chart tooltip clipped at edge</td><td><span class="badge badge-p2">P2</span></td><td><span class="badge badge-warning">In Progress</span></td><td class="mono">SESSION-039</td><td class="mono">2026-03-22</td></tr>
+        <tr><td class="mono">BUG-040</td><td>Session upload retries on 503 but doesn't notify user</td><td><span class="badge badge-p1">P1</span></td><td><span class="badge badge-success">Fixed</span></td><td class="mono">SESSION-038</td><td class="mono">2026-03-21</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 12. PRICING ═══ -->
+<div class="kit-section">
+  <h2>12. Pricing Cards</h2>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="pricing-tier">Free</div>
+      <div class="pricing-price">&euro;0</div>
+      <div class="pricing-sxc">100 SXC / month</div>
+      <ul class="pricing-features">
+        <li>10 sessions / month</li>
+        <li>Extension + dashboard</li>
+        <li>Manual bug capture</li>
+        <li>Session replay</li>
+      </ul>
+      <button class="btn btn-secondary" style="width:100%;justify-content:center;">Get Started</button>
+    </div>
+    <div class="pricing-card featured">
+      <div class="pricing-tier">Pro</div>
+      <div class="pricing-price">&euro;19<span>/mo</span></div>
+      <div class="pricing-sxc">500 SXC / month</div>
+      <ul class="pricing-features">
+        <li>Unlimited sessions</li>
+        <li>AI bug auto-complete</li>
+        <li>Severity auto-suggest</li>
+        <li>Quick + Standard analysis</li>
+        <li>Session report API</li>
+      </ul>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;">Start Free Trial</button>
+    </div>
+    <div class="pricing-card">
+      <div class="pricing-tier">Team</div>
+      <div class="pricing-price">&euro;49<span>/mo</span></div>
+      <div class="pricing-sxc">2,000 SXC / month</div>
+      <ul class="pricing-features">
+        <li>Everything in Pro</li>
+        <li>Deep Analysis + chat</li>
+        <li>vigil_agent auto-fix</li>
+        <li>Team sharing</li>
+        <li>Proactive bug discovery</li>
+      </ul>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;">Start Free Trial</button>
+    </div>
+    <div class="pricing-card">
+      <div class="pricing-tier">Enterprise</div>
+      <div class="pricing-price">Custom</div>
+      <div class="pricing-sxc">Unlimited SXC</div>
+      <ul class="pricing-features">
+        <li>Everything in Team</li>
+        <li>Self-hosted option</li>
+        <li>SLA + priority support</li>
+        <li>SSO (SAML)</li>
+        <li>Custom integrations</li>
+      </ul>
+      <button class="btn btn-secondary" style="width:100%;justify-content:center;">Contact Sales</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 13. AUTH FORM ═══ -->
+<div class="kit-section">
+  <h2>13. Auth Forms</h2>
+  <p class="section-desc">Login, register, verify — clean, minimal, trustworthy.</p>
+  <div style="display:flex;gap:24px;flex-wrap:wrap;">
+    <div class="auth-card">
+      <div style="text-align:center;margin-bottom:16px;">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none"><path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="#22d3ee" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#22d3ee"/></svg>
+      </div>
+      <h2>Sign in to Vigil</h2>
+      <div class="subtitle">Welcome back. Enter your credentials.</div>
+      <div class="form-group"><label class="input-label">Email</label><input class="input" type="email" placeholder="you@company.com" /></div>
+      <div class="form-group"><label class="input-label">Password</label><input class="input" type="password" placeholder="Enter password" /></div>
+      <div style="text-align:right;margin-bottom:16px;"><a href="#" style="font-size:0.8rem;color:var(--v-accent-400);text-decoration:none;">Forgot password?</a></div>
+      <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Sign In</button>
+      <div class="footer-link">Don't have an account? <a href="#">Register</a></div>
+    </div>
+
+    <div class="auth-card">
+      <div style="text-align:center;margin-bottom:16px;">
+        <svg width="32" height="32" viewBox="0 0 48 48" fill="none"><path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="#22d3ee" stroke-width="2.5"/><circle cx="24" cy="24" r="4" fill="#22d3ee"/></svg>
+      </div>
+      <h2>Create account</h2>
+      <div class="subtitle">Start finding bugs in minutes.</div>
+      <div class="form-group"><label class="input-label">Full name</label><input class="input" placeholder="Jane Smith" /></div>
+      <div class="form-group"><label class="input-label">Email</label><input class="input" type="email" placeholder="you@company.com" /></div>
+      <div class="form-group"><label class="input-label">Password</label><input class="input" type="password" placeholder="8+ characters" />
+        <div style="margin-top:6px;height:3px;border-radius:2px;background:var(--v-bg-elevated);overflow:hidden;"><div style="width:60%;height:100%;background:var(--v-warning);border-radius:2px;"></div></div>
+        <div class="input-hint">Medium strength</div>
+      </div>
+      <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;">Create Account</button>
+      <div class="footer-link">Already have an account? <a href="#">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 14. SXC BALANCE ═══ -->
+<div class="kit-section">
+  <h2>14. SXC Balance Widget</h2>
+  <div style="max-width:320px;">
+    <div class="sxc-balance">
+      <div>
+        <div class="label">Plan tokens</div>
+        <div class="amount">342</div>
+      </div>
+      <div style="margin-left:auto;text-align:right;">
+        <div class="label">Purchased</div>
+        <div style="font-size:1rem;font-weight:600;font-family:var(--v-font-mono);color:var(--v-text-primary);">1,200</div>
+      </div>
+    </div>
+    <div class="sxc-bar"><div class="sxc-bar-fill" style="width:68%;background:linear-gradient(90deg,var(--v-accent-500),var(--v-accent-400));"></div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:0.7rem;color:var(--v-text-ghost);font-family:var(--v-font-mono);">
+      <span>342 / 500 plan SXC</span><span>Renews Apr 1</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 15. EMPTY STATES ═══ -->
+<div class="kit-section">
+  <h2>15. Empty States</h2>
+  <p class="section-desc">First-class screens. The first thing new users see.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+    <div class="card">
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="4 4"/><path d="M16 24h16M24 16v16" stroke="#4b5563" stroke-width="1.5"/></svg>
+        <h4>No sessions yet</h4>
+        <p>Start your first recording session to capture bugs and interactions.</p>
+        <button class="btn btn-primary btn-sm">Start Session</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="4 4"/><path d="M18 18l12 12M30 18L18 30" stroke="#4b5563" stroke-width="1.5"/></svg>
+        <h4>No bugs found</h4>
+        <p>All clear! No bugs have been reported in this session.</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="#4b5563" stroke-width="1.5" stroke-dasharray="4 4"/><path d="M24 16v10l6 4" stroke="#4b5563" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <h4>Analysis not started</h4>
+        <p>Upgrade to Pro to unlock AI-powered session analysis.</p>
+        <button class="btn btn-primary btn-sm">Upgrade</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 16. LOADING ═══ -->
+<div class="kit-section">
+  <h2>16. Loading & Skeleton States</h2>
+  <div class="card" style="max-width:400px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <div class="skeleton" style="width:40px;height:40px;border-radius:50%;"></div>
+      <div style="flex:1;"><div class="skeleton" style="width:60%;height:14px;margin-bottom:6px;"></div><div class="skeleton" style="width:40%;height:10px;"></div></div>
+    </div>
+    <div class="skeleton" style="width:100%;height:12px;margin-bottom:8px;"></div>
+    <div class="skeleton" style="width:80%;height:12px;margin-bottom:8px;"></div>
+    <div class="skeleton" style="width:90%;height:12px;"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ 17. CODE ═══ -->
+<div class="kit-section">
+  <h2>17. Code Blocks</h2>
+  <div class="code-block" style="max-width:600px;">
+<span class="comment">// Vigil MCP tool invocation</span>
+<span class="keyword">const</span> bugs = <span class="keyword">await</span> vigil_list_bugs({
+  sprint: <span class="string">"09"</span>,
+  status: <span class="string">"open"</span>,
+  severity: <span class="string">"P0"</span>
+});
+<span class="comment">// Returns 3 bugs, 2 from AI analysis</span>
+console.log(bugs.length); <span class="comment">// 3</span></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ FOOTER ═══ -->
+<div style="text-align:center;padding:48px 0 24px;border-top:1px solid var(--v-border-subtle);margin-top:48px;">
+  <svg width="120" height="36" viewBox="0 0 200 48" fill="none" xmlns="http://www.w3.org/2000/svg"><g transform="translate(30,0)"><path d="M24 8C14 8 6 20 4 24C6 28 14 40 24 40C34 40 42 28 44 24C42 20 34 8 24 8Z" fill="none" stroke="#22d3ee" stroke-width="2"/><circle cx="24" cy="24" r="3" fill="#22d3ee"/></g><text x="78" y="31" font-family="Inter, sans-serif" font-weight="800" font-size="22" fill="#4b5563" letter-spacing="-0.5">VIGIL</text></svg>
+  <p style="font-size:0.75rem;color:var(--v-text-ghost);margin-top:12px;">UI Kit v1.0 | ARIA | SynaptixLabs | 2026-03-23</p>
+  <p style="font-size:0.7rem;color:var(--v-text-ghost);margin-top:4px;">17 component categories | 55+ design tokens | Dark theme</p>
+</div>
+
+</div>
+</body>
+</html>

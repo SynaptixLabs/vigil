@@ -13,6 +13,7 @@ This is the **source of truth** for how Vigil is specified, built, tested, and s
 5. `04_TESTING.md` — testing policy + gates
 6. `05_DEPLOYMENT.md` — how we ship
 7. `0l_DECISIONS.md` — why we made key calls
+8. `ui/UI_KIT.md` — design system tokens, components, brand identity (Sprint 09+)
 
 ---
 
@@ -27,21 +28,25 @@ This is the **source of truth** for how Vigil is specified, built, tested, and s
 | [Testing](04_TESTING.md) | Testing policy + gates | `[CTO]` |
 | [Deployment](05_DEPLOYMENT.md) | Extension + server distribution | `[CTO]` |
 | [Decisions](0l_DECISIONS.md) | Architecture decision log | `[CTO]` / `[CPO]` |
+| [UI Kit](ui/UI_KIT.md) | Design tokens, components, brand, logo | `[UX]` / `[CPTO]` |
+| [UI Kit (HTML)](ui/VIGIL_UI_KIT.html) | Interactive visual demo — open in browser | `[UX]` |
 
 ---
 
 ## Current Sprint
 
-**Sprint 07 — Active 🟢**
+**Sprint 09 — Approved 🟢**
+- Index: `sprints/sprint_09/sprint_09_index.md`
+- Decisions: `sprints/sprint_09/sprint_09_decisions_log.md`
+- Specs: `sprints/sprint_09/specs/` (4 spec docs + 3 ADRs + 1 HTML viz)
+- TODOs: `sprints/sprint_09/todo/` (7 track files)
+- UI Kit: `ui/UI_KIT.md` + `ui/VIGIL_UI_KIT.html`
+
+**Sprint 08 — Closed ✅**
+- Index: `sprints/sprint_08/sprint_08_index.md`
+
+**Sprint 07 — Closed ✅**
 - Index: `sprints/sprint_07/sprint_07_index.md`
-- Decisions: `sprints/sprint_07/sprint_07_decisions_log.md`
-- Acceptance: `sprints/sprint_07/FOUNDER_ACCEPTANCE_WALKTHROUGH.md`
-
-**Sprint 06 — Closed ✅**
-- Index: `sprints/sprint_06/sprint_06_index.md`
-
-**Sprint 08 — Planned 📐**
-- Scope: AGENTS LLM integration (deferred from Sprint 07)
 
 ---
 
@@ -77,7 +82,9 @@ docs/
 │   │   └── FOUNDER_ACCEPTANCE_WALKTHROUGH.md
 │   └── sprint_08/           # PLANNED
 ├── templates/               # Sprint artifact templates
-└── ui/                      # UI reference assets
+└── ui/
+    ├── UI_KIT.md            # Design system reference (tokens, components, rules)
+    └── VIGIL_UI_KIT.html    # Interactive HTML demo (open in browser)
 ```
 
 ---
@@ -91,4 +98,4 @@ docs/
 
 ---
 
-*Last updated: 2026-03-04 | Owner: [CTO] + [FOUNDER]*
+*Last updated: 2026-03-23 | Owner: [CTO] + [FOUNDER]*

@@ -366,6 +366,58 @@ The server deploys as a Vercel serverless function. Dashboard is served as stati
 
 ---
 
+## Claude Code Integration
+
+Vigil is built with Claude Code Agent Teams. The `.claude/` directory contains the full operational infrastructure for AI-assisted development.
+
+### Slash Commands
+
+| Command | Role | When to Use |
+|---------|------|-------------|
+| `/project:cto` | Execution Lead | Run agent teams, ship code |
+| `/project:cpto` | Technical PM | Sprint planning, architecture decisions |
+| `/project:dev-ext` | Extension Dev | Chrome Extension track |
+| `/project:dev-server` | Server Dev | vigil-server + MCP track |
+| `/project:dev-dashboard` | Dashboard Dev | React dashboard track |
+| `/project:dev-qa` | QA Engineer | Test validation |
+| `/project:gbu` | Design Reviewer | Post-dev quality review |
+| `/project:test` | Test Runner | Full test suite |
+| `/project:bug-fix` | Bug Fixer | Red-to-green resolution loop |
+
+### Skills (Reusable Processes)
+
+Skills provide checklists, report templates, and runbooks for each development track:
+
+| Skill | Purpose |
+|-------|---------|
+| `implement-ext` | Extension development with Shadow DOM + MV3 discipline |
+| `implement-server` | Server development with MCP + filesystem discipline |
+| `implement-dashboard` | Dashboard development with React component reuse |
+| `design-review-gbu` | Good/Bad/Ugly quality review |
+| `qa-gate` | QA validation with PASS/FAIL report |
+| `release-readiness` | Pre-production GO/NO-GO gate |
+| `sprint-team-launch` | Multi-agent team orchestration |
+
+### Start Scripts
+
+```bash
+# PowerShell (Windows)
+.\start.ps1                # Dev mode: extension + server
+.\start.ps1 -All           # All services
+.\start.ps1 -Test          # Run tests
+.\start.ps1 -Status        # Check service health
+
+# Bash (Linux / macOS / CI)
+./start.sh                 # Dev mode: extension + server
+./start.sh all             # All services
+./start.sh test            # Run tests
+./start.sh status          # Check service health
+```
+
+Full reference: [`.claude/GUIDE.md`](.claude/GUIDE.md)
+
+---
+
 ## Distribution
 
 **Unpacked extension only** — no Chrome Web Store submission. Share via repo `dist/` folder. Team members load via `chrome://extensions` → "Load unpacked".
@@ -374,7 +426,13 @@ The server can be self-hosted or deployed to Vercel (serverless).
 
 ## Documentation
 
-Start here: [`docs/00_INDEX.md`](docs/00_INDEX.md)
+| Document | Path |
+|----------|------|
+| Getting started | [`docs/00_INDEX.md`](docs/00_INDEX.md) |
+| Claude Code operations | [`.claude/GUIDE.md`](.claude/GUIDE.md) |
+| Architecture | [`docs/01_ARCHITECTURE.md`](docs/01_ARCHITECTURE.md) |
+| Module registry | [`docs/03_MODULES.md`](docs/03_MODULES.md) |
+| Current sprint | [`docs/sprints/`](docs/sprints/) |
 
 ---
 
