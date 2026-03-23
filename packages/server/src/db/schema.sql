@@ -387,6 +387,45 @@ BEGIN
   END IF;
 END $$;
 
+-- 4. Refresh tokens table (active tokens — for validation + rotation)
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_refresh_tokens_hash') THEN
+    CREATE UNIQUE INDEX idx_refresh_tokens_hash ON refresh_tokens (token_hash);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_refresh_tokens_user') THEN
+    CREATE INDEX idx_refresh_tokens_user ON refresh_tokens (user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_refresh_tokens_expires') THEN
+    CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens (expires_at);
+  END IF;
+END $$;
+
+-- 5. Account lockout columns on users (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'failed_login_attempts'
+  ) THEN
+    ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'users' AND column_name = 'locked_until'
+  ) THEN
+    ALTER TABLE users ADD COLUMN locked_until TIMESTAMPTZ;
+  END IF;
+END $$;
+
 -- GOD admin protection: Prevent role changes on super_admin accounts
 CREATE OR REPLACE FUNCTION protect_super_admin()
 RETURNS TRIGGER AS $$

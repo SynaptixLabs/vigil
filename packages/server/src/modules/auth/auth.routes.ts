@@ -10,6 +10,7 @@
  *   POST /api/auth/register
  *   POST /api/auth/login
  *   POST /api/auth/verify-email
+ *   POST /api/auth/resend-verification
  *   POST /api/auth/refresh
  *   POST /api/auth/forgot-password
  *   POST /api/auth/reset-password
@@ -26,6 +27,7 @@ import {
   registerSchema,
   loginSchema,
   verifyEmailSchema,
+  resendVerificationSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   changePasswordSchema,
@@ -35,11 +37,13 @@ import {
   register,
   login,
   verifyEmail,
+  resendVerification,
   forgotPassword,
   resetPassword,
   changePassword,
   getProfile,
   updateProfile,
+  checkRateLimit,
   AuthError,
 } from './auth.service.js';
 import { authMiddleware } from './auth.middleware.js';
@@ -49,12 +53,44 @@ import { ZodError } from 'zod';
 export const authRouter = Router();
 
 // ============================================================================
+// Rate limit constants
+// ============================================================================
+
+/** 5 registrations per IP per hour. */
+const REGISTER_RATE_LIMIT = 5;
+const REGISTER_RATE_WINDOW = 60 * 60 * 1000; // 1 hour
+
+/** 3 resend-verification per email per hour. */
+const RESEND_RATE_LIMIT = 3;
+const RESEND_RATE_WINDOW = 60 * 60 * 1000; // 1 hour
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/** Get client IP from request (X-Forwarded-For or socket). */
+function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress ?? 'unknown';
+}
+
+// ============================================================================
 // PUBLIC routes
 // ============================================================================
 
 /** POST /api/auth/register */
 authRouter.post('/register', async (req: Request, res: Response) => {
   try {
+    // Rate limit: 5 registrations per IP per hour
+    const ip = getClientIp(req);
+    if (!checkRateLimit(`register:${ip}`, REGISTER_RATE_LIMIT, REGISTER_RATE_WINDOW)) {
+      res.status(429).json({ error: 'Too many registration attempts. Try again later.' });
+      return;
+    }
+
     const input = registerSchema.parse(req.body);
     const result = await register(input);
     // Note: verificationCode would be sent via Resend (email service)
@@ -108,6 +144,29 @@ authRouter.post('/verify-email', async (req: Request, res: Response) => {
     const input = verifyEmailSchema.parse(req.body);
     const result = await verifyEmail(input.code);
     res.json(result);
+  } catch (err) {
+    handleAuthError(res, err);
+  }
+});
+
+/** POST /api/auth/resend-verification */
+authRouter.post('/resend-verification', async (req: Request, res: Response) => {
+  try {
+    const input = resendVerificationSchema.parse(req.body);
+
+    // Rate limit: 3 resend per email per hour
+    if (!checkRateLimit(`resend:${input.email}`, RESEND_RATE_LIMIT, RESEND_RATE_WINDOW)) {
+      res.status(429).json({ error: 'Too many verification requests. Try again later.' });
+      return;
+    }
+
+    const result = await resendVerification(input.email);
+    if (result) {
+      // Note: code would be sent via Resend (email service)
+      console.log(`[auth] Resend verification code for ${input.email}: ${result.code}`);
+    }
+    // Always return 200 — never reveal if email exists or is already verified
+    res.json({ message: 'If an unverified account with that email exists, a new code has been sent.' });
   } catch (err) {
     handleAuthError(res, err);
   }

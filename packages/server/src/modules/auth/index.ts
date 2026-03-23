@@ -13,7 +13,16 @@ export { authMiddleware, requireRole, requirePlan } from './auth.middleware.js';
 export type { AuthUser } from './auth.middleware.js';
 
 // Service (for other modules that need auth operations)
-export { AuthError } from './auth.service.js';
+export {
+  AuthError,
+  checkRateLimit,
+  resendVerification,
+  storeRefreshToken,
+  validateRefreshToken,
+  invalidateRefreshToken,
+  invalidateAllUserRefreshTokens,
+  maybeRenewPlanTokens,
+} from './auth.service.js';
 export type { RegisterResult, LoginResult, UserProfile } from './auth.service.js';
 
 // Password utils (for seed scripts)

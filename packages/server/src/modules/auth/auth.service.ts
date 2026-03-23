@@ -63,7 +63,84 @@ export interface UserProfile {
 }
 
 // ============================================================================
-// Registration
+// In-memory rate limiters
+// ============================================================================
+
+/** Rate limit entry: timestamps of actions within the window. */
+interface RateLimitBucket {
+  timestamps: number[];
+}
+
+/** In-memory rate limiter store. Keyed by identifier (e.g., IP or email). */
+const rateLimitStore = new Map<string, RateLimitBucket>();
+
+/** Periodic cleanup of stale rate limit entries (every 10 minutes). */
+const RATE_LIMIT_CLEANUP_INTERVAL = 10 * 60 * 1000;
+let _cleanupTimer: ReturnType<typeof setInterval> | null = null;
+
+function ensureRateLimitCleanup(): void {
+  if (_cleanupTimer) return;
+  _cleanupTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of rateLimitStore.entries()) {
+      // Remove entries with all timestamps older than 1 hour
+      bucket.timestamps = bucket.timestamps.filter((t) => now - t < 3600_000);
+      if (bucket.timestamps.length === 0) {
+        rateLimitStore.delete(key);
+      }
+    }
+  }, RATE_LIMIT_CLEANUP_INTERVAL);
+  // Allow process to exit even if timer is running
+  if (_cleanupTimer && typeof _cleanupTimer === 'object' && 'unref' in _cleanupTimer) {
+    (_cleanupTimer as NodeJS.Timeout).unref();
+  }
+}
+
+/**
+ * Check and consume a rate limit slot.
+ * @param key - Unique identifier (e.g., `register:${ip}` or `resend:${email}`)
+ * @param maxAttempts - Maximum allowed attempts within the window
+ * @param windowMs - Time window in milliseconds
+ * @returns true if allowed, false if rate limited
+ */
+export function checkRateLimit(key: string, maxAttempts: number, windowMs: number): boolean {
+  ensureRateLimitCleanup();
+  const now = Date.now();
+  let bucket = rateLimitStore.get(key);
+
+  if (!bucket) {
+    bucket = { timestamps: [] };
+    rateLimitStore.set(key, bucket);
+  }
+
+  // Remove timestamps outside the window
+  bucket.timestamps = bucket.timestamps.filter((t) => now - t < windowMs);
+
+  if (bucket.timestamps.length >= maxAttempts) {
+    return false; // Rate limited
+  }
+
+  bucket.timestamps.push(now);
+  return true; // Allowed
+}
+
+/** Reset rate limit store (for testing). */
+export function _resetRateLimits(): void {
+  rateLimitStore.clear();
+}
+
+// ============================================================================
+// Account lockout constants
+// ============================================================================
+
+/** Maximum failed login attempts before lockout. */
+const MAX_FAILED_ATTEMPTS = 5;
+
+/** Lockout duration in milliseconds (15 minutes). */
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+// ============================================================================
+// Registration (B03)
 // ============================================================================
 
 /**
@@ -120,7 +197,7 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
 }
 
 // ============================================================================
-// Email Verification
+// Email Verification (B04)
 // ============================================================================
 
 /**
@@ -155,26 +232,76 @@ export async function verifyEmail(code: string): Promise<{ emailVerified: boolea
   return { emailVerified: true };
 }
 
+/**
+ * Resend email verification code.
+ * Generates a new 6-digit code (15-min expiry) for the given email.
+ * Returns null if the email doesn't exist (never reveal this to the client).
+ */
+export async function resendVerification(email: string): Promise<{ code: string } | null> {
+  const pool = getPool();
+
+  // Look up user
+  const userResult = await pool.query(
+    'SELECT id, email_verified FROM users WHERE email = $1',
+    [email],
+  );
+
+  if (userResult.rowCount === 0) {
+    // Never reveal if email exists — return null silently
+    return null;
+  }
+
+  const user = userResult.rows[0];
+
+  // Already verified — no action needed
+  if (user.email_verified) {
+    return null;
+  }
+
+  // Invalidate any existing unused codes for this user
+  await pool.query(
+    `UPDATE email_verification SET used = true
+     WHERE user_id = $1 AND used = false`,
+    [user.id],
+  );
+
+  // Generate new code
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+  await pool.query(
+    `INSERT INTO email_verification (code, email, user_id, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [code, email, user.id, expiresAt],
+  );
+
+  return { code };
+}
+
 // ============================================================================
-// Login
+// Login (B05)
 // ============================================================================
 
 /**
  * Authenticate user with email + password.
  *
  * 1. Find user by email
- * 2. Verify Argon2id password
- * 3. Check email verified
- * 4. Generate access JWT + refresh token + fingerprint
- * 5. Update login count + last_login_at
+ * 2. Check account lockout (5 failed attempts → 15-min lock)
+ * 3. Verify Argon2id password
+ * 4. Check email verified
+ * 5. Generate access JWT + refresh token + fingerprint
+ * 6. Store refresh token hash in DB
+ * 7. Lazy SXC renewal (month boundary check)
+ * 8. Update login count + last_login_at
  */
 export async function login(input: LoginInput): Promise<LoginResult> {
   const pool = getPool();
 
-  // Find user
+  // Find user (include lockout fields)
   const result = await pool.query(
     `SELECT id, synaptixlabs_id, email, password_hash, name, role, plan, products,
-            email_verified, login_count
+            email_verified, login_count, failed_login_attempts, locked_until,
+            plan_tokens, tokens_renewed_at
      FROM users WHERE email = $1`,
     [input.email],
   );
@@ -186,12 +313,57 @@ export async function login(input: LoginInput): Promise<LoginResult> {
 
   const user = result.rows[0] as Pick<UserRow,
     'id' | 'synaptixlabs_id' | 'email' | 'password_hash' | 'name' | 'role' |
-    'plan' | 'products' | 'email_verified' | 'login_count'
+    'plan' | 'products' | 'email_verified' | 'login_count' |
+    'failed_login_attempts' | 'locked_until' | 'plan_tokens' | 'tokens_renewed_at'
   >;
+
+  // Check account lockout
+  if (user.locked_until && new Date(user.locked_until) > new Date()) {
+    const minutesLeft = Math.ceil(
+      (new Date(user.locked_until).getTime() - Date.now()) / 60_000,
+    );
+    throw new AuthError(
+      'ACCOUNT_LOCKED',
+      `Account is temporarily locked. Try again in ${minutesLeft} minute(s).`,
+      423,
+    );
+  }
+
+  // If lockout has expired, reset the counter
+  if (user.locked_until && new Date(user.locked_until) <= new Date()) {
+    await pool.query(
+      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1',
+      [user.id],
+    );
+    user.failed_login_attempts = 0;
+    user.locked_until = null;
+  }
 
   // Verify password (Argon2id)
   const valid = await verifyPassword(input.password, user.password_hash);
   if (!valid) {
+    // Increment failed attempts
+    const newAttempts = user.failed_login_attempts + 1;
+
+    if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+      // Lock the account
+      const lockUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+      await pool.query(
+        'UPDATE users SET failed_login_attempts = $1, locked_until = $2 WHERE id = $3',
+        [newAttempts, lockUntil, user.id],
+      );
+      throw new AuthError(
+        'ACCOUNT_LOCKED',
+        'Too many failed attempts. Account locked for 15 minutes.',
+        423,
+      );
+    } else {
+      await pool.query(
+        'UPDATE users SET failed_login_attempts = $1 WHERE id = $2',
+        [newAttempts, user.id],
+      );
+    }
+
     throw new AuthError('INVALID_CREDENTIALS', 'Invalid email or password', 401);
   }
 
@@ -199,6 +371,17 @@ export async function login(input: LoginInput): Promise<LoginResult> {
   if (!user.email_verified) {
     throw new AuthError('EMAIL_NOT_VERIFIED', 'Please verify your email before logging in', 403);
   }
+
+  // Reset failed attempts on successful login
+  if (user.failed_login_attempts > 0) {
+    await pool.query(
+      'UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = $1',
+      [user.id],
+    );
+  }
+
+  // Lazy SXC renewal: check if month boundary has been crossed
+  await maybeRenewPlanTokens(user.id, user.plan, user.plan_tokens, user.tokens_renewed_at);
 
   // Generate tokens + fingerprint
   const fingerprint = generateFingerprint();
@@ -215,6 +398,9 @@ export async function login(input: LoginInput): Promise<LoginResult> {
 
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken();
+
+  // Store refresh token hash in DB
+  await storeRefreshToken(user.id, refreshToken);
 
   // Update login count + last_login_at
   await pool.query(
@@ -236,6 +422,123 @@ export async function login(input: LoginInput): Promise<LoginResult> {
       synaptixlabsId: user.synaptixlabs_id,
     },
   };
+}
+
+// ============================================================================
+// Refresh Token Storage (B05)
+// ============================================================================
+
+/**
+ * Store a refresh token hash in the DB for later validation.
+ */
+export async function storeRefreshToken(userId: string, token: RefreshTokenData): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3)`,
+    [userId, token.tokenHash, token.expiresAt],
+  );
+}
+
+/**
+ * Validate a refresh token hash exists in DB and hasn't expired.
+ */
+export async function validateRefreshToken(tokenHash: string): Promise<{ userId: string } | null> {
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT user_id FROM refresh_tokens
+     WHERE token_hash = $1 AND expires_at > now()`,
+    [tokenHash],
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return { userId: result.rows[0].user_id };
+}
+
+/**
+ * Invalidate a refresh token (remove from active store).
+ */
+export async function invalidateRefreshToken(tokenHash: string): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    'DELETE FROM refresh_tokens WHERE token_hash = $1',
+    [tokenHash],
+  );
+}
+
+/**
+ * Invalidate all refresh tokens for a user (e.g., on password change).
+ */
+export async function invalidateAllUserRefreshTokens(userId: string): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    'DELETE FROM refresh_tokens WHERE user_id = $1',
+    [userId],
+  );
+}
+
+/**
+ * Clean up expired refresh tokens (garbage collection).
+ */
+export async function cleanExpiredRefreshTokens(): Promise<number> {
+  const pool = getPool();
+  const result = await pool.query(
+    'DELETE FROM refresh_tokens WHERE expires_at < now()',
+  );
+  return result.rowCount ?? 0;
+}
+
+// ============================================================================
+// Lazy SXC Token Renewal (B05)
+// ============================================================================
+
+/** Plan token allocations per billing cycle. */
+const PLAN_TOKEN_ALLOCATIONS: Record<string, number> = {
+  free: 100,
+  pro: 1000,
+  team: 5000,
+  enterprise: 25000,
+};
+
+/**
+ * Lazy SXC renewal: check if the user's plan tokens should be renewed.
+ *
+ * If the current month (UTC) is different from the month of `tokens_renewed_at`,
+ * reset `plan_tokens` to the plan's allocation and update `tokens_renewed_at`.
+ *
+ * Called on login to avoid a cron job.
+ */
+export async function maybeRenewPlanTokens(
+  userId: string,
+  plan: string,
+  _currentTokens: number,
+  tokensRenewedAt: Date,
+): Promise<boolean> {
+  const now = new Date();
+  const renewedAt = new Date(tokensRenewedAt);
+
+  // Check if month boundary has been crossed (UTC)
+  const sameMonth =
+    now.getUTCFullYear() === renewedAt.getUTCFullYear() &&
+    now.getUTCMonth() === renewedAt.getUTCMonth();
+
+  if (sameMonth) {
+    return false; // No renewal needed
+  }
+
+  const allocation = PLAN_TOKEN_ALLOCATIONS[plan] ?? PLAN_TOKEN_ALLOCATIONS.free;
+
+  const pool = getPool();
+  await pool.query(
+    `UPDATE users SET plan_tokens = $1, tokens_renewed_at = now() WHERE id = $2`,
+    [allocation, userId],
+  );
+
+  console.log(`[auth] SXC renewal: user ${userId} plan=${plan} tokens reset to ${allocation}`);
+  return true;
 }
 
 // ============================================================================
@@ -348,7 +651,8 @@ export async function changePassword(
     [newHash, userId],
   );
 
-  // Note: Token revocation will be handled by B06 (revoke all tokens for user)
+  // Invalidate all refresh tokens for this user
+  await invalidateAllUserRefreshTokens(userId);
 }
 
 // ============================================================================
@@ -420,11 +724,12 @@ export async function resetPassword(code: string, newPassword: string): Promise<
     [newHash, row.user_id],
   );
 
-  // Note: Token revocation (revoke ALL refresh tokens) handled by B06
+  // Invalidate all refresh tokens for this user (force re-login everywhere)
+  await invalidateAllUserRefreshTokens(row.user_id);
 }
 
 // ============================================================================
-// Token Management (stubs for B05/B06)
+// Token Management (revoked_tokens deny list)
 // ============================================================================
 
 /**

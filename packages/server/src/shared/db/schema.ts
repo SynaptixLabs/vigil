@@ -155,6 +155,10 @@ export interface UserRow {
   last_login_at: Date | null;
   /** Account creation timestamp. */
   created_at: Date;
+  /** Failed login attempts counter (lockout after 5). */
+  failed_login_attempts: number;
+  /** Account locked until this timestamp (null = not locked). */
+  locked_until: Date | null;
   /** Last profile/data update timestamp. */
   updated_at: Date;
 }
@@ -185,6 +189,23 @@ export interface EmailVerificationRow {
  * Stores SHA-256 hash of revoked refresh tokens.
  * TTL = token expiry for automatic cleanup.
  */
+/**
+ * Active refresh tokens.
+ * Stores SHA-256 hash of refresh tokens for validation + rotation.
+ */
+export interface RefreshTokenRow {
+  /** Primary key — UUID. */
+  id: string;
+  /** FK to users.id. */
+  user_id: string;
+  /** SHA-256 hash of the opaque refresh token. */
+  token_hash: string;
+  /** When this refresh token expires. */
+  expires_at: Date;
+  /** When the token was issued. */
+  created_at: Date;
+}
+
 export interface RevokedTokenRow {
   /** Primary key — UUID. */
   id: string;
