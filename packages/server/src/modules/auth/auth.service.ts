@@ -13,6 +13,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
   generateFingerprint,
+  hashToken,
 } from './jwt.utils.js';
 import type { AccessTokenPayload, RefreshTokenData, FingerprintPair } from './jwt.utils.js';
 import type { UserRow } from '../../shared/db/schema.js';
@@ -489,6 +490,92 @@ export async function cleanExpiredRefreshTokens(): Promise<number> {
     'DELETE FROM refresh_tokens WHERE expires_at < now()',
   );
   return result.rowCount ?? 0;
+}
+
+// ============================================================================
+// Refresh Token Rotation + Logout (B06)
+// ============================================================================
+
+/**
+ * Refresh access token using a raw refresh token from the cookie.
+ *
+ * 1. Hash the raw refresh token for DB lookup
+ * 2. Validate hash exists in DB and is not expired
+ * 3. Invalidate the old refresh token immediately (rotation — ADR S09-001)
+ * 4. Load fresh user data from DB (not from stale JWT claims)
+ * 5. Generate new access token + new refresh token + new fingerprint
+ * 6. Store the new refresh token hash in DB
+ */
+export async function refreshTokens(rawRefreshToken: string): Promise<LoginResult> {
+  const pool = getPool();
+
+  // Hash the raw token for DB lookup
+  const oldTokenHash = hashToken(rawRefreshToken);
+
+  // Validate: exists in DB and not expired
+  const validToken = await validateRefreshToken(oldTokenHash);
+  if (!validToken) {
+    throw new AuthError('INVALID_REFRESH_TOKEN', 'Invalid or expired refresh token', 401);
+  }
+
+  // Invalidate old refresh token immediately (rotation — ADR S09-001)
+  await invalidateRefreshToken(oldTokenHash);
+
+  // Load fresh user data from DB (not from old JWT claims)
+  const userResult = await pool.query(
+    `SELECT id, synaptixlabs_id, email, name, role, plan, products
+     FROM users WHERE id = $1`,
+    [validToken.userId],
+  );
+
+  if (userResult.rowCount === 0) {
+    throw new AuthError('USER_NOT_FOUND', 'User not found', 404);
+  }
+
+  const user = userResult.rows[0];
+
+  // Generate new tokens + fingerprint
+  const fingerprint = generateFingerprint();
+
+  const tokenPayload: AccessTokenPayload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+    plan: user.plan,
+    products: user.products as string[],
+    synaptixlabsId: user.synaptixlabs_id,
+    fgp: fingerprint.hash,
+  };
+
+  const accessToken = generateAccessToken(tokenPayload);
+  const newRefreshToken = generateRefreshToken();
+
+  // Store new refresh token hash in DB
+  await storeRefreshToken(user.id, newRefreshToken);
+
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+    fingerprint,
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      plan: user.plan,
+      products: user.products as string[],
+      synaptixlabsId: user.synaptixlabs_id,
+    },
+  };
+}
+
+/**
+ * Logout: invalidate the refresh token associated with the raw cookie token.
+ * The route handler is responsible for clearing cookies.
+ */
+export async function logout(rawRefreshToken: string): Promise<void> {
+  const oldTokenHash = hashToken(rawRefreshToken);
+  await invalidateRefreshToken(oldTokenHash);
 }
 
 // ============================================================================

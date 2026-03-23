@@ -21,6 +21,8 @@ export {
   validateRefreshToken,
   invalidateRefreshToken,
   invalidateAllUserRefreshTokens,
+  refreshTokens,
+  logout,
   maybeRenewPlanTokens,
 } from './auth.service.js';
 export type { RegisterResult, LoginResult, UserProfile } from './auth.service.js';

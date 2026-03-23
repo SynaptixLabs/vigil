@@ -43,6 +43,8 @@ import {
   changePassword,
   getProfile,
   updateProfile,
+  refreshTokens,
+  logout,
   checkRateLimit,
   AuthError,
 } from './auth.service.js';
@@ -64,6 +66,10 @@ const REGISTER_RATE_WINDOW = 60 * 60 * 1000; // 1 hour
 const RESEND_RATE_LIMIT = 3;
 const RESEND_RATE_WINDOW = 60 * 60 * 1000; // 1 hour
 
+/** 3 forgot-password per email per hour (B07). */
+const FORGOT_PASSWORD_RATE_LIMIT = 3;
+const FORGOT_PASSWORD_RATE_WINDOW = 60 * 60 * 1000; // 1 hour
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -75,6 +81,21 @@ function getClientIp(req: Request): string {
     return forwarded.split(',')[0].trim();
   }
   return req.socket.remoteAddress ?? 'unknown';
+}
+
+/** Extract a cookie value from the request (manual parse, avoids cookie-parser). */
+function extractCookie(req: Request, name: string): string | undefined {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return undefined;
+
+  const cookies = cookieHeader.split(';');
+  for (const cookie of cookies) {
+    const [key, ...rest] = cookie.trim().split('=');
+    if (key === name) {
+      return rest.join('=');
+    }
+  }
+  return undefined;
 }
 
 // ============================================================================
@@ -172,13 +193,60 @@ authRouter.post('/resend-verification', async (req: Request, res: Response) => {
   }
 });
 
-/** POST /api/auth/forgot-password */
+/** POST /api/auth/refresh (B06 — public, uses cookie not Bearer token) */
+authRouter.post('/refresh', async (req: Request, res: Response) => {
+  try {
+    // Extract refresh token from cookie
+    const rawRefreshToken = extractCookie(req, 'refreshToken');
+    if (!rawRefreshToken) {
+      res.status(401).json({ error: 'Missing refresh token', code: 'MISSING_REFRESH_TOKEN' });
+      return;
+    }
+
+    const result = await refreshTokens(rawRefreshToken);
+
+    // Set new refresh token cookie (rotation — old one was invalidated by service)
+    res.cookie('refreshToken', result.refreshToken.token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/api/auth',
+      maxAge: REFRESH_TOKEN_TTL,
+    });
+
+    // Set new fingerprint cookie
+    res.cookie('__Secure-Fgp', result.fingerprint.value, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/',
+      maxAge: REFRESH_TOKEN_TTL,
+    });
+
+    res.json({
+      accessToken: result.accessToken,
+      user: result.user,
+    });
+  } catch (err) {
+    handleAuthError(res, err);
+  }
+});
+
+/** POST /api/auth/forgot-password (B07 — rate limited 3/hour/email) */
 authRouter.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const input = forgotPasswordSchema.parse(req.body);
+
+    // Rate limit: 3 forgot-password per email per hour (B07)
+    if (!checkRateLimit(`forgot:${input.email}`, FORGOT_PASSWORD_RATE_LIMIT, FORGOT_PASSWORD_RATE_WINDOW)) {
+      // Still return 200 to avoid revealing whether email exists
+      res.json({ message: 'If an account with that email exists, a reset code has been sent.' });
+      return;
+    }
+
     const result = await forgotPassword(input.email);
     if (result) {
-      // Note: code would be sent via Resend (email service)
+      // Note: code would be sent via Resend (email service deferred)
       console.log(`[auth] Reset code for ${input.email}: ${result.code}`);
     }
     // Always return 200 — never reveal if email exists
@@ -203,13 +271,22 @@ authRouter.post('/reset-password', async (req: Request, res: Response) => {
 // AUTHENTICATED routes
 // ============================================================================
 
-/** POST /api/auth/logout */
-authRouter.post('/logout', authMiddleware, async (_req: Request, res: Response) => {
-  // Clear cookies
-  res.clearCookie('refreshToken', { path: '/api/auth' });
-  res.clearCookie('__Secure-Fgp', { path: '/' });
-  // Note: Token revocation (B06) will add the refresh token to the deny list
-  res.json({ message: 'Logged out' });
+/** POST /api/auth/logout (B06 — authenticated, revokes refresh token) */
+authRouter.post('/logout', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    // Revoke the refresh token if present in the cookie
+    const rawRefreshToken = extractCookie(req, 'refreshToken');
+    if (rawRefreshToken) {
+      await logout(rawRefreshToken);
+    }
+
+    // Clear cookies
+    res.clearCookie('refreshToken', { path: '/api/auth' });
+    res.clearCookie('__Secure-Fgp', { path: '/' });
+    res.json({ message: 'Logged out' });
+  } catch (err) {
+    handleAuthError(res, err);
+  }
 });
 
 /** GET /api/auth/profile */

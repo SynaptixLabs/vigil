@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Unit tests for auth.service.ts — B03, B04, B05.
+ * Unit tests for auth.service.ts — B03, B04, B05, B06, B07, B08.
  *
  * Mocks the Neon database pool to test service logic without a real DB.
  * Mocks password.utils.ts and jwt.utils.ts to isolate service logic.
@@ -42,6 +42,7 @@ vi.mock('../jwt.utils.js', () => ({
     value: 'mock_fingerprint_value',
     hash: 'mock_fingerprint_hash',
   })),
+  hashToken: vi.fn((token: string) => `sha256_of_${token}`),
 }));
 
 // Import AFTER mocks are set up
@@ -50,11 +51,20 @@ import {
   verifyEmail,
   resendVerification,
   login,
+  refreshTokens,
+  logout,
+  forgotPassword,
+  resetPassword,
+  getProfile,
+  updateProfile,
+  changePassword,
   maybeRenewPlanTokens,
   storeRefreshToken,
   validateRefreshToken,
   invalidateRefreshToken,
   invalidateAllUserRefreshTokens,
+  checkRateLimit,
+  _resetRateLimits,
   AuthError,
 } from '../auth.service.js';
 
@@ -519,6 +529,459 @@ describe('refresh token management (B05)', () => {
     await invalidateAllUserRefreshTokens('user-1');
 
     const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('DELETE FROM refresh_tokens WHERE user_id');
+    expect(params[0]).toBe('user-1');
+  });
+});
+
+// ============================================================================
+// B06 — Refresh Token Rotation + Logout
+// ============================================================================
+
+describe('refreshTokens (B06)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockUserRow = {
+    id: 'user-1',
+    synaptixlabs_id: 'sl_abc123',
+    email: 'user@example.com',
+    name: 'Test User',
+    role: 'user',
+    plan: 'free',
+    products: ['vigil'],
+  };
+
+  it('issues new tokens on valid refresh token', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ user_id: 'user-1' }] }) // validateRefreshToken SELECT
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }) // invalidateRefreshToken DELETE
+      .mockResolvedValueOnce({ rowCount: 1, rows: [mockUserRow] }) // SELECT user
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }); // storeRefreshToken INSERT
+
+    const result = await refreshTokens('raw_refresh_token_value');
+
+    expect(result.accessToken).toBe('mock_access_token_jwt');
+    expect(result.refreshToken.token).toBe('mock_refresh_token_hex');
+    expect(result.fingerprint.value).toBe('mock_fingerprint_value');
+    expect(result.user.id).toBe('user-1');
+    expect(result.user.email).toBe('user@example.com');
+    expect(result.user.plan).toBe('free');
+
+    // Verify: validate old token
+    expect(mockQuery.mock.calls[0][0]).toContain('SELECT user_id FROM refresh_tokens');
+    expect(mockQuery.mock.calls[0][1][0]).toBe('sha256_of_raw_refresh_token_value');
+
+    // Verify: invalidate old token
+    expect(mockQuery.mock.calls[1][0]).toContain('DELETE FROM refresh_tokens');
+    expect(mockQuery.mock.calls[1][1][0]).toBe('sha256_of_raw_refresh_token_value');
+
+    // Verify: load fresh user from DB
+    expect(mockQuery.mock.calls[2][0]).toContain('SELECT id, synaptixlabs_id, email');
+    expect(mockQuery.mock.calls[2][1][0]).toBe('user-1');
+
+    // Verify: store new refresh token
+    expect(mockQuery.mock.calls[3][0]).toContain('INSERT INTO refresh_tokens');
+  });
+
+  it('throws 401 for invalid/expired refresh token', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] }); // validateRefreshToken returns null
+
+    try {
+      await refreshTokens('bad_token');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(401);
+      expect((err as AuthError).code).toBe('INVALID_REFRESH_TOKEN');
+    }
+  });
+
+  it('throws 404 if user no longer exists after token validated', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ user_id: 'deleted-user' }] }) // validate OK
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }) // invalidate old token
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] }); // SELECT user — not found
+
+    try {
+      await refreshTokens('orphan_token');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(404);
+      expect((err as AuthError).code).toBe('USER_NOT_FOUND');
+    }
+  });
+
+  it('invalidates old token before issuing new one (rotation)', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ user_id: 'user-1' }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [mockUserRow] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+    await refreshTokens('token_to_rotate');
+
+    // Call index 1 = invalidateRefreshToken (must happen before storeRefreshToken at index 3)
+    expect(mockQuery.mock.calls[1][0]).toContain('DELETE FROM refresh_tokens');
+    expect(mockQuery.mock.calls[3][0]).toContain('INSERT INTO refresh_tokens');
+  });
+});
+
+describe('logout (B06)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('invalidates the refresh token by its hash', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [] }); // DELETE
+
+    await logout('raw_token_to_revoke');
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('DELETE FROM refresh_tokens');
+    expect(params[0]).toBe('sha256_of_raw_token_to_revoke');
+  });
+
+  it('does not throw even if token was already invalidated', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] }); // DELETE (nothing matched)
+
+    // Should not throw
+    await logout('already_gone_token');
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ============================================================================
+// B07 — Forgot / Reset Password
+// ============================================================================
+
+describe('forgotPassword (B07)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('generates a reset code for existing user', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 'user-1' }] }) // SELECT user
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }); // INSERT email_verification
+
+    const result = await forgotPassword('user@example.com');
+
+    expect(result).not.toBeNull();
+    expect(result!.code).toMatch(/^\d{6}$/);
+
+    // Verify code was stored in email_verification
+    const [sql, params] = mockQuery.mock.calls[1];
+    expect(sql).toContain('INSERT INTO email_verification');
+    expect(params[1]).toBe('user@example.com');
+    expect(params[2]).toBe('user-1');
+  });
+
+  it('returns null for non-existent email (never reveals existence)', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const result = await forgotPassword('nobody@example.com');
+    expect(result).toBeNull();
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('resetPassword (B07)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('resets password with valid code', async () => {
+    const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+    mockQuery
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 'ver-1', user_id: 'user-1', expires_at: futureDate }],
+      }) // SELECT code
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }) // UPDATE code used
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }) // UPDATE password_hash
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }); // DELETE refresh_tokens (revoke all)
+
+    await resetPassword('123456', 'NewSecurePass1!');
+
+    // Verify code was marked as used
+    expect(mockQuery.mock.calls[1][0]).toContain('UPDATE email_verification SET used = true');
+
+    // Verify password was updated with Argon2id hash
+    const [updateSql, updateParams] = mockQuery.mock.calls[2];
+    expect(updateSql).toContain('UPDATE users SET password_hash');
+    expect(updateParams[0]).toBe('argon2id_hash_of_NewSecurePass1!');
+    expect(updateParams[1]).toBe('user-1');
+
+    // Verify all refresh tokens were revoked
+    expect(mockQuery.mock.calls[3][0]).toContain('DELETE FROM refresh_tokens WHERE user_id');
+    expect(mockQuery.mock.calls[3][1][0]).toBe('user-1');
+  });
+
+  it('throws 400 for invalid code', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    try {
+      await resetPassword('000000', 'NewPass1!');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(400);
+      expect((err as AuthError).code).toBe('INVALID_CODE');
+    }
+  });
+
+  it('throws 400 for expired code', async () => {
+    const pastDate = new Date(Date.now() - 10 * 60 * 1000);
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 'ver-1', user_id: 'user-1', expires_at: pastDate }],
+    });
+
+    try {
+      await resetPassword('999999', 'NewPass1!');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(400);
+      expect((err as AuthError).code).toBe('CODE_EXPIRED');
+    }
+  });
+
+  it('revokes all refresh tokens on password reset', async () => {
+    const futureDate = new Date(Date.now() + 10 * 60 * 1000);
+    mockQuery
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ id: 'ver-1', user_id: 'user-1', expires_at: futureDate }],
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 3, rows: [] }); // 3 tokens revoked
+
+    await resetPassword('123456', 'NewPass1!');
+
+    // Last call should be invalidateAllUserRefreshTokens
+    const lastCall = mockQuery.mock.calls[3];
+    expect(lastCall[0]).toContain('DELETE FROM refresh_tokens WHERE user_id');
+    expect(lastCall[1][0]).toBe('user-1');
+  });
+});
+
+// ============================================================================
+// B08 — Profile + Change Password
+// ============================================================================
+
+describe('getProfile (B08)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockProfileRow = {
+    id: 'user-1',
+    synaptixlabs_id: 'sl_abc123',
+    email: 'user@example.com',
+    name: 'Test User',
+    image: null,
+    role: 'user',
+    email_verified: true,
+    products: ['vigil'],
+    plan: 'free',
+    plan_tokens: 100,
+    purchased_tokens: 0,
+    total_tokens_used: 50,
+    subscription_status: 'none',
+    billing_period: 'none',
+    created_at: new Date('2026-01-01'),
+  };
+
+  it('returns full profile from DB (not from JWT)', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [mockProfileRow] });
+
+    const profile = await getProfile('user-1');
+
+    expect(profile.id).toBe('user-1');
+    expect(profile.synaptixlabsId).toBe('sl_abc123');
+    expect(profile.email).toBe('user@example.com');
+    expect(profile.name).toBe('Test User');
+    expect(profile.role).toBe('user');
+    expect(profile.plan).toBe('free');
+    expect(profile.planTokens).toBe(100);
+    expect(profile.purchasedTokens).toBe(0);
+    expect(profile.totalTokensUsed).toBe(50);
+    expect(profile.emailVerified).toBe(true);
+    expect(profile.image).toBeNull();
+
+    // Verify it queries DB
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('SELECT');
+    expect(sql).toContain('FROM users WHERE id = $1');
+    expect(params[0]).toBe('user-1');
+  });
+
+  it('throws 404 for non-existent user', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    try {
+      await getProfile('deleted-user');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(404);
+      expect((err as AuthError).code).toBe('USER_NOT_FOUND');
+    }
+  });
+});
+
+describe('updateProfile (B08)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockProfileRow = {
+    id: 'user-1',
+    synaptixlabs_id: 'sl_abc123',
+    email: 'user@example.com',
+    name: 'Updated Name',
+    image: 'https://example.com/avatar.jpg',
+    role: 'user',
+    email_verified: true,
+    products: ['vigil'],
+    plan: 'free',
+    plan_tokens: 100,
+    purchased_tokens: 0,
+    total_tokens_used: 50,
+    subscription_status: 'none',
+    billing_period: 'none',
+    created_at: new Date('2026-01-01'),
+  };
+
+  it('updates name only', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }) // UPDATE
+      .mockResolvedValueOnce({ rowCount: 1, rows: [mockProfileRow] }); // getProfile SELECT
+
+    const profile = await updateProfile('user-1', { name: 'Updated Name' });
+
+    expect(profile.name).toBe('Updated Name');
+
+    // Verify UPDATE query
+    const [updateSql, updateParams] = mockQuery.mock.calls[0];
+    expect(updateSql).toContain('UPDATE users SET name = $1');
+    expect(updateParams[0]).toBe('Updated Name');
+    expect(updateParams[1]).toBe('user-1');
+  });
+
+  it('updates image only', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [mockProfileRow] });
+
+    await updateProfile('user-1', { image: 'https://example.com/avatar.jpg' });
+
+    const [updateSql, updateParams] = mockQuery.mock.calls[0];
+    expect(updateSql).toContain('UPDATE users SET image = $1');
+    expect(updateParams[0]).toBe('https://example.com/avatar.jpg');
+  });
+
+  it('updates both name and image', async () => {
+    mockQuery
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [mockProfileRow] });
+
+    await updateProfile('user-1', { name: 'New Name', image: 'https://example.com/new.jpg' });
+
+    const [updateSql] = mockQuery.mock.calls[0];
+    expect(updateSql).toContain('name = $1');
+    expect(updateSql).toContain('image = $2');
+  });
+
+  it('returns current profile when no fields to update', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 1, rows: [mockProfileRow] });
+
+    const profile = await updateProfile('user-1', {});
+
+    // Should call getProfile directly (no UPDATE)
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockQuery.mock.calls[0][0]).toContain('SELECT');
+  });
+});
+
+describe('changePassword (B08)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('changes password when old password is correct', async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ password_hash: 'argon2id_hash_of_OldPass123!' }],
+      }) // SELECT password_hash
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] }) // UPDATE password_hash
+      .mockResolvedValueOnce({ rowCount: 2, rows: [] }); // DELETE refresh_tokens
+
+    await changePassword('user-1', 'OldPass123!', 'NewPass456!');
+
+    // Verify new password was hashed with Argon2id
+    const [updateSql, updateParams] = mockQuery.mock.calls[1];
+    expect(updateSql).toContain('UPDATE users SET password_hash');
+    expect(updateParams[0]).toBe('argon2id_hash_of_NewPass456!');
+    expect(updateParams[1]).toBe('user-1');
+
+    // Verify all refresh tokens were revoked
+    const [revokeSql, revokeParams] = mockQuery.mock.calls[2];
+    expect(revokeSql).toContain('DELETE FROM refresh_tokens WHERE user_id');
+    expect(revokeParams[0]).toBe('user-1');
+  });
+
+  it('throws 401 when old password is wrong', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ password_hash: 'argon2id_hash_of_RealOldPass!' }],
+    });
+
+    try {
+      await changePassword('user-1', 'WrongOldPass!', 'NewPass456!');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(401);
+      expect((err as AuthError).code).toBe('INVALID_PASSWORD');
+    }
+
+    // Should NOT have called UPDATE or DELETE
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it('throws 404 when user not found', async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    try {
+      await changePassword('deleted-user', 'OldPass!', 'NewPass!');
+      expect.fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AuthError);
+      expect((err as AuthError).statusCode).toBe(404);
+      expect((err as AuthError).code).toBe('USER_NOT_FOUND');
+    }
+  });
+
+  it('revokes all refresh tokens after password change', async () => {
+    mockQuery
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ password_hash: 'argon2id_hash_of_Current1!' }],
+      })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 5, rows: [] }); // 5 tokens revoked
+
+    await changePassword('user-1', 'Current1!', 'NewSecure1!');
+
+    // Third query should be the revocation
+    const [sql, params] = mockQuery.mock.calls[2];
     expect(sql).toContain('DELETE FROM refresh_tokens WHERE user_id');
     expect(params[0]).toBe('user-1');
   });

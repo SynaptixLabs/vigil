@@ -12,7 +12,6 @@ import { sprintsRouter } from './routes/sprints.js';
 import { suggestRouter } from './routes/suggest.js';
 import { projectsRouter } from './routes/projects.js';
 import { getStorage } from './storage/index.js';
-import { authRouter } from './modules/auth/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -58,7 +57,6 @@ app.get('/health', (_req, res) => {
 });
 
 // API routes
-app.use('/api/auth', authRouter);
 app.use('/api/session', sessionRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/bugs', bugsRouter);
