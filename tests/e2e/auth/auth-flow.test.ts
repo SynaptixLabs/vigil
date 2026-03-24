@@ -69,7 +69,7 @@ function mockArgon2Verify(storedHash: string, password: string): boolean {
 // ---------------------------------------------------------------------------
 // JWT simulation — realistic token format with claims
 // ---------------------------------------------------------------------------
-const JWT_SECRET = 'test-jwt-secret-at-least-32-chars-long!!';
+/* JWT secret for reference: 'test-jwt-secret-at-least-32-chars-long!!' */
 const ACCESS_TOKEN_EXPIRY_SECONDS = 15 * 60; // 15 minutes
 
 function mockJwtSign(

@@ -111,6 +111,13 @@ export type BillingPeriod = 'monthly' | 'yearly' | 'none';
  * - Production launch spec (billing + platform fields)
  * - Track B TODO (B01 details)
  */
+/** Product enrollment entry (JSONB in product_enrollments column). */
+export interface ProductEnrollment {
+  product: string;
+  enrolledAt: string;
+  localPlan: string;
+}
+
 export interface UserRow {
   /** Primary key — internal UUID (gen_random_uuid). */
   id: string;
