@@ -683,6 +683,9 @@ function createCommentPin(
     const startX = e.clientX, startY = e.clientY;
     let moved = false;
 
+    // CRITICAL: Block syncCanvas during drag — prevents element destruction
+    blockSync = true;
+
     const onPinMove = (me: MouseEvent) => {
       const pdx = me.clientX - startX;
       const pdy = me.clientY - startY;
@@ -692,7 +695,7 @@ function createCommentPin(
       // Remove tooltip during drag
       if (tooltipEl) { tooltipEl.remove(); tooltipEl = null; }
 
-      // Update all child elements' positions
+      // Update all child elements' positions directly (no state update)
       const nx = origX + pdx;
       const ny = origY + pdy;
       shadow.setAttribute('cx', String(nx));
@@ -703,37 +706,28 @@ function createCommentPin(
       icon.setAttribute('y', String(ny + 1));
     };
 
-    const cleanupPinDrag = () => {
-      document.removeEventListener('mousemove', onPinMove);
-      document.removeEventListener('mouseup', onPinUp);
-      document.removeEventListener('pointerup', onPinUp);
-      window.removeEventListener('mouseup', onPinUp);
-      window.removeEventListener('pointerup', onPinUp);
-      window.removeEventListener('blur', onPinUp as EventListener);
-      document.documentElement.removeEventListener('mouseleave', onPinUp as EventListener);
-    };
+    const onPinUp = (ue: MouseEvent) => {
+      // Remove listeners FIRST — capture phase, same as registration
+      document.removeEventListener('mousemove', onPinMove, true);
+      document.removeEventListener('mouseup', onPinUp, true);
 
-    const onPinUp = (ue: MouseEvent | Event) => {
-      cleanupPinDrag();
+      // Unblock sync
+      blockSync = false;
 
       if (moved) {
         pinWasDragged = true;
-        const me = ue as MouseEvent;
-        const fdx = (me.clientX ?? 0) - startX;
-        const fdy = (me.clientY ?? 0) - startY;
-        if (fdx !== 0 || fdy !== 0) {
-          updateAnnotation(ann.id, { comment: { x: origX + fdx, y: origY + fdy } });
-        }
+        const fdx = ue.clientX - startX;
+        const fdy = ue.clientY - startY;
+        updateAnnotation(ann.id, { comment: { x: origX + fdx, y: origY + fdy } });
+      } else {
+        // No movement — re-sync to restore visual state
+        syncCanvas(getAnnotationsForCurrentPage() as Annotation[]);
       }
     };
 
-    document.addEventListener('mousemove', onPinMove);
-    document.addEventListener('mouseup', onPinUp);
-    document.addEventListener('pointerup', onPinUp);
-    window.addEventListener('mouseup', onPinUp);
-    window.addEventListener('pointerup', onPinUp);
-    window.addEventListener('blur', onPinUp as EventListener);
-    document.documentElement.addEventListener('mouseleave', onPinUp as EventListener);
+    // CAPTURE phase — guaranteed to fire regardless of target element
+    document.addEventListener('mousemove', onPinMove, true);
+    document.addEventListener('mouseup', onPinUp, true);
   });
 
   // ── Click handler — select only (only if not dragged) ──────────────────────
@@ -816,13 +810,9 @@ function applySelection(el: SVGElement, ann: Annotation): void {
     }
 
     blockSync = true;
-    document.addEventListener('mousemove', onInteractMove);
-    document.addEventListener('mouseup', onInteractUp);
-    document.addEventListener('pointerup', onInteractUp);
-    window.addEventListener('mouseup', onInteractUp);
-    window.addEventListener('pointerup', onInteractUp);
-    window.addEventListener('blur', onInteractUp);
-    document.documentElement.addEventListener('mouseleave', onInteractUp as EventListener);
+    // CAPTURE phase — guaranteed to fire regardless of element destruction
+    document.addEventListener('mousemove', onInteractMove, true);
+    document.addEventListener('mouseup', onInteractUp, true);
   });
 
   // Add resize handles for rect / circle (not freehand)
@@ -891,13 +881,9 @@ function addResizeHandles(bbox: { x: number; y: number; w: number; h: number }, 
       interact.origPath = null;
 
       blockSync = true;
-      document.addEventListener('mousemove', onInteractMove);
-      document.addEventListener('mouseup', onInteractUp);
-      document.addEventListener('pointerup', onInteractUp);
-      window.addEventListener('mouseup', onInteractUp);
-      window.addEventListener('pointerup', onInteractUp);
-      window.addEventListener('blur', onInteractUp);
-      document.documentElement.addEventListener('mouseleave', onInteractUp as EventListener);
+      // CAPTURE phase — guaranteed to fire
+      document.addEventListener('mousemove', onInteractMove, true);
+      document.addEventListener('mouseup', onInteractUp, true);
     });
 
     svgCanvas.appendChild(handle);
@@ -1013,13 +999,9 @@ function onInteractMove(e: MouseEvent): void {
 }
 
 function onInteractUp(e: MouseEvent | Event): void {
-  document.removeEventListener('mousemove', onInteractMove);
-  document.removeEventListener('mouseup', onInteractUp);
-  document.removeEventListener('pointerup', onInteractUp);
-  window.removeEventListener('mouseup', onInteractUp);
-  window.removeEventListener('pointerup', onInteractUp);
-  window.removeEventListener('blur', onInteractUp);
-  document.documentElement.removeEventListener('mouseleave', onInteractUp as EventListener);
+  // Remove capture-phase listeners (must match registration)
+  document.removeEventListener('mousemove', onInteractMove, true);
+  document.removeEventListener('mouseup', onInteractUp, true);
 
   if (!interact.targetId) {
     interact.mode = 'idle';
@@ -1117,13 +1099,11 @@ export function resetInteractionState(): void {
   interact.origRect = null;
   interact.origCircle = null;
   interact.origPath = null;
+  // Remove both phases in case either was used
+  document.removeEventListener('mousemove', onInteractMove, true);
+  document.removeEventListener('mouseup', onInteractUp, true);
   document.removeEventListener('mousemove', onInteractMove);
   document.removeEventListener('mouseup', onInteractUp);
-  document.removeEventListener('pointerup', onInteractUp);
-  window.removeEventListener('mouseup', onInteractUp);
-  window.removeEventListener('pointerup', onInteractUp);
-  window.removeEventListener('blur', onInteractUp);
-  document.documentElement.removeEventListener('mouseleave', onInteractUp as EventListener);
 }
 
 /** Enable click-to-select when no tool is active */

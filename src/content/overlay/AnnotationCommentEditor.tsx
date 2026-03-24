@@ -245,26 +245,24 @@ const AnnotationCommentEditor: React.FC<CommentEditorProps> = ({ sessionId, onCl
     e.preventDefault();
     dragStart.current = { mx: e.clientX, my: e.clientY, ox: editorPos.left, oy: editorPos.top };
 
-    // All move/up handlers — no isDragging guard, cleanup always runs
+    // Simple, robust drag — no clamping during drag (prevents height jumps)
     const onMove = (me: MouseEvent) => {
-      const nx = dragStart.current.ox + (me.clientX - dragStart.current.mx);
-      const ny = dragStart.current.oy + (me.clientY - dragStart.current.my);
-      setEditorPos(clamp(nx, ny));
+      setEditorPos({
+        left: dragStart.current.ox + (me.clientX - dragStart.current.mx),
+        top: dragStart.current.oy + (me.clientY - dragStart.current.my),
+      });
     };
-    const cleanup = () => {
+    const onUp = () => {
       isDragging.current = false;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', cleanup);
-      window.removeEventListener('mouseup', cleanup);
-      window.removeEventListener('blur', cleanup);
+      document.removeEventListener('mousemove', onMove, true);
+      document.removeEventListener('mouseup', onUp, true);
     };
 
     isDragging.current = true;
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', cleanup);
-    window.addEventListener('mouseup', cleanup);
-    window.addEventListener('blur', cleanup);  // catches alt-tab, focus loss
-  }, [editorPos, clamp, cleanupDragListeners]);
+    // CAPTURE phase — guarantees we get the event even inside Shadow DOM
+    document.addEventListener('mousemove', onMove, true);
+    document.addEventListener('mouseup', onUp, true);
+  }, [editorPos]);
 
   // Build style
   const editorStyle: React.CSSProperties = {
