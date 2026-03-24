@@ -703,20 +703,31 @@ function createCommentPin(
       icon.setAttribute('y', String(ny + 1));
     };
 
-    const onPinUp = (ue: MouseEvent) => {
+    const cleanupPinDrag = () => {
       document.removeEventListener('mousemove', onPinMove);
       document.removeEventListener('mouseup', onPinUp);
+      window.removeEventListener('mouseup', onPinUp);
+      document.documentElement.removeEventListener('mouseleave', onPinUp as EventListener);
+    };
+
+    const onPinUp = (ue: MouseEvent | Event) => {
+      cleanupPinDrag();
 
       if (moved) {
         pinWasDragged = true;
-        const fdx = ue.clientX - startX;
-        const fdy = ue.clientY - startY;
-        updateAnnotation(ann.id, { comment: { x: origX + fdx, y: origY + fdy } });
+        const me = ue as MouseEvent;
+        const fdx = (me.clientX ?? 0) - startX;
+        const fdy = (me.clientY ?? 0) - startY;
+        if (fdx !== 0 || fdy !== 0) {
+          updateAnnotation(ann.id, { comment: { x: origX + fdx, y: origY + fdy } });
+        }
       }
     };
 
     document.addEventListener('mousemove', onPinMove);
     document.addEventListener('mouseup', onPinUp);
+    window.addEventListener('mouseup', onPinUp);
+    document.documentElement.addEventListener('mouseleave', onPinUp as EventListener);
   });
 
   // ── Click handler — select only (only if not dragged) ──────────────────────
@@ -801,6 +812,8 @@ function applySelection(el: SVGElement, ann: Annotation): void {
     blockSync = true;
     document.addEventListener('mousemove', onInteractMove);
     document.addEventListener('mouseup', onInteractUp);
+    window.addEventListener('mouseup', onInteractUp);
+    document.documentElement.addEventListener('mouseleave', onInteractUp as EventListener);
   });
 
   // Add resize handles for rect / circle (not freehand)
@@ -871,6 +884,8 @@ function addResizeHandles(bbox: { x: number; y: number; w: number; h: number }, 
       blockSync = true;
       document.addEventListener('mousemove', onInteractMove);
       document.addEventListener('mouseup', onInteractUp);
+      window.addEventListener('mouseup', onInteractUp);
+      document.documentElement.addEventListener('mouseleave', onInteractUp as EventListener);
     });
 
     svgCanvas.appendChild(handle);
@@ -985,9 +1000,11 @@ function onInteractMove(e: MouseEvent): void {
   }
 }
 
-function onInteractUp(e: MouseEvent): void {
+function onInteractUp(e: MouseEvent | Event): void {
   document.removeEventListener('mousemove', onInteractMove);
   document.removeEventListener('mouseup', onInteractUp);
+  window.removeEventListener('mouseup', onInteractUp);
+  document.documentElement.removeEventListener('mouseleave', onInteractUp as EventListener);
 
   if (!interact.targetId) {
     interact.mode = 'idle';
@@ -995,8 +1012,9 @@ function onInteractUp(e: MouseEvent): void {
     return;
   }
 
-  const dx = e.clientX - interact.startX;
-  const dy = e.clientY - interact.startY;
+  const me = e as MouseEvent;
+  const dx = (me.clientX ?? interact.startX) - interact.startX;
+  const dy = (me.clientY ?? interact.startY) - interact.startY;
   const annId = interact.targetId;
 
   // Capture interaction values locally before resetting state
@@ -1086,6 +1104,8 @@ export function resetInteractionState(): void {
   interact.origPath = null;
   document.removeEventListener('mousemove', onInteractMove);
   document.removeEventListener('mouseup', onInteractUp);
+  window.removeEventListener('mouseup', onInteractUp);
+  document.documentElement.removeEventListener('mouseleave', onInteractUp as EventListener);
 }
 
 /** Enable click-to-select when no tool is active */
