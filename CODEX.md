@@ -17,7 +17,7 @@
 | **Stack** | Chrome Ext (MV3) · React 18 · Vite · CRXJS · rrweb · Dexie.js · Node.js + Express (server) · MCP SDK · React (dashboard) |
 | **LLM platform** | AGENTS project (`localhost:8000`) — Sprint 07+ |
 | **Deploy** | Unpacked extension + vigil-server (local) + Vercel + Neon PostgreSQL (cloud, Sprint 07) |
-| **Version** | 2.0.0 (Sprint 06 target) |
+| **Version** | 3.0.0 (Sprint 09 — public launch) |
 
 ---
 

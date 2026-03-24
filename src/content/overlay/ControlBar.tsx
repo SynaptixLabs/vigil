@@ -317,6 +317,7 @@ const ControlBar: React.FC<ControlBarProps> = ({ sessionId, sessionName, onStop 
 
       <AnnotationToolbar
         visible={showAnnotationTools}
+        sessionId={sessionId}
         onClose={() => setShowAnnotationTools(false)}
       />
 

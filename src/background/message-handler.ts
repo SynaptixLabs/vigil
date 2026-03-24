@@ -419,6 +419,7 @@ export function handleMessage(
             id: p.id as string,
             name: p.name as string,
             currentSprint: (p.current_sprint ?? p.currentSprint) as string | undefined,
+            url: (p.url as string | undefined) ?? undefined,
           }));
           sendResponse({ ok: true, data: { projects } });
         })

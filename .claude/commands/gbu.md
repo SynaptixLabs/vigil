@@ -109,11 +109,27 @@ For UGLY >3V: document carry-forward with sprint target.
 | Architecture Safety | | Any non-negotiable violated? |
 | Production Readiness | | No debug code, proper errors? |
 
-## PHASE 7: Write DR Report
+## PHASE 7: Write DR Report (MANDATORY)
 
-Save to: `docs/sprints/sprint_XX/reports/DR_{topic}.md`
+**This phase is NON-NEGOTIABLE. Every GBU review MUST produce a report file.**
 
-Include: Requirements table, GBU tables, fixes applied, scorecard, verdict.
+1. Determine the current sprint from `CLAUDE.md` or `CODEX.md`
+2. Create the reports folder if it doesn't exist: `docs/sprints/sprint_XX/reports/`
+3. Save report to: `docs/sprints/sprint_XX/reports/DR_{topic}_{YYYY-MM-DD}.md`
+4. Use the template from `.claude/skills/design-review-gbu/report-template.md`
+
+The report MUST include:
+- **Verdict** (APPROVE / APPROVE WITH CONDITIONS / REVISE / REJECT) at the top
+- **Scope** — what was reviewed (files, diff, TODO reference)
+- **Date**
+- **Requirements compliance table** (from Phase 2)
+- **Quality checks table** (from Phase 3)
+- **GOOD / BAD / UGLY tables** (from Phase 4)
+- **Fixes applied** — list of commits from Phase 5
+- **Scorecard** (from Phase 6)
+- **Recommended next actions**
+
+After writing the report, confirm the file path to the user.
 
 ## Verdict Criteria
 

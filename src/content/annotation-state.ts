@@ -54,6 +54,12 @@ export function getSelectedAnnotation(): Annotation | null {
   return state.annotations.find((a) => a.id === state.selectedId) ?? null;
 }
 
+/** Return only annotations whose pageUrl matches the current page. */
+export function getAnnotationsForCurrentPage(): Annotation[] {
+  const currentUrl = window.location.href;
+  return state.annotations.filter((a) => a.pageUrl === currentUrl);
+}
+
 // ── Init / Teardown ───────────────────────────────────────────────────────────
 
 export function initAnnotationState(sessionId: string): void {
@@ -162,6 +168,27 @@ export function clearAllAnnotations(): void {
     { type: MessageType.CLEAR_ANNOTATIONS, payload: { sessionId }, source: 'content' },
     () => {},
   );
+}
+
+/** Clear only annotations for the current page URL (not all sessions). */
+export function clearPageAnnotations(): void {
+  const currentUrl = window.location.href;
+  const toDelete = state.annotations.filter((a) => a.pageUrl === currentUrl);
+  if (toDelete.length === 0) return;
+
+  state.annotations = state.annotations.filter((a) => a.pageUrl !== currentUrl);
+  if (state.selectedId && toDelete.some((a) => a.id === state.selectedId)) {
+    state.selectedId = null;
+  }
+  dispatch(ANNOTATION_EVENTS.UPDATED);
+
+  // Delete each from persistence
+  for (const ann of toDelete) {
+    chrome.runtime.sendMessage(
+      { type: MessageType.DELETE_ANNOTATION, payload: { id: ann.id }, source: 'content' },
+      () => {},
+    );
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

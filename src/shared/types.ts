@@ -199,4 +199,5 @@ export interface ProjectInfo {
   id: string;
   name: string;
   currentSprint?: string;
+  url?: string;
 }

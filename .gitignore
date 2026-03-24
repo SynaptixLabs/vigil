@@ -115,15 +115,19 @@ temp/
 *.sqlite3
 
 # ========================
-# Windsurf Specific
+# Windsurf (deprecated — migrated to .claude/)
 # ========================
-# Keep .windsurf/ if using Windsurf project settings
-# .windsurf/
+.windsurf/
 
 # ========================
 # Vigil Runtime Data
 # ========================
 .vigil/
+server.log
+nul
+
+# Playwright MCP logs
+.playwright-mcp/
 
 # ========================
 # Project Specific
@@ -139,7 +143,15 @@ temp/
 # Playwright browser binaries
 .playwright/
 
-# Vitest
+# Vite / Vitest temp files
+vite.config.ts.timestamp-*
 vitest.config.ts.timestamp-*
 
 .vercel
+
+# ========================
+# Claude Code (runtime)
+# ========================
+.claude/worktrees/
+.claude/state/session-state.md
+.claude/projects/
