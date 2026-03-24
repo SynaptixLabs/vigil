@@ -10,11 +10,14 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Annotation } from '@shared/types';
+import { MessageType } from '@shared/types';
 import {
   setTool,
   getTool,
   clearAllAnnotations,
+  clearPageAnnotations,
   getAnnotations,
+  getAnnotationsForCurrentPage,
   deleteAnnotationById,
   getAnnotationState,
   ANNOTATION_EVENTS,
@@ -24,6 +27,7 @@ import { resetInteractionState } from '../annotation-canvas';
 
 interface AnnotationToolbarProps {
   visible: boolean;
+  sessionId: string;
   onClose: () => void;
 }
 
@@ -34,11 +38,11 @@ const TOOLS: Array<{ id: AnnotationTool; icon: string; label: string }> = [
   { id: 'freehand', icon: '✏️', label: 'Freehand' },
 ];
 
-const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, onClose }) => {
+const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, sessionId, onClose }) => {
   const [activeTool, setActiveTool] = useState<AnnotationTool>(null);
   const [annotations, setAnnotations] = useState<readonly Annotation[]>([]);
 
-  // Derived counts
+  // Derived counts (all annotations)
   const counts = useMemo(() => {
     let shapes = 0;
     let bugs = 0;
@@ -52,6 +56,11 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, onClose 
       }
     }
     return { total: annotations.length, shapes, bugs, features };
+  }, [annotations]);
+
+  // Page-scoped count (only annotations for current URL)
+  const pageCount = useMemo(() => {
+    return getAnnotationsForCurrentPage().length;
   }, [annotations]);
 
   // Sync with annotation state
@@ -115,6 +124,33 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, onClose 
     }
   }, [activeTool]);
 
+  const handleClearPage = useCallback(() => {
+    if (pageCount === 0) return;
+    const ok = window.confirm(`Clear ${pageCount} annotation(s) on this page?`);
+    if (ok) {
+      resetInteractionState();
+      clearPageAnnotations();
+    }
+  }, [pageCount]);
+
+  const handleSaveAndClearPage = useCallback(() => {
+    if (pageCount === 0) return;
+    // Capture screenshot first, then clear page annotations
+    try {
+      chrome.runtime.sendMessage(
+        { type: MessageType.CAPTURE_SCREENSHOT, payload: { sessionId }, source: 'content' },
+        () => {
+          resetInteractionState();
+          clearPageAnnotations();
+        },
+      );
+    } catch {
+      // If messaging fails, still clear
+      resetInteractionState();
+      clearPageAnnotations();
+    }
+  }, [pageCount, sessionId]);
+
   const handleClearAll = useCallback(() => {
     if (counts.total === 0) return;
     // Simple confirm — works in content script context
@@ -147,6 +183,32 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, onClose 
       <div className="refine-divider" />
 
       <button
+        className="refine-btn"
+        title={`Save & Clear Page (${pageCount})`}
+        aria-label="Screenshot then clear page annotations"
+        data-testid="btn-annotation-save-clear-page"
+        tabIndex={0}
+        disabled={pageCount === 0}
+        onClick={handleSaveAndClearPage}
+        style={pageCount === 0 ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+      >
+        {'📸'}
+      </button>
+
+      <button
+        className="refine-btn"
+        title={`Clear Page (${pageCount})`}
+        aria-label="Clear page annotations"
+        data-testid="btn-annotation-clear-page"
+        tabIndex={0}
+        disabled={pageCount === 0}
+        onClick={handleClearPage}
+        style={pageCount === 0 ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+      >
+        {'🧹'}
+      </button>
+
+      <button
         className="refine-btn refine-btn--danger"
         title={`Clear all (${counts.total})`}
         aria-label="Clear all annotations"
@@ -156,7 +218,7 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ visible, onClose 
         onClick={handleClearAll}
         style={counts.total === 0 ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
       >
-        🗑️
+        {'🗑️'}
       </button>
 
       {counts.total > 0 && (

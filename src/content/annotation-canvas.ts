@@ -13,11 +13,12 @@
 import type { Annotation } from '@shared/types';
 import {
   getAnnotationState,
-  getAnnotations,
+  getAnnotationsForCurrentPage,
   getTool,
   setDrawing,
   addAnnotation,
   updateAnnotation,
+  deleteAnnotationById,
   selectAnnotation,
   generateAnnotationId,
   createAnnotationBase,
@@ -33,6 +34,18 @@ const CANVAS_Z = '2147483646'; // one below #refine-root
 function stopPropagationHandler(e: Event): void { e.stopPropagation(); }
 
 let svgCanvas: SVGSVGElement | null = null;
+
+// ── URL change tracking (for page-scoped annotations) ────────────────────────
+let lastTrackedUrl: string = '';
+let urlCheckInterval: ReturnType<typeof setInterval> | null = null;
+
+function handleUrlChange(): void {
+  const currentUrl = window.location.href;
+  if (currentUrl !== lastTrackedUrl) {
+    lastTrackedUrl = currentUrl;
+    syncCanvas(getAnnotationsForCurrentPage());
+  }
+}
 
 // ── Drawing state ─────────────────────────────────────────────────────────────
 
@@ -113,6 +126,12 @@ export function mountAnnotationCanvas(): void {
   document.addEventListener(ANNOTATION_EVENTS.UPDATED, handleAnnotationsUpdated);
   document.addEventListener(ANNOTATION_EVENTS.TOOL_CHANGED, handleToolChanged as EventListener);
 
+  // ── URL change detection (page-scoped annotations) ──────────────────────
+  lastTrackedUrl = window.location.href;
+  window.addEventListener('popstate', handleUrlChange);  // back/forward navigation
+  // Periodic check for SPA navigation (pushState doesn't fire popstate)
+  urlCheckInterval = setInterval(handleUrlChange, 500);
+
   console.log('[Vigil] Annotation canvas mounted');
 }
 
@@ -120,6 +139,13 @@ export function unmountAnnotationCanvas(): void {
   disableDrawMode();
   document.removeEventListener(ANNOTATION_EVENTS.UPDATED, handleAnnotationsUpdated);
   document.removeEventListener(ANNOTATION_EVENTS.TOOL_CHANGED, handleToolChanged as EventListener);
+
+  // Clean up URL change detection
+  window.removeEventListener('popstate', handleUrlChange);
+  if (urlCheckInterval) {
+    clearInterval(urlCheckInterval);
+    urlCheckInterval = null;
+  }
 
   if (svgCanvas) {
     svgCanvas.remove();
@@ -131,7 +157,7 @@ export function unmountAnnotationCanvas(): void {
 // ── Event handlers ────────────────────────────────────────────────────────────
 
 function handleAnnotationsUpdated(): void {
-  syncCanvas(getAnnotations() as Annotation[]);
+  syncCanvas(getAnnotationsForCurrentPage());
 }
 
 function handleToolChanged(e: CustomEvent<{ tool: AnnotationTool }>): void {
@@ -348,6 +374,99 @@ function onMouseUp(e: MouseEvent): void {
   }
 }
 
+// ── Delete button helper ──────────────────────────────────────────────────────
+
+/**
+ * Create a small "x" delete button as an SVG foreignObject.
+ * Positioned at (x, y) — caller provides top-right corner of the shape's bounding box.
+ * Hidden by default; shown on hover via parent group mouseenter/mouseleave.
+ */
+function createDeleteButton(ann: Annotation, bx: number, by: number): SVGForeignObjectElement {
+  const SIZE = 18;
+  const fo = document.createElementNS(SVG_NS, 'foreignObject');
+  fo.setAttribute('x', String(bx - SIZE / 2));
+  fo.setAttribute('y', String(by - SIZE / 2));
+  fo.setAttribute('width', String(SIZE));
+  fo.setAttribute('height', String(SIZE));
+  fo.style.cssText = 'overflow: visible; pointer-events: auto; display: none;';
+  fo.classList.add('vigil-delete-btn');
+
+  const btn = document.createElement('div');
+  btn.style.cssText = [
+    `width: ${SIZE}px`,
+    `height: ${SIZE}px`,
+    'background: #ef4444',
+    'color: #fff',
+    'border-radius: 50%',
+    'display: flex',
+    'align-items: center',
+    'justify-content: center',
+    'font-size: 12px',
+    'font-family: sans-serif',
+    'cursor: pointer',
+    'line-height: 1',
+    'box-shadow: 0 1px 4px rgba(0,0,0,0.3)',
+    'user-select: none',
+    'pointer-events: auto',
+  ].join('; ');
+  btn.textContent = '\u00d7'; // multiplication sign (×)
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    deleteAnnotationById(ann.id);
+  });
+  btn.addEventListener('mousedown', (e) => {
+    e.stopPropagation(); // Prevent drag from starting
+  });
+  fo.appendChild(btn);
+  return fo;
+}
+
+/**
+ * Wrap a shape element in a <g> group with a hover delete button.
+ * Returns the group element.
+ */
+function wrapWithDeleteButton(el: SVGElement, ann: Annotation, deleteX: number, deleteY: number): SVGGElement {
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.appendChild(el);
+
+  const delBtn = createDeleteButton(ann, deleteX, deleteY);
+  g.appendChild(delBtn);
+
+  g.addEventListener('mouseenter', () => {
+    delBtn.style.display = 'block';
+  });
+  g.addEventListener('mouseleave', () => {
+    delBtn.style.display = 'none';
+  });
+
+  return g;
+}
+
+/** Get bounding box position for delete button placement (top-right corner). */
+function getDeletePosition(ann: Annotation): { x: number; y: number } | null {
+  if (ann.rect) return { x: ann.rect.x + ann.rect.width, y: ann.rect.y };
+  if (ann.circle) return { x: ann.circle.cx + ann.circle.rx, y: ann.circle.cy - ann.circle.ry };
+  if (ann.freehand) {
+    // Parse path to find bounding box
+    const coords = ann.freehand.pathData.match(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/g);
+    if (coords && coords.length > 0) {
+      let maxX = -Infinity, minY = Infinity;
+      for (const coord of coords) {
+        const [xs, ys] = coord.split(',');
+        const px = parseFloat(xs);
+        const py = parseFloat(ys);
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+      }
+      return { x: maxX, y: minY };
+    }
+    return null;
+  }
+  if (ann.comment) return { x: ann.comment.x + 12, y: ann.comment.y - 12 };
+  return null;
+}
+
 // ── Canvas rendering ──────────────────────────────────────────────────────────
 
 export function syncCanvas(annotations: Annotation[]): void {
@@ -375,6 +494,7 @@ export function syncCanvas(annotations: Annotation[]): void {
 
   for (const ann of annotations) {
     const isSelected = ann.id === selectedId;
+    const delPos = getDeletePosition(ann);
 
     if (ann.kind === 'rectangle' && ann.rect) {
       const el = createSvgRect(
@@ -385,7 +505,12 @@ export function syncCanvas(annotations: Annotation[]): void {
       el.dataset.annotationId = ann.id;
       makeShapeClickable(el);
       if (isSelected) applySelection(el, ann);
-      svgCanvas.appendChild(el);
+      if (delPos) {
+        const g = wrapWithDeleteButton(el, ann, delPos.x, delPos.y);
+        svgCanvas.appendChild(g);
+      } else {
+        svgCanvas.appendChild(el);
+      }
     } else if (ann.kind === 'circle' && ann.circle) {
       const el = createSvgEllipse(
         ann.circle.cx, ann.circle.cy,
@@ -395,7 +520,12 @@ export function syncCanvas(annotations: Annotation[]): void {
       el.dataset.annotationId = ann.id;
       makeShapeClickable(el);
       if (isSelected) applySelection(el, ann);
-      svgCanvas.appendChild(el);
+      if (delPos) {
+        const g = wrapWithDeleteButton(el, ann, delPos.x, delPos.y);
+        svgCanvas.appendChild(g);
+      } else {
+        svgCanvas.appendChild(el);
+      }
     } else if (ann.kind === 'freehand' && ann.freehand) {
       const el = createSvgPath(
         ann.freehand.pathData,
@@ -404,7 +534,12 @@ export function syncCanvas(annotations: Annotation[]): void {
       el.dataset.annotationId = ann.id;
       makeShapeClickable(el);
       if (isSelected) applySelection(el, ann);
-      svgCanvas.appendChild(el);
+      if (delPos) {
+        const g = wrapWithDeleteButton(el, ann, delPos.x, delPos.y);
+        svgCanvas.appendChild(g);
+      } else {
+        svgCanvas.appendChild(el);
+      }
     } else if (ann.kind === 'comment' && ann.comment) {
       const el = createCommentPin(ann.comment.x, ann.comment.y, ann.color, isSelected, ann);
       el.dataset.annotationId = ann.id;
@@ -482,11 +617,16 @@ function createCommentPin(
   icon.textContent = '💬';
   g.appendChild(icon);
 
+  // ── Delete button (top-right of pin) ────────────────────────────────────────
+  const pinDelBtn = createDeleteButton(ann, x + 12, y - 12);
+  g.appendChild(pinDelBtn);
+
   // ── Hover tooltip ──────────────────────────────────────────────────────────
   let tooltipEl: SVGForeignObjectElement | null = null;
 
   g.addEventListener('mouseenter', () => {
     if (interact.mode !== 'idle') return; // Don't show tooltip while dragging
+    pinDelBtn.style.display = 'block';
     const text = ann.commentText || (ann.commentEntityType === 'bug' ? '🐛 Bug' : '✨ Feature');
     tooltipEl = document.createElementNS(SVG_NS, 'foreignObject');
     // Clamp tooltip inside viewport
@@ -529,6 +669,7 @@ function createCommentPin(
       tooltipEl.remove();
       tooltipEl = null;
     }
+    pinDelBtn.style.display = 'none';
   });
 
   // ── Drag-to-reposition ────────────────────────────────────────────────────
@@ -912,7 +1053,7 @@ function onInteractUp(e: MouseEvent): void {
     }
   } else {
     // No meaningful movement — just re-sync to restore proper visual state
-    syncCanvas(getAnnotations() as Annotation[]);
+    syncCanvas(getAnnotationsForCurrentPage());
   }
 }
 

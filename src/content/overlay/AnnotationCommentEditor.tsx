@@ -208,11 +208,41 @@ const AnnotationCommentEditor: React.FC<CommentEditorProps> = ({ sessionId, onCl
     setEditorPos(clamp(left, top));
   }, [pinPosition, clamp]);
 
+  // Track active drag listeners for cleanup
+  const dragListeners = useRef<{
+    onMove: ((e: MouseEvent) => void) | null;
+    onUp: ((e: MouseEvent) => void) | null;
+    onLeave: (() => void) | null;
+  }>({ onMove: null, onUp: null, onLeave: null });
+
+  // Clean up all drag listeners helper
+  const cleanupDragListeners = useCallback(() => {
+    isDragging.current = false;
+    const { onMove, onUp, onLeave } = dragListeners.current;
+    if (onMove) {
+      document.removeEventListener('mousemove', onMove);
+    }
+    if (onUp) {
+      document.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mouseup', onUp);
+    }
+    if (onLeave) {
+      document.documentElement.removeEventListener('mouseleave', onLeave);
+    }
+    dragListeners.current = { onMove: null, onUp: null, onLeave: null };
+  }, []);
+
+  // Clean up drag listeners on unmount
+  useEffect(() => {
+    return () => {
+      cleanupDragListeners();
+    };
+  }, [cleanupDragListeners]);
+
   // Drag handlers
   const onDragStart = useCallback((e: React.MouseEvent) => {
     if (!editorPos) return;
     e.preventDefault();
-    isDragging.current = true;
     dragStart.current = { mx: e.clientX, my: e.clientY, ox: editorPos.left, oy: editorPos.top };
 
     const onMove = (me: MouseEvent) => {
@@ -222,13 +252,23 @@ const AnnotationCommentEditor: React.FC<CommentEditorProps> = ({ sessionId, onCl
       setEditorPos(clamp(nx, ny));
     };
     const onUp = () => {
-      isDragging.current = false;
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
+      cleanupDragListeners();
     };
+    const onLeave = () => {
+      cleanupDragListeners();
+    };
+
+    // Store refs for cleanup
+    dragListeners.current = { onMove, onUp, onLeave };
+
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  }, [editorPos, clamp]);
+    window.addEventListener('mouseup', onUp);
+    document.documentElement.addEventListener('mouseleave', onLeave);
+
+    // Set isDragging AFTER listeners are registered
+    isDragging.current = true;
+  }, [editorPos, clamp, cleanupDragListeners]);
 
   // Build style
   const editorStyle: React.CSSProperties = {
