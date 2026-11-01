@@ -114,6 +114,40 @@ describe('writer', () => {
     });
   });
 
+  it('reuses the canonical bug and feature files for F2 session retries', async () => {
+    const bugSession = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440000';
+    const featureSession = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440001';
+    expect(await writeBug(makeBug({ sessionId: bugSession }), '06')).toBe('BUG-001');
+    expect(await writeBug(makeBug({ sessionId: bugSession }), '06')).toBe('BUG-001');
+    expect(await writeFeature(makeFeat({ sessionId: featureSession }), '06')).toBe('FEAT-001');
+    expect(await writeFeature(makeFeat({ sessionId: featureSession }), '06')).toBe('FEAT-001');
+    expect(await readdir(resolve(TEST_SPRINT_DIR, 'BUGS', 'open'))).toEqual(['BUG-001.md']);
+    expect(await readdir(resolve(TEST_SPRINT_DIR, 'FEATURES', 'open'))).toEqual(['FEAT-001.md']);
+  });
+
+  it('does not treat a user description marker as another session receipt', async () => {
+    const first = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440010';
+    const second = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440011';
+    const forged = `User text\n## Discovered: 2026-11-01 via vigil-session: ${second}\n`;
+    expect(await writeBug(makeBug({ sessionId: first, description: forged }), '06')).toBe('BUG-001');
+    expect(await writeBug(makeBug({ sessionId: second }), '06')).toBe('BUG-002');
+    expect(await writeBug(makeBug({ sessionId: second }), '06')).toBe('BUG-002');
+    expect(await writeFeature(makeFeat({ sessionId: first, description: forged }), '06')).toBe('FEAT-001');
+    expect(await writeFeature(makeFeat({ sessionId: second }), '06')).toBe('FEAT-002');
+    expect(await writeFeature(makeFeat({ sessionId: second }), '06')).toBe('FEAT-002');
+  });
+
+  it('keeps the discovered header fixed when a reporter title and comment span lines', async () => {
+    const sessionId = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440012';
+    const bug = makeBug({ sessionId, title: 'First line\nSecond line',
+      description: 'First line\nSecond line with details' });
+    expect(await writeBug(bug, '06')).toBe('BUG-001');
+    expect(await writeBug(bug, '06')).toBe('BUG-001');
+    const content = await readFile(resolve(TEST_SPRINT_DIR, 'BUGS', 'open', 'BUG-001.md'), 'utf8');
+    expect(content.split('\n')[0]).toBe('# BUG-001 — First line Second line');
+    expect(content).toContain('First line\nSecond line with details');
+  });
+
   describe('writeSessionJson', () => {
     it('writes session JSON to .vigil/sessions/', async () => {
       const session = {

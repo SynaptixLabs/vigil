@@ -205,9 +205,11 @@ export class NeonStorage implements StorageProvider {
     const bugId = await this.nextBugId();
     const discovered = `${formatDate(bug.timestamp)} via vigil-session: ${bug.sessionId}`;
 
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO bugs (id, title, status, severity, sprint, discovered, steps_to_reproduce, expected, actual, url, regression_test, regression_test_status, session_id)
-       VALUES ($1, $2, 'OPEN', $3, $4, $5, $6, '_To be filled_', '_To be filled_', $7, $8, $9, $10)`,
+       VALUES ($1, $2, 'OPEN', $3, $4, $5, $6, '_To be filled_', '_To be filled_', $7, $8, $9, $10)
+       ON CONFLICT (session_id) WHERE session_id LIKE 'hs-f2-%'
+       DO UPDATE SET id = bugs.id RETURNING id`,
       [
         bugId,
         bug.title,
@@ -222,7 +224,7 @@ export class NeonStorage implements StorageProvider {
       ],
     );
 
-    return bugId;
+    return (result.rows[0]?.id as string) ?? bugId;
   }
 
   async updateBug(bugId: string, fields: BugUpdate, sprint?: string): Promise<boolean> {
@@ -310,13 +312,23 @@ export class NeonStorage implements StorageProvider {
     const featId = await this.nextFeatId();
     const discovered = `${formatDate(feat.timestamp)} via vigil-session: ${feat.sessionId}`;
 
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO features (id, title, status, priority, sprint, discovered, description, url, session_id)
-       VALUES ($1, $2, 'OPEN', $3, $4, $5, $6, $7, $8)`,
+       VALUES ($1, $2, 'OPEN', $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (session_id) WHERE session_id LIKE 'hs-f2-%'
+       DO UPDATE SET id = features.id RETURNING id`,
       [featId, feat.title, feat.featureType, s, discovered, feat.description, feat.url, feat.sessionId],
     );
 
-    return featId;
+    return (result.rows[0]?.id as string) ?? featId;
+  }
+
+  async getSessionTicket(sessionId: string): Promise<{ kind: 'bug' | 'feature'; id: string } | null> {
+    const pool = getPool();
+    const bug = await pool.query('SELECT id FROM bugs WHERE session_id = $1 LIMIT 1', [sessionId]);
+    if (bug.rows[0]) return { kind: 'bug', id: bug.rows[0].id as string };
+    const feature = await pool.query('SELECT id FROM features WHERE session_id = $1 LIMIT 1', [sessionId]);
+    return feature.rows[0] ? { kind: 'feature', id: feature.rows[0].id as string } : null;
   }
 
   async writeSessionJson(session: VIGILSession): Promise<string> {

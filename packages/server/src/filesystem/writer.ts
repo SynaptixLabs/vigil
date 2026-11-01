@@ -1,4 +1,4 @@
-import { writeFile, mkdir, readFile, unlink } from 'node:fs/promises';
+import { writeFile, mkdir, readFile, unlink, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { getSprintDir, getVigilDataDir, loadConfig } from '../config.js';
 import { nextBugId, nextFeatId } from './counter.js';
@@ -24,8 +24,36 @@ function formatDate(ts: number): string {
   return new Date(ts).toISOString().split('T')[0];
 }
 
+function headingTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim();
+}
+
+/** One HappySeniors reporter session contains exactly one entity. Its source
+ * session ID is already recorded in the existing markdown; find that receipt
+ * before allocating another sequential ticket ID. */
+export async function findF2Ticket(sessionId: string, sprint: string, kind: 'bug' | 'feature'): Promise<string | null> {
+  if (!sessionId.startsWith('hs-f2-')) return null;
+  const folders = kind === 'bug' ? [bugDir(sprint), bugDir(sprint, 'fixed')]
+    : [featDir(sprint), featDir(sprint, 'done')];
+  for (const folder of folders) {
+    let names: string[];
+    try { names = await readdir(folder); } catch { continue; }
+    for (const name of names.filter(name => name.endsWith('.md'))) {
+      const content = await readFile(resolve(folder, name), 'utf8');
+      const lines = content.split('\n', 7);
+      const discovered = lines[5]?.match(/^## Discovered: \d{4}-\d{2}-\d{2} via vigil-session: ([A-Za-z0-9-]+)$/);
+      if (lines[0]?.startsWith(`# ${name.slice(0, -3)} — `) && lines[2]?.startsWith('## Status: ') &&
+          lines[3]?.startsWith(kind === 'bug' ? '## Severity: ' : '## Priority: ') &&
+          lines[4]?.startsWith('## Sprint: ') && discovered?.[1] === sessionId) {
+        return name.slice(0, -3);
+      }
+    }
+  }
+  return null;
+}
+
 function bugToMarkdown(bugId: string, bug: Bug, sessionId: string, sprint: string): string {
-  return `# ${bugId} — ${bug.title}
+  return `# ${bugId} — ${headingTitle(bug.title)}
 
 ## Status: OPEN
 ## Severity: ${bug.priority}
@@ -51,7 +79,7 @@ Status: ${TEST_STATUS.PENDING}
 }
 
 function featureToMarkdown(featId: string, feat: Feature, sessionId: string, sprint: string): string {
-  return `# ${featId} — ${feat.title}
+  return `# ${featId} — ${headingTitle(feat.title)}
 
 ## Status: OPEN
 ## Priority: ${feat.featureType}
@@ -68,6 +96,8 @@ ${feat.url}
 
 export async function writeBug(bug: Bug, sprint?: string): Promise<string> {
   const s = resolveSprint(sprint);
+  const existing = await findF2Ticket(bug.sessionId, s, 'bug');
+  if (existing) return existing;
   const bugId = await nextBugId();
   const dir = bugDir(s);
   await mkdir(dir, { recursive: true });
@@ -81,6 +111,8 @@ export async function writeBug(bug: Bug, sprint?: string): Promise<string> {
 
 export async function writeFeature(feat: Feature, sprint?: string): Promise<string> {
   const s = resolveSprint(sprint);
+  const existing = await findF2Ticket(feat.sessionId, s, 'feature');
+  if (existing) return existing;
   const featId = await nextFeatId();
   const dir = featDir(s);
   await mkdir(dir, { recursive: true });

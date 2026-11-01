@@ -29,6 +29,7 @@ const { mockStorage } = vi.hoisted(() => ({
     writeSessionJson: vi.fn(),
     listSessions: vi.fn(),
     getSession: vi.fn(),
+    getSessionTicket: vi.fn(),
     deleteSession: vi.fn(),
     // Archive / Restore
     archiveProject: vi.fn(),
@@ -217,6 +218,66 @@ describe('POST /api/session', () => {
     const res = await request(app).post('/api/session').send(payload);
     expect(res.status).toBe(500);
     expect(res.body).toHaveProperty('error');
+  });
+
+  it('retries one F2 bug without replacing the original session or changing its ticket ID', async () => {
+    mockStorage.writeSessionJson.mockReset().mockResolvedValue('stored');
+    mockStorage.getSession.mockReset();
+    const payload = makeValidSessionPayload();
+    payload.id = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440000';
+    payload.bugs = [{ id: 'source-bug', sessionId: payload.id, type: 'bug', priority: 'P2',
+      status: 'open', title: 'A bug', description: 'A bug', url: '/he/hs-admin/today',
+      timestamp: 100 }] as never[];
+    mockStorage.getProject.mockResolvedValue({ id: 'test-project', name: 'Test' });
+    mockStorage.getSession.mockResolvedValueOnce(null).mockResolvedValueOnce({ ...payload, annotations: [] });
+    mockStorage.writeBug.mockResolvedValue('BUG-012');
+
+    const first = await request(app).post('/api/session').send(payload);
+    const second = await request(app).post('/api/session').send({ ...payload, startedAt: Date.now() });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(first.body.bugIds).toEqual(['BUG-012']);
+    expect(second.body.bugIds).toEqual(['BUG-012']);
+    expect(mockStorage.writeSessionJson).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps an F2 partial write retryable and rejects changed content for the same ID', async () => {
+    mockStorage.writeSessionJson.mockReset().mockResolvedValue('stored');
+    mockStorage.getSession.mockReset();
+    mockStorage.writeFeature.mockReset();
+    const payload = makeValidSessionPayload();
+    payload.id = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440001';
+    payload.features = [{ id: 'source-feature', sessionId: payload.id, type: 'feature',
+      featureType: 'NEW_FEATURE', status: 'open', title: 'A feature',
+      description: 'A feature', url: '/he/hs-admin/today', timestamp: 100 }] as never[];
+    mockStorage.getProject.mockResolvedValue({ id: 'test-project', name: 'Test' });
+    mockStorage.getSession.mockResolvedValueOnce(null).mockResolvedValue({ ...payload, annotations: [] });
+    mockStorage.writeFeature.mockRejectedValueOnce(new Error('filesystem busy')).mockResolvedValue('FEAT-012');
+
+    const first = await request(app).post('/api/session').send(payload);
+    const conflict = await request(app).post('/api/session').send({ ...payload,
+      features: [{ ...payload.features[0], description: 'changed' }] });
+    const retry = await request(app).post('/api/session').send(payload);
+
+    expect(first.status).toBe(503);
+    expect(conflict.status).toBe(409);
+    expect(retry.status).toBe(201);
+    expect(retry.body.featIds).toEqual(['FEAT-012']);
+    expect(mockStorage.writeSessionJson).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GET /api/session/receipt/:id', () => {
+  it('returns only the canonical F2 reference after the normalized write', async () => {
+    const id = 'hs-f2-admin-550e8400-e29b-41d4-a716-446655440002';
+    mockStorage.getSession.mockResolvedValue(makeSession({ id, snapshots: [{ screenshotDataUrl: 'private' }] }));
+    mockStorage.getSessionTicket.mockResolvedValue({ kind: 'bug', id: 'BUG-013' });
+    const response = await request(app).get(`/api/session/receipt/${id}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ kind: 'bug', id: 'BUG-013', sessionId: id,
+      projectId: 'test-project', sprint: '07' });
+    expect(JSON.stringify(response.body)).not.toContain('private');
   });
 });
 

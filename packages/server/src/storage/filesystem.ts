@@ -1,7 +1,7 @@
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { listBugs, getBug, listFeatures, getFeature, listSessions, getSession } from '../filesystem/reader.js';
-import { writeBug, writeFeature, writeSessionJson, updateBug, closeBug } from '../filesystem/writer.js';
+import { writeBug, writeFeature, writeSessionJson, updateBug, closeBug, findF2Ticket } from '../filesystem/writer.js';
 import { nextBugId, nextFeatId, currentBugCount, currentFeatCount } from '../filesystem/counter.js';
 import { getProjectRoot, getVigilDataDir, loadConfig } from '../config.js';
 import type { StorageProvider, SprintInfo, ProjectRecord, ProjectCreate, ProjectUpdate } from './types.js';
@@ -73,6 +73,16 @@ export class FilesystemStorage implements StorageProvider {
 
   getSession(sessionId: string): Promise<VIGILSession | null> {
     return getSession(sessionId);
+  }
+
+  async getSessionTicket(sessionId: string): Promise<{ kind: 'bug' | 'feature'; id: string } | null> {
+    const session = await getSession(sessionId);
+    if (!session) return null;
+    const sprint = session.sprint ?? loadConfig().sprintCurrent;
+    const bug = await findF2Ticket(sessionId, sprint, 'bug');
+    if (bug) return { kind: 'bug', id: bug };
+    const feature = await findF2Ticket(sessionId, sprint, 'feature');
+    return feature ? { kind: 'feature', id: feature } : null;
   }
 
   async deleteSession(_sessionId: string): Promise<boolean> {

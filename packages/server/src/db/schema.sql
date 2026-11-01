@@ -82,6 +82,13 @@ CREATE TABLE IF NOT EXISTS features (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- HappySeniors F2 sends exactly one entity per `hs-f2-` session. Keep the
+-- canonical BUG/FEAT ID stable across retries, including concurrent requests.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_bugs_hs_f2_session
+  ON bugs (session_id) WHERE session_id LIKE 'hs-f2-%';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_features_hs_f2_session
+  ON features (session_id) WHERE session_id LIKE 'hs-f2-%';
+
 -- Sprint 07: Add annotations column if missing (migration for existing DBs)
 DO $$
 BEGIN

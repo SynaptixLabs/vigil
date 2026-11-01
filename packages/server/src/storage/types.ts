@@ -45,6 +45,7 @@ export interface StorageProvider {
   writeSessionJson(session: VIGILSession): Promise<string>;
   listSessions(project?: string, sprint?: string, includeArchived?: boolean): Promise<VIGILSession[]>;
   getSession(sessionId: string): Promise<VIGILSession | null>;
+  getSessionTicket(sessionId: string): Promise<{ kind: 'bug' | 'feature'; id: string } | null>;
   deleteSession(sessionId: string): Promise<boolean>;
 
   // Archive / Restore

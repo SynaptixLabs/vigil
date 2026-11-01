@@ -61,6 +61,17 @@ export function loadConfig(): VigilConfig {
 }
 
 export function getProjectRoot(): string {
+  // Local verification can keep filesystem tickets and session data in an
+  // isolated /home fixture instead of writing into the source checkout.
+  const fixtureRoot = process.env.VIGIL_FS_ROOT;
+  if (fixtureRoot) {
+    const normalized = resolve(fixtureRoot);
+    if (process.env.NODE_ENV === 'production' || !fixtureRoot.startsWith('/') ||
+        !normalized.startsWith('/home/')) {
+      throw new Error('VIGIL_FS_ROOT must be an absolute local /home path');
+    }
+    return normalized;
+  }
   const configPath = findConfigPath();
   if (!configPath) {
     throw new Error('Cannot determine project root: vigil.config.json not found (filesystem mode only)');
