@@ -2,7 +2,7 @@
  * S07-22 — HTTP Route Integration Tests
  * Tests all vigil-server routes via supertest with mocked storage.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 
 // vi.hoisted ensures mockStorage is initialized before vi.mock factories run
@@ -588,7 +588,41 @@ describe('POST /api/vigil/suggest', () => {
 // ── HappySeniors F3: founder review block ──
 
 describe('PATCH review block (F3)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  const TOKEN = 'test-service-token';
+  const auth = { 'x-vigil-service-token': TOKEN };
+  beforeEach(() => { vi.clearAllMocks(); process.env.VIGIL_SERVICE_TOKEN = TOKEN; });
+  afterEach(() => { delete process.env.VIGIL_SERVICE_TOKEN; delete process.env.VIGIL_CORS_ORIGINS; });
+
+  it('review writes need the service credential; unconfigured refuses', async () => {
+    const wrong = await request(app).patch('/api/bugs/BUG-001').set('x-vigil-service-token', 'nope')
+      .send({ review: { decision: 'approved' } });
+    expect(wrong.status).toBe(401);
+    expect((await request(app).patch('/api/features/FEAT-1').send({ review: { decision: 'approved' } })).status).toBe(401);
+    delete process.env.VIGIL_SERVICE_TOKEN;
+    expect((await request(app).patch('/api/features/FEAT-1').set(auth).send({ review: {} })).status).toBe(503);
+    expect(mockStorage.updateReview).not.toHaveBeenCalled();
+    expect(mockStorage.updateBug).not.toHaveBeenCalled();
+  });
+
+  it('rejects a path-like sprint before storage is touched', async () => {
+    for (const sprint of ['..%2F..%2Fetc', '19/../x', 'a'.repeat(33)]) {
+      expect((await request(app).get(`/api/bugs?sprint=${sprint}`)).status).toBe(400);
+      expect((await request(app).patch(`/api/features/FEAT-1?sprint=${sprint}`).set(auth).send({ review: {} })).status).toBe(400);
+    }
+    expect((await request(app).get('/api/sessions?sprint=../x')).status).toBe(400);
+    expect(mockStorage.listBugs).not.toHaveBeenCalled();
+    expect(mockStorage.updateReview).not.toHaveBeenCalled();
+  });
+
+  it('CORS allows the configured HS origin and refuses others', async () => {
+    process.env.VIGIL_CORS_ORIGINS = 'https://hs.example';
+    const ok = await request(app).options('/api/features/FEAT-1').set('Origin', 'https://hs.example')
+      .set('Access-Control-Request-Method', 'PATCH');
+    expect(ok.headers['access-control-allow-origin']).toBe('https://hs.example');
+    const evil = await request(app).options('/api/features/FEAT-1').set('Origin', 'https://evil.example')
+      .set('Access-Control-Request-Method', 'PATCH');
+    expect(evil.headers['access-control-allow-origin']).toBeUndefined();
+  });
   const stored = {
     decision: 'approved', founder_comment: 'go', decided_by: 'founder', decided_at: '2026-11-01T10:00:00.000Z',
     work_status: 'queued', implementation_link: null, notified_at: null, updated_at: '2026-11-01T10:00:00.000Z',
@@ -596,7 +630,7 @@ describe('PATCH review block (F3)', () => {
 
   it('patches a bug review only, without touching other bug fields', async () => {
     mockStorage.updateReview.mockResolvedValue(stored);
-    const res = await request(app).patch('/api/bugs/BUG-001?sprint=19')
+    const res = await request(app).patch('/api/bugs/BUG-001?sprint=19').set(auth)
       .send({ review: { decision: 'approved', founder_comment: 'go', decided_by: 'founder' } });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ updated: true, bugId: 'BUG-001', review: stored });
@@ -608,7 +642,7 @@ describe('PATCH review block (F3)', () => {
   it('patches bug status and review together', async () => {
     mockStorage.updateBug.mockResolvedValue(true);
     mockStorage.updateReview.mockResolvedValue(stored);
-    const res = await request(app).patch('/api/bugs/BUG-001').send({ status: 'in_progress', review: { work_status: 'in_progress' } });
+    const res = await request(app).patch('/api/bugs/BUG-001').set(auth).send({ status: 'in_progress', review: { work_status: 'in_progress' } });
     expect(res.status).toBe(200);
     expect(mockStorage.updateBug).toHaveBeenCalledWith('BUG-001', { status: 'in_progress' }, undefined);
   });
@@ -616,7 +650,7 @@ describe('PATCH review block (F3)', () => {
   it('rejects unknown review fields and server-owned timestamps', async () => {
     for (const review of [{ decided_at: '2026-11-01T10:00:00Z' }, { updated_at: 'x' }, { decision: 'maybe' },
       { implementation_link: 'javascript:alert(1)' }]) {
-      const res = await request(app).patch('/api/bugs/BUG-001').send({ review });
+      const res = await request(app).patch('/api/bugs/BUG-001').set(auth).send({ review });
       expect(res.status).toBe(400);
     }
     expect(mockStorage.updateReview).not.toHaveBeenCalled();
@@ -624,13 +658,13 @@ describe('PATCH review block (F3)', () => {
 
   it('404s when the bug does not exist', async () => {
     mockStorage.updateReview.mockResolvedValue(null);
-    const res = await request(app).patch('/api/bugs/BUG-404').send({ review: { decision: 'rejected' } });
+    const res = await request(app).patch('/api/bugs/BUG-404').set(auth).send({ review: { decision: 'rejected' } });
     expect(res.status).toBe(404);
   });
 
   it('patches a feature review with the same fields', async () => {
     mockStorage.updateReview.mockResolvedValue({ ...stored, implementation_link: 'https://github.com/o/r/pull/1' });
-    const res = await request(app).patch('/api/features/FEAT-002?sprint=19')
+    const res = await request(app).patch('/api/features/FEAT-002?sprint=19').set(auth)
       .send({ review: { work_status: 'done', implementation_link: 'https://github.com/o/r/pull/1' } });
     expect(res.status).toBe(200);
     expect(res.body.featId).toBe('FEAT-002');
@@ -640,11 +674,11 @@ describe('PATCH review block (F3)', () => {
 
   it('feature PATCH accepts the review block only', async () => {
     for (const body of [{ status: 'done' }, { review: { decision: 'approved' }, status: 'done' }, {}]) {
-      const res = await request(app).patch('/api/features/FEAT-002').send(body);
+      const res = await request(app).patch('/api/features/FEAT-002').set(auth).send(body);
       expect(res.status).toBe(400);
     }
     mockStorage.updateReview.mockResolvedValue(null);
-    expect((await request(app).patch('/api/features/FEAT-404').send({ review: {} })).status).toBe(404);
+    expect((await request(app).patch('/api/features/FEAT-404').set(auth).send({ review: {} })).status).toBe(404);
   });
 
   it('archive and restore still route to their own handlers', async () => {

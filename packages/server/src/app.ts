@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { corsOriginAllowed } from './routes/guards.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
@@ -26,7 +27,9 @@ const config = loadConfig();
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => callback(null, corsOriginAllowed(origin)),
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // Request logging — see all incoming requests

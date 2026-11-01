@@ -1,8 +1,10 @@
 import { Router } from 'express';
+import { rejectBadSprint, hasServiceToken } from './guards.js';
 import { getStorage } from '../storage/index.js';
 import { BugUpdateSchema, TicketReviewPatchSchema } from '@synaptix/vigil-shared';
 
 export const bugsRouter = Router();
+bugsRouter.use(rejectBadSprint);
 
 // GET /api/bugs?sprint=06&status=open&archived=true
 bugsRouter.get('/', async (req, res) => {
@@ -51,6 +53,7 @@ bugsRouter.patch('/:id', async (req, res) => {
     return;
   }
   const { review: reviewPatch, ...fields } = result.data;
+  if (reviewPatch !== undefined && !hasServiceToken(req, res)) return;
 
   try {
     const storage = getStorage();

@@ -1,11 +1,11 @@
-import { writeFile, mkdir, readFile, unlink, readdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { writeFile, mkdir, readFile, unlink, readdir, rename } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { getSprintDir, getVigilDataDir, loadConfig } from '../config.js';
 import { nextBugId, nextFeatId } from './counter.js';
 import { TEST_STATUS } from '@synaptix/vigil-shared';
-import { applyReviewPatch } from '@synaptix/vigil-shared';
+import { applyReviewPatch, parseStoredReviewForWrite } from '@synaptix/vigil-shared';
 import type { Bug, Feature, VIGILSession, BugUpdate, TicketReview, TicketReviewPatch } from '@synaptix/vigil-shared';
-import { parseReviewSection } from './reader.js';
+import { readReviewSidecarRaw, reviewSidecarPath } from './reader.js';
 
 /** Resolve sprint dir for bugs. Undefined → current sprint from config. */
 function bugDir(sprint?: string, status: 'open' | 'fixed' = 'open'): string {
@@ -155,14 +155,17 @@ export async function updateBug(bugId: string, fields: BugUpdate, sprint?: strin
   }
 
   if (fields.status) {
-    content = content.replace(/## Status: \w+/, `## Status: ${fields.status.toUpperCase()}`);
+    const status = fields.status.toUpperCase();
+    content = content.replace(/## Status: \w+/, () => `## Status: ${status}`);
   }
   if (fields.severity) {
-    content = content.replace(/## Severity: \w+/, `## Severity: ${fields.severity}`);
+    const severity = fields.severity;
+    content = content.replace(/## Severity: \w+/, () => `## Severity: ${severity}`);
   }
   if (fields.resolution) {
     if (content.includes('## Resolution')) {
-      content = content.replace(/## Resolution\n[\s\S]*?(?=\n## |\n$|$)/, `## Resolution\n${fields.resolution}\n`);
+      const resolutionText = fields.resolution;
+      content = content.replace(/## Resolution\n[\s\S]*?(?=\n## |\n$|$)/, () => `## Resolution\n${resolutionText}\n`);
     } else {
       content += `\n## Resolution\n${fields.resolution}\n`;
     }
@@ -191,7 +194,7 @@ export async function closeBug(
   content = content.replace(/## Status: \w+/, '## Status: FIXED');
 
   if (content.includes('## Resolution')) {
-    content = content.replace(/## Resolution\n[\s\S]*?(?=\n## |\n$|$)/, `## Resolution\n${resolution}\n`);
+    content = content.replace(/## Resolution\n[\s\S]*?(?=\n## |\n$|$)/, () => `## Resolution\n${resolution}\n`);
   } else {
     content += `\n## Resolution\n${resolution}\n`;
   }
@@ -231,13 +234,6 @@ async function withReviewLock<T>(key: string, task: () => Promise<T>): Promise<T
   try { return await run; } finally { if (reviewLocks.get(key) === run) reviewLocks.delete(key); }
 }
 
-export function writeReviewSection(content: string, review: TicketReview): string {
-  const block = `## Review\n\`\`\`json\n${JSON.stringify(review)}\n\`\`\`\n`;
-  const existing = /\n## Review\n```json\n.+\n```\n?/;
-  if (existing.test(content)) return content.replace(existing, `\n${block}`);
-  return `${content.endsWith('\n') ? content : `${content}\n`}\n${block}`;
-}
-
 /** Apply a review patch to a bug (open/fixed) or feature (open/done) markdown file.
  * Returns the stored block, or null when the ticket is not in that sprint. */
 export async function updateReview(
@@ -247,14 +243,20 @@ export async function updateReview(
   const folders = kind === 'bug' ? [bugDir(sprint), bugDir(sprint, 'fixed')]
     : [featDir(sprint), featDir(sprint, 'done')];
   return withReviewLock(`${kind}:${id}`, async () => {
+    let exists = false;
     for (const folder of folders) {
-      const filePath = resolve(folder, `${id}.md`);
-      let content: string;
-      try { content = await readFile(filePath, 'utf8'); } catch { continue; }
-      const { review, changed } = applyReviewPatch(parseReviewSection(content), patch, new Date().toISOString());
-      if (changed) await writeFile(filePath, writeReviewSection(content, review), 'utf8');
-      return review;
+      try { await readFile(resolve(folder, `${id}.md`), 'utf8'); exists = true; break; } catch { continue; }
     }
-    return null;
+    if (!exists) return null;
+    const current = parseStoredReviewForWrite(await readReviewSidecarRaw(id, sprint));
+    const { review, changed } = applyReviewPatch(current, patch, new Date().toISOString());
+    if (changed) {
+      const path = reviewSidecarPath(id, sprint);
+      await mkdir(dirname(path), { recursive: true });
+      const temp = `${path}.${process.pid}.tmp`;
+      await writeFile(temp, JSON.stringify(review, null, 2), 'utf8');
+      await rename(temp, path);
+    }
+    return review;
   });
 }

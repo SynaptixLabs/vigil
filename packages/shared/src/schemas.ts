@@ -137,6 +137,9 @@ export const BugUpdateSchema = z.object({
 });
 export type BugUpdate = z.infer<typeof BugUpdateSchema>;
 
+/** A sprint label is one safe path segment (route input and config alike). */
+export const SPRINT_LABEL_PATTERN = /^[A-Za-z0-9_-]{1,32}$/;
+
 // ── Founder review block (HappySeniors F3) ──────────────────────────────────
 // One optional `review` block on a bug or feature in the SAME store: the
 // founder's decision and comment, and the implementer's work status + link.
@@ -166,6 +169,8 @@ const httpLink = z.string().max(500).refine((value) => {
   }
 }, 'implementation_link must be an http(s) URL');
 
+const isoDateTimePatch = z.string().datetime({ offset: true });
+
 /** PATCH body for a ticket's review block. Only these fields; `decided_at` and
  * `updated_at` are server-set. `notified_at` is set-once (first write wins). */
 export const TicketReviewPatchSchema = z.object({
@@ -174,7 +179,7 @@ export const TicketReviewPatchSchema = z.object({
   decided_by: z.string().max(200).nullable().optional(),
   work_status: ReviewWorkStatusSchema.nullable().optional(),
   implementation_link: httpLink.nullable().optional(),
-  notified_at: z.string().datetime({ offset: true }).nullable().optional(),
+  notified_at: isoDateTimePatch.nullable().optional(),
 }).strict();
 export type TicketReviewPatch = z.infer<typeof TicketReviewPatchSchema>;
 
@@ -214,24 +219,33 @@ export function applyReviewPatch(
   return { review, changed };
 }
 
-/** Parse a stored review block; malformed data reads as no block. */
+const isoDateTime = z.string().datetime({ offset: true });
+
+/** Full schema of a STORED review block; anything else is not a review. */
+export const TicketReviewSchema = z.object({
+  decision: ReviewDecisionSchema,
+  founder_comment: z.string().max(4000).nullable(),
+  decided_by: z.string().max(200).nullable(),
+  decided_at: isoDateTime.nullable(),
+  work_status: ReviewWorkStatusSchema.nullable(),
+  implementation_link: httpLink.nullable(),
+  notified_at: isoDateTime.nullable(),
+  updated_at: isoDateTime,
+}).strict();
+
+/** Parse a stored review block for READING: invalid data reads as no block. */
 export function parseStoredReview(value: unknown): TicketReview | null {
-  if (!value || typeof value !== 'object') return null;
-  const v = value as Record<string, unknown>;
-  const decision = ReviewDecisionSchema.safeParse(v.decision);
-  if (!decision.success || typeof v.updated_at !== 'string') return null;
-  const str = (x: unknown) => (typeof x === 'string' ? x : null);
-  const work = ReviewWorkStatusSchema.safeParse(v.work_status);
-  return {
-    decision: decision.data,
-    founder_comment: str(v.founder_comment),
-    decided_by: str(v.decided_by),
-    decided_at: str(v.decided_at),
-    work_status: work.success ? work.data : null,
-    implementation_link: str(v.implementation_link),
-    notified_at: str(v.notified_at),
-    updated_at: v.updated_at,
-  };
+  const parsed = TicketReviewSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Parse a stored review block for WRITING: absent is null, but a block that
+ * exists and does not validate refuses the write (never silently overwritten). */
+export function parseStoredReviewForWrite(value: unknown): TicketReview | null {
+  if (value === null || value === undefined) return null;
+  const parsed = TicketReviewSchema.safeParse(value);
+  if (!parsed.success) throw new Error('Stored review block is invalid; refusing to overwrite it');
+  return parsed.data;
 }
 
 // ── Server/dashboard shared interfaces ───────────────────────────────────────
@@ -262,6 +276,7 @@ export interface FeatureFile {
   sprint: string;
   description?: string;
   url?: string;
+  discovered?: string;
   raw: string;
   archivedAt?: string | null;
   review?: TicketReview | null;

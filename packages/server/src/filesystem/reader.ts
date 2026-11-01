@@ -5,12 +5,28 @@ import { VIGILSessionSchema, parseStoredReview } from '@synaptix/vigil-shared';
 import type { TicketReview } from '@synaptix/vigil-shared';
 import type { BugFile, FeatureFile, VIGILSession } from '@synaptix/vigil-shared';
 
-/** The founder review block lives in the ticket's own markdown as a single-line
- * JSON fence under `## Review` (HappySeniors F3), so it moves with the file. */
-export function parseReviewSection(content: string): TicketReview | null {
-  const match = content.match(/\n## Review\n```json\n(.+)\n```/);
-  if (!match) return null;
-  try { return parseStoredReview(JSON.parse(match[1])); } catch { return null; }
+/** The founder review block (HappySeniors F3) is a sidecar JSON file per
+ * ticket, never parsed out of the reporter-controlled markdown body. It lives
+ * beside the sprint's tickets (not in open/fixed) so it survives closeBug. */
+export function reviewSidecarPath(id: string, sprint?: string): string {
+  return resolve(getSprintDir(sprint), 'REVIEWS', `${id}.review.json`);
+}
+
+/** Read the raw stored block: undefined when absent. Errors other than a
+ * missing file propagate. */
+export async function readReviewSidecarRaw(id: string, sprint?: string): Promise<unknown> {
+  let text: string;
+  try {
+    text = await readFile(reviewSidecarPath(id, sprint), 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw err;
+  }
+  try { return JSON.parse(text); } catch { return { invalid: true }; }
+}
+
+async function readReview(id: string, sprint?: string): Promise<TicketReview | null> {
+  try { return parseStoredReview(await readReviewSidecarRaw(id, sprint)); } catch { return null; }
 }
 
 function parseBugFile(filename: string, content: string): BugFile {
@@ -43,7 +59,6 @@ function parseBugFile(filename: string, content: string): BugFile {
     regressionTest: regressionMatch?.[1]?.trim(),
     resolution: resolutionMatch?.[1]?.trim(),
     raw: content,
-    review: parseReviewSection(content),
   };
 }
 
@@ -54,6 +69,7 @@ function parseFeatureFile(filename: string, content: string): FeatureFile {
   const priorityMatch = content.match(/^## Priority: (.+)$/m);
   const sprintMatch = content.match(/^## Sprint: (.+)$/m);
   const descMatch = content.match(/## Description\n([\s\S]*?)(?=\n## |$)/);
+  const discoveredMatch = content.match(/^## Discovered: (.+)$/m);
   const urlMatch = content.match(/## URL\n([\s\S]*?)(?=\n## |$)/);
 
   return {
@@ -64,8 +80,8 @@ function parseFeatureFile(filename: string, content: string): FeatureFile {
     sprint: sprintMatch?.[1]?.trim() ?? 'unknown',
     description: descMatch?.[1]?.trim(),
     url: urlMatch?.[1]?.trim(),
+    discovered: discoveredMatch?.[1]?.trim(),
     raw: content,
-    review: parseReviewSection(content),
   };
 }
 
@@ -94,7 +110,8 @@ export async function listBugs(
 
     for (const file of files) {
       const content = await readFile(resolve(dir, file), 'utf8');
-      bugs.push(parseBugFile(file, content));
+      const bug = parseBugFile(file, content);
+      bugs.push({ ...bug, review: await readReview(bug.id, s) });
     }
   }
 
@@ -109,7 +126,7 @@ export async function getBug(bugId: string, sprint?: string): Promise<BugFile | 
     const filePath = resolve(sprintPath, 'BUGS', status, `${bugId}.md`);
     try {
       const content = await readFile(filePath, 'utf8');
-      return parseBugFile(`${bugId}.md`, content);
+      return { ...parseBugFile(`${bugId}.md`, content), review: await readReview(bugId, s) };
     } catch {
       continue;
     }
@@ -134,7 +151,8 @@ export async function listFeatures(
 
     for (const file of files) {
       const content = await readFile(resolve(dir, file), 'utf8');
-      features.push(parseFeatureFile(file, content));
+      const feature = parseFeatureFile(file, content);
+      features.push({ ...feature, review: await readReview(feature.id, s) });
     }
   }
 
@@ -149,7 +167,7 @@ export async function getFeature(featId: string, sprint?: string): Promise<Featu
     const filePath = resolve(sprintPath, 'FEATURES', status, `${featId}.md`);
     try {
       const content = await readFile(filePath, 'utf8');
-      return parseFeatureFile(`${featId}.md`, content);
+      return { ...parseFeatureFile(`${featId}.md`, content), review: await readReview(featId, s) };
     } catch {
       continue;
     }

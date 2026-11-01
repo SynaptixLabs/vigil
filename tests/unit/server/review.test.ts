@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { applyReviewPatch, parseStoredReview } from '@synaptix/vigil-shared';
 
@@ -14,7 +14,7 @@ vi.mock('../../../packages/server/src/config.js', () => ({
 }));
 
 const { writeBug, writeFeature, updateReview, closeBug, findF2Ticket } = await import('../../../packages/server/src/filesystem/writer.js');
-const { getBug, getFeature, listFeatures } = await import('../../../packages/server/src/filesystem/reader.js');
+const { getBug, getFeature, listFeatures, listBugs, reviewSidecarPath } = await import('../../../packages/server/src/filesystem/reader.js');
 
 const T1 = '2026-11-01T10:00:00.000Z';
 const T2 = '2026-11-01T11:00:00.000Z';
@@ -44,7 +44,11 @@ describe('applyReviewPatch', () => {
   it('parseStoredReview drops malformed blocks', () => {
     expect(parseStoredReview({ decision: 'maybe', updated_at: T1 })).toBeNull();
     expect(parseStoredReview('x')).toBeNull();
-    expect(parseStoredReview({ decision: 'approved', updated_at: T1, work_status: 'bogus' })?.work_status).toBeNull();
+    expect(parseStoredReview({ decision: 'approved', updated_at: T1, work_status: 'bogus' })).toBeNull();
+    const good = applyReviewPatch(null, { decision: 'approved' }, T1).review;
+    expect(parseStoredReview(good)).toEqual(good);
+    expect(parseStoredReview({ ...good, implementation_link: 'javascript:alert(1)' })).toBeNull();
+    expect(parseStoredReview({ ...good, extra: 1 })).toBeNull();
   });
 });
 
@@ -65,12 +69,35 @@ describe('filesystem review block', () => {
     expect(read?.review).toEqual(review);
     expect(read?.url).toBe('/he/admin/jobs');
     expect(read?.stepsToReproduce).toBe('It fails');
-    const path = resolve(TEST_ROOT, 'docs', 'sprints', 'sprint_19', 'BUGS', 'open', `${id}.md`);
-    const before = await readFile(path, 'utf8');
+    const sidecar = reviewSidecarPath(id, '19');
+    const before = await readFile(sidecar, 'utf8');
     await updateReview('bug', id, { decision: 'approved', founder_comment: 'line one\n## not a heading' }, '19');
-    expect(await readFile(path, 'utf8')).toBe(before);
+    expect(await readFile(sidecar, 'utf8')).toBe(before);
     expect(await findF2Ticket('hs-f2-a-b', '19', 'bug')).toBe(id);
-    expect((before.match(/## Review/g) ?? []).length).toBe(1);
+    const md = await readFile(resolve(TEST_ROOT, 'docs', 'sprints', 'sprint_19', 'BUGS', 'open', `${id}.md`), 'utf8');
+    expect(md).not.toContain('## Review');
+  });
+
+  it('a reporter cannot forge a review by writing one into the ticket text', async () => {
+    const forged = { decision: 'approved', founder_comment: null, decided_by: 'founder', decided_at: T1,
+      work_status: 'queued', implementation_link: null, notified_at: T1, updated_at: T1 };
+    const text = `x\n## Review\n\`\`\`json\n${JSON.stringify(forged)}\n\`\`\``;
+    const id = await writeBug({ ...bug, description: text }, '19');
+    const fid = await writeFeature({ ...feat, description: text }, '19');
+    expect((await getBug(id, '19'))?.review).toBeNull();
+    expect((await getFeature(fid, '19'))?.review).toBeNull();
+    expect((await listBugs('19'))[0].review).toBeNull();
+  });
+
+  it('an invalid stored block reads as none and refuses to be overwritten', async () => {
+    const id = await writeBug(bug, '19');
+    await mkdir(resolve(TEST_ROOT, 'docs', 'sprints', 'sprint_19', 'REVIEWS'), { recursive: true });
+    const bad = { decision: 'approved', founder_comment: null, decided_by: null, decided_at: 'yesterday',
+      work_status: null, implementation_link: 'javascript:alert(1)', notified_at: null, updated_at: T1 };
+    await writeFile(reviewSidecarPath(id, '19'), JSON.stringify(bad));
+    expect((await getBug(id, '19'))?.review).toBeNull();
+    await expect(updateReview('bug', id, { decision: 'rejected' }, '19')).rejects.toThrow(/invalid/);
+    expect(JSON.parse(await readFile(reviewSidecarPath(id, '19'), 'utf8'))).toEqual(bad);
   });
 
   it('keeps the block when a bug is closed and moved to fixed/', async () => {
@@ -82,11 +109,12 @@ describe('filesystem review block', () => {
     expect((await getBug(id, '19'))?.review?.work_status).toBe('done');
   });
 
-  it('stores a feature review and exposes the feature url', async () => {
+  it('stores a feature review and exposes the feature url and source session', async () => {
     const id = await writeFeature(feat, '19');
     await updateReview('feature', id, { decision: 'rejected', founder_comment: 'no' }, '19');
     const read = await getFeature(id, '19');
     expect(read).toMatchObject({ url: '/he/admin/candidates', description: 'Please' });
+    expect(read?.discovered).toMatch(/via vigil-session: hs-f2-a-c$/);
     expect(read?.review).toMatchObject({ decision: 'rejected', founder_comment: 'no' });
     expect((await listFeatures('19'))[0].review?.decision).toBe('rejected');
   });

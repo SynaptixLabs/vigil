@@ -1,8 +1,10 @@
 import { Router } from 'express';
+import { rejectBadSprint } from './guards.js';
 import { getStorage } from '../storage/index.js';
 import type { VIGILSession } from '@synaptix/vigil-shared';
 
 export const sessionsRouter = Router();
+sessionsRouter.use(rejectBadSprint);
 
 /** Map a VIGILSession to the summary shape expected by the dashboard. */
 function toSummary(s: VIGILSession) {

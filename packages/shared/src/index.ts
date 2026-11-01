@@ -30,6 +30,9 @@ export {
   TicketReviewPatchSchema,
   applyReviewPatch,
   parseStoredReview,
+  parseStoredReviewForWrite,
+  SPRINT_LABEL_PATTERN,
+  TicketReviewSchema,
 
   // Constants
   TEST_STATUS,

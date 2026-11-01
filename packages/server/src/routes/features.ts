@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import { rejectBadSprint, hasServiceToken } from './guards.js';
 import { z } from 'zod';
 import { TicketReviewPatchSchema } from '@synaptix/vigil-shared';
 import { getStorage } from '../storage/index.js';
 
 export const featuresRouter = Router();
+featuresRouter.use(rejectBadSprint);
 
 // GET /api/features?sprint=06&status=open&archived=true
 featuresRouter.get('/', async (req, res) => {
@@ -45,6 +47,7 @@ const FeaturePatchSchema = z.object({ review: TicketReviewPatchSchema }).strict(
 featuresRouter.patch('/:id', async (req, res) => {
   const featId = req.params.id;
   const sprint = req.query.sprint as string | undefined;
+  if (!hasServiceToken(req, res)) return;
   const result = FeaturePatchSchema.safeParse(req.body);
   if (!result.success) {
     res.status(400).json({ error: 'Invalid update fields', details: result.error.issues });

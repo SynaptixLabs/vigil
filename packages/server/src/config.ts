@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, sep } from 'node:path';
+import { SPRINT_LABEL_PATTERN } from '@synaptix/vigil-shared';
 
 export interface VigilConfig {
   projectId: string;
@@ -83,7 +84,13 @@ export function getVigilDataDir(): string {
   return resolve(getProjectRoot(), '.vigil');
 }
 
+
 export function getSprintDir(sprint?: string): string {
   const s = sprint ?? loadConfig().sprintCurrent;
-  return resolve(getProjectRoot(), 'docs', 'sprints', `sprint_${s}`);
+  const base = resolve(getProjectRoot(), 'docs', 'sprints');
+  const dir = resolve(base, `sprint_${s}`);
+  if (typeof s !== 'string' || !SPRINT_LABEL_PATTERN.test(s) || !dir.startsWith(base + sep)) {
+    throw new Error('Invalid sprint');
+  }
+  return dir;
 }
