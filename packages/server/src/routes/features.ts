@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { z } from 'zod';
+import { TicketReviewPatchSchema } from '@synaptix/vigil-shared';
 import { getStorage } from '../storage/index.js';
 
 export const featuresRouter = Router();
@@ -33,6 +35,31 @@ featuresRouter.get('/:id', async (req, res) => {
   } catch (err) {
     console.error('[vigil-server] Error getting feature:', err);
     res.status(500).json({ error: 'Failed to get feature' });
+  }
+});
+
+// PATCH /api/features/:id — (HappySeniors F3) the founder review block only;
+// features have no other mutable fields here.
+const FeaturePatchSchema = z.object({ review: TicketReviewPatchSchema }).strict();
+
+featuresRouter.patch('/:id', async (req, res) => {
+  const featId = req.params.id;
+  const sprint = req.query.sprint as string | undefined;
+  const result = FeaturePatchSchema.safeParse(req.body);
+  if (!result.success) {
+    res.status(400).json({ error: 'Invalid update fields', details: result.error.issues });
+    return;
+  }
+  try {
+    const review = await getStorage().updateReview('feature', featId, result.data.review, sprint);
+    if (!review) {
+      res.status(404).json({ error: `Feature ${featId} not found` });
+      return;
+    }
+    res.json({ updated: true, featId, review });
+  } catch (err) {
+    console.error('[vigil-server] Error updating feature:', err);
+    res.status(500).json({ error: 'Failed to update feature' });
   }
 });
 

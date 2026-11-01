@@ -3,7 +3,9 @@ import { resolve } from 'node:path';
 import { getSprintDir, getVigilDataDir, loadConfig } from '../config.js';
 import { nextBugId, nextFeatId } from './counter.js';
 import { TEST_STATUS } from '@synaptix/vigil-shared';
-import type { Bug, Feature, VIGILSession, BugUpdate } from '@synaptix/vigil-shared';
+import { applyReviewPatch } from '@synaptix/vigil-shared';
+import type { Bug, Feature, VIGILSession, BugUpdate, TicketReview, TicketReviewPatch } from '@synaptix/vigil-shared';
+import { parseReviewSection } from './reader.js';
 
 /** Resolve sprint dir for bugs. Undefined → current sprint from config. */
 function bugDir(sprint?: string, status: 'open' | 'fixed' = 'open'): string {
@@ -215,4 +217,44 @@ export async function closeBug(
   }
 
   return true;
+}
+
+// ── Founder review block (HappySeniors F3) ──────────────────────────────────
+
+const reviewLocks = new Map<string, Promise<unknown>>();
+
+/** Serialize read-modify-write per ticket inside this process. */
+async function withReviewLock<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const previous = reviewLocks.get(key) ?? Promise.resolve();
+  const run = previous.catch(() => undefined).then(task);
+  reviewLocks.set(key, run);
+  try { return await run; } finally { if (reviewLocks.get(key) === run) reviewLocks.delete(key); }
+}
+
+export function writeReviewSection(content: string, review: TicketReview): string {
+  const block = `## Review\n\`\`\`json\n${JSON.stringify(review)}\n\`\`\`\n`;
+  const existing = /\n## Review\n```json\n.+\n```\n?/;
+  if (existing.test(content)) return content.replace(existing, `\n${block}`);
+  return `${content.endsWith('\n') ? content : `${content}\n`}\n${block}`;
+}
+
+/** Apply a review patch to a bug (open/fixed) or feature (open/done) markdown file.
+ * Returns the stored block, or null when the ticket is not in that sprint. */
+export async function updateReview(
+  kind: 'bug' | 'feature', id: string, patch: TicketReviewPatch, sprint?: string,
+): Promise<TicketReview | null> {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
+  const folders = kind === 'bug' ? [bugDir(sprint), bugDir(sprint, 'fixed')]
+    : [featDir(sprint), featDir(sprint, 'done')];
+  return withReviewLock(`${kind}:${id}`, async () => {
+    for (const folder of folders) {
+      const filePath = resolve(folder, `${id}.md`);
+      let content: string;
+      try { content = await readFile(filePath, 'utf8'); } catch { continue; }
+      const { review, changed } = applyReviewPatch(parseReviewSection(content), patch, new Date().toISOString());
+      if (changed) await writeFile(filePath, writeReviewSection(content, review), 'utf8');
+      return review;
+    }
+    return null;
+  });
 }

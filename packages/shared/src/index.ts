@@ -24,6 +24,13 @@ export {
   // Mutation schemas + types
   BugUpdateSchema,
 
+  // Founder review block (HappySeniors F3)
+  ReviewDecisionSchema,
+  ReviewWorkStatusSchema,
+  TicketReviewPatchSchema,
+  applyReviewPatch,
+  parseStoredReview,
+
   // Constants
   TEST_STATUS,
 
@@ -41,6 +48,10 @@ export type {
   BugUpdate,
   BugFile,
   FeatureFile,
+  TicketReview,
+  TicketReviewPatch,
+  ReviewDecision,
+  ReviewWorkStatus,
   HealthStatus,
   Annotation,
   AnnotationKind,

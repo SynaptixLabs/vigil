@@ -1,4 +1,5 @@
 import type { BugFile, FeatureFile, Bug, Feature, VIGILSession, BugUpdate } from '../types.js';
+import type { TicketReview, TicketReviewPatch } from '@synaptix/vigil-shared';
 
 export interface SprintInfo {
   id: string;
@@ -40,6 +41,10 @@ export interface StorageProvider {
   listFeatures(sprint?: string, status?: 'open' | 'done', includeArchived?: boolean): Promise<FeatureFile[]>;
   getFeature(featId: string, sprint?: string): Promise<FeatureFile | null>;
   writeFeature(feat: Feature, sprint?: string): Promise<string>;
+
+  // Founder review block (HappySeniors F3) — same store, bug or feature.
+  // Returns the stored block, or null when the ticket does not exist.
+  updateReview(kind: 'bug' | 'feature', id: string, patch: TicketReviewPatch, sprint?: string): Promise<TicketReview | null>;
 
   // Sessions
   writeSessionJson(session: VIGILSession): Promise<string>;

@@ -89,6 +89,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_bugs_hs_f2_session
 CREATE UNIQUE INDEX IF NOT EXISTS uq_features_hs_f2_session
   ON features (session_id) WHERE session_id LIKE 'hs-f2-%';
 
+-- HappySeniors F3: founder review block on bugs and features (same store).
+ALTER TABLE bugs ADD COLUMN IF NOT EXISTS review JSONB;
+ALTER TABLE features ADD COLUMN IF NOT EXISTS review JSONB;
+
 -- Sprint 07: Add annotations column if missing (migration for existing DBs)
 DO $$
 BEGIN

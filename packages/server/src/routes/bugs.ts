@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getStorage } from '../storage/index.js';
-import { BugUpdateSchema } from '@synaptix/vigil-shared';
+import { BugUpdateSchema, TicketReviewPatchSchema } from '@synaptix/vigil-shared';
 
 export const bugsRouter = Router();
 
@@ -37,24 +37,40 @@ bugsRouter.get('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/bugs/:id
+// PATCH /api/bugs/:id — status/severity/resolution, and (HappySeniors F3) an
+// optional `review` object that patches the founder review block.
+const BugPatchSchema = BugUpdateSchema.extend({ review: TicketReviewPatchSchema.optional() });
+
 bugsRouter.patch('/:id', async (req, res) => {
   const bugId = req.params.id;
   const sprint = req.query.sprint as string | undefined;
 
-  const result = BugUpdateSchema.safeParse(req.body);
+  const result = BugPatchSchema.safeParse(req.body);
   if (!result.success) {
     res.status(400).json({ error: 'Invalid update fields', details: result.error.issues });
     return;
   }
+  const { review: reviewPatch, ...fields } = result.data;
 
   try {
-    const updated = await getStorage().updateBug(bugId, result.data, sprint);
-    if (!updated) {
+    const storage = getStorage();
+    if (reviewPatch === undefined || Object.values(fields).some((value) => value !== undefined)) {
+      const updated = await storage.updateBug(bugId, fields, sprint);
+      if (!updated) {
+        res.status(404).json({ error: `Bug ${bugId} not found` });
+        return;
+      }
+    }
+    if (reviewPatch === undefined) {
+      res.json({ updated: true, bugId });
+      return;
+    }
+    const review = await storage.updateReview('bug', bugId, reviewPatch, sprint);
+    if (!review) {
       res.status(404).json({ error: `Bug ${bugId} not found` });
       return;
     }
-    res.json({ updated: true, bugId });
+    res.json({ updated: true, bugId, review });
   } catch (err) {
     console.error('[vigil-server] Error updating bug:', err);
     res.status(500).json({ error: 'Failed to update bug' });

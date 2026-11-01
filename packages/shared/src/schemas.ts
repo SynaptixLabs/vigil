@@ -137,6 +137,103 @@ export const BugUpdateSchema = z.object({
 });
 export type BugUpdate = z.infer<typeof BugUpdateSchema>;
 
+// ── Founder review block (HappySeniors F3) ──────────────────────────────────
+// One optional `review` block on a bug or feature in the SAME store: the
+// founder's decision and comment, and the implementer's work status + link.
+
+export const ReviewDecisionSchema = z.enum(['pending', 'approved', 'rejected']);
+export type ReviewDecision = z.infer<typeof ReviewDecisionSchema>;
+export const ReviewWorkStatusSchema = z.enum(['queued', 'in_progress', 'done']);
+export type ReviewWorkStatus = z.infer<typeof ReviewWorkStatusSchema>;
+
+export interface TicketReview {
+  decision: ReviewDecision;
+  founder_comment: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  work_status: ReviewWorkStatus | null;
+  implementation_link: string | null;
+  notified_at: string | null;
+  updated_at: string;
+}
+
+const httpLink = z.string().max(500).refine((value) => {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'https:' || url.protocol === 'http:') && !url.username && !url.password;
+  } catch {
+    return false;
+  }
+}, 'implementation_link must be an http(s) URL');
+
+/** PATCH body for a ticket's review block. Only these fields; `decided_at` and
+ * `updated_at` are server-set. `notified_at` is set-once (first write wins). */
+export const TicketReviewPatchSchema = z.object({
+  decision: ReviewDecisionSchema.optional(),
+  founder_comment: z.string().max(4000).nullable().optional(),
+  decided_by: z.string().max(200).nullable().optional(),
+  work_status: ReviewWorkStatusSchema.nullable().optional(),
+  implementation_link: httpLink.nullable().optional(),
+  notified_at: z.string().datetime({ offset: true }).nullable().optional(),
+}).strict();
+export type TicketReviewPatch = z.infer<typeof TicketReviewPatchSchema>;
+
+const REVIEW_FIELDS = ['decision', 'founder_comment', 'decided_by', 'work_status', 'implementation_link'] as const;
+
+/** Apply a review patch. Idempotent: the same patch applied twice changes
+ * nothing the second time (no timestamp moves). An approval with no work
+ * status queues the ticket; a rejection clears the work status. */
+export function applyReviewPatch(
+  current: TicketReview | null | undefined,
+  patch: TicketReviewPatch,
+  now: string,
+): { review: TicketReview; changed: boolean } {
+  const review: TicketReview = current ? { ...current } : {
+    decision: 'pending', founder_comment: null, decided_by: null, decided_at: null,
+    work_status: null, implementation_link: null, notified_at: null, updated_at: now,
+  };
+  let changed = !current;
+  for (const key of REVIEW_FIELDS) {
+    const value = patch[key];
+    if (value === undefined || review[key] === value) continue;
+    (review as unknown as Record<string, unknown>)[key] = value;
+    changed = true;
+    if (key === 'decision') {
+      review.decided_at = value === 'pending' ? null : now;
+      if (value === 'approved' && review.work_status === null && patch.work_status === undefined) {
+        review.work_status = 'queued';
+      }
+      if (value === 'rejected' && patch.work_status === undefined) review.work_status = null;
+    }
+  }
+  if (patch.notified_at !== undefined && review.notified_at === null && patch.notified_at !== null) {
+    review.notified_at = patch.notified_at;
+    changed = true;
+  }
+  if (changed) review.updated_at = now;
+  return { review, changed };
+}
+
+/** Parse a stored review block; malformed data reads as no block. */
+export function parseStoredReview(value: unknown): TicketReview | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const decision = ReviewDecisionSchema.safeParse(v.decision);
+  if (!decision.success || typeof v.updated_at !== 'string') return null;
+  const str = (x: unknown) => (typeof x === 'string' ? x : null);
+  const work = ReviewWorkStatusSchema.safeParse(v.work_status);
+  return {
+    decision: decision.data,
+    founder_comment: str(v.founder_comment),
+    decided_by: str(v.decided_by),
+    decided_at: str(v.decided_at),
+    work_status: work.success ? work.data : null,
+    implementation_link: str(v.implementation_link),
+    notified_at: str(v.notified_at),
+    updated_at: v.updated_at,
+  };
+}
+
 // ── Server/dashboard shared interfaces ───────────────────────────────────────
 
 export interface BugFile {
@@ -154,6 +251,7 @@ export interface BugFile {
   resolution?: string;
   raw: string;
   archivedAt?: string | null;
+  review?: TicketReview | null;
 }
 
 export interface FeatureFile {
@@ -163,8 +261,10 @@ export interface FeatureFile {
   priority: string;
   sprint: string;
   description?: string;
+  url?: string;
   raw: string;
   archivedAt?: string | null;
+  review?: TicketReview | null;
 }
 
 export interface HealthStatus {

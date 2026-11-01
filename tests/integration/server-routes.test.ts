@@ -21,6 +21,7 @@ const { mockStorage } = vi.hoisted(() => ({
     writeBug: vi.fn(),
     updateBug: vi.fn(),
     closeBug: vi.fn(),
+    updateReview: vi.fn(),
     // Features
     listFeatures: vi.fn(),
     getFeature: vi.fn(),
@@ -581,5 +582,75 @@ describe('POST /api/vigil/suggest', () => {
     expect(res.body).toHaveProperty('suggestion');
     expect(res.body.suggestion).toHaveProperty('confidence', 0);
     expect(res.body).toHaveProperty('model_used', 'mock');
+  });
+});
+
+// ── HappySeniors F3: founder review block ──
+
+describe('PATCH review block (F3)', () => {
+  beforeEach(() => vi.clearAllMocks());
+  const stored = {
+    decision: 'approved', founder_comment: 'go', decided_by: 'founder', decided_at: '2026-11-01T10:00:00.000Z',
+    work_status: 'queued', implementation_link: null, notified_at: null, updated_at: '2026-11-01T10:00:00.000Z',
+  };
+
+  it('patches a bug review only, without touching other bug fields', async () => {
+    mockStorage.updateReview.mockResolvedValue(stored);
+    const res = await request(app).patch('/api/bugs/BUG-001?sprint=19')
+      .send({ review: { decision: 'approved', founder_comment: 'go', decided_by: 'founder' } });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ updated: true, bugId: 'BUG-001', review: stored });
+    expect(mockStorage.updateBug).not.toHaveBeenCalled();
+    expect(mockStorage.updateReview).toHaveBeenCalledWith('bug', 'BUG-001',
+      { decision: 'approved', founder_comment: 'go', decided_by: 'founder' }, '19');
+  });
+
+  it('patches bug status and review together', async () => {
+    mockStorage.updateBug.mockResolvedValue(true);
+    mockStorage.updateReview.mockResolvedValue(stored);
+    const res = await request(app).patch('/api/bugs/BUG-001').send({ status: 'in_progress', review: { work_status: 'in_progress' } });
+    expect(res.status).toBe(200);
+    expect(mockStorage.updateBug).toHaveBeenCalledWith('BUG-001', { status: 'in_progress' }, undefined);
+  });
+
+  it('rejects unknown review fields and server-owned timestamps', async () => {
+    for (const review of [{ decided_at: '2026-11-01T10:00:00Z' }, { updated_at: 'x' }, { decision: 'maybe' },
+      { implementation_link: 'javascript:alert(1)' }]) {
+      const res = await request(app).patch('/api/bugs/BUG-001').send({ review });
+      expect(res.status).toBe(400);
+    }
+    expect(mockStorage.updateReview).not.toHaveBeenCalled();
+  });
+
+  it('404s when the bug does not exist', async () => {
+    mockStorage.updateReview.mockResolvedValue(null);
+    const res = await request(app).patch('/api/bugs/BUG-404').send({ review: { decision: 'rejected' } });
+    expect(res.status).toBe(404);
+  });
+
+  it('patches a feature review with the same fields', async () => {
+    mockStorage.updateReview.mockResolvedValue({ ...stored, implementation_link: 'https://github.com/o/r/pull/1' });
+    const res = await request(app).patch('/api/features/FEAT-002?sprint=19')
+      .send({ review: { work_status: 'done', implementation_link: 'https://github.com/o/r/pull/1' } });
+    expect(res.status).toBe(200);
+    expect(res.body.featId).toBe('FEAT-002');
+    expect(mockStorage.updateReview).toHaveBeenCalledWith('feature', 'FEAT-002',
+      { work_status: 'done', implementation_link: 'https://github.com/o/r/pull/1' }, '19');
+  });
+
+  it('feature PATCH accepts the review block only', async () => {
+    for (const body of [{ status: 'done' }, { review: { decision: 'approved' }, status: 'done' }, {}]) {
+      const res = await request(app).patch('/api/features/FEAT-002').send(body);
+      expect(res.status).toBe(400);
+    }
+    mockStorage.updateReview.mockResolvedValue(null);
+    expect((await request(app).patch('/api/features/FEAT-404').send({ review: {} })).status).toBe(404);
+  });
+
+  it('archive and restore still route to their own handlers', async () => {
+    mockStorage.archiveFeature.mockResolvedValue(true);
+    const res = await request(app).patch('/api/features/FEAT-002/archive');
+    expect(res.status).toBe(200);
+    expect(mockStorage.updateReview).not.toHaveBeenCalled();
   });
 });

@@ -1,11 +1,12 @@
 import { readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { listBugs, getBug, listFeatures, getFeature, listSessions, getSession } from '../filesystem/reader.js';
-import { writeBug, writeFeature, writeSessionJson, updateBug, closeBug, findF2Ticket } from '../filesystem/writer.js';
+import { writeBug, writeFeature, writeSessionJson, updateBug, closeBug, findF2Ticket, updateReview } from '../filesystem/writer.js';
 import { nextBugId, nextFeatId, currentBugCount, currentFeatCount } from '../filesystem/counter.js';
 import { getProjectRoot, getVigilDataDir, loadConfig } from '../config.js';
 import type { StorageProvider, SprintInfo, ProjectRecord, ProjectCreate, ProjectUpdate } from './types.js';
 import type { Bug, Feature, VIGILSession, BugFile, FeatureFile, BugUpdate } from '../types.js';
+import type { TicketReview, TicketReviewPatch } from '@synaptix/vigil-shared';
 
 // ── JSON-file project store (.vigil/projects.json) ────────────────────────────
 
@@ -61,6 +62,10 @@ export class FilesystemStorage implements StorageProvider {
 
   writeFeature(feat: Feature, sprint?: string): Promise<string> {
     return writeFeature(feat, sprint);
+  }
+
+  updateReview(kind: 'bug' | 'feature', id: string, patch: TicketReviewPatch, sprint?: string): Promise<TicketReview | null> {
+    return updateReview(kind, id, patch, sprint);
   }
 
   writeSessionJson(session: VIGILSession): Promise<string> {

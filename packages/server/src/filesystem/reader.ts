@@ -1,8 +1,17 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { getSprintDir, getVigilDataDir, loadConfig } from '../config.js';
-import { VIGILSessionSchema } from '@synaptix/vigil-shared';
+import { VIGILSessionSchema, parseStoredReview } from '@synaptix/vigil-shared';
+import type { TicketReview } from '@synaptix/vigil-shared';
 import type { BugFile, FeatureFile, VIGILSession } from '@synaptix/vigil-shared';
+
+/** The founder review block lives in the ticket's own markdown as a single-line
+ * JSON fence under `## Review` (HappySeniors F3), so it moves with the file. */
+export function parseReviewSection(content: string): TicketReview | null {
+  const match = content.match(/\n## Review\n```json\n(.+)\n```/);
+  if (!match) return null;
+  try { return parseStoredReview(JSON.parse(match[1])); } catch { return null; }
+}
 
 function parseBugFile(filename: string, content: string): BugFile {
   const id = filename.replace('.md', '');
@@ -34,6 +43,7 @@ function parseBugFile(filename: string, content: string): BugFile {
     regressionTest: regressionMatch?.[1]?.trim(),
     resolution: resolutionMatch?.[1]?.trim(),
     raw: content,
+    review: parseReviewSection(content),
   };
 }
 
@@ -44,6 +54,7 @@ function parseFeatureFile(filename: string, content: string): FeatureFile {
   const priorityMatch = content.match(/^## Priority: (.+)$/m);
   const sprintMatch = content.match(/^## Sprint: (.+)$/m);
   const descMatch = content.match(/## Description\n([\s\S]*?)(?=\n## |$)/);
+  const urlMatch = content.match(/## URL\n([\s\S]*?)(?=\n## |$)/);
 
   return {
     id,
@@ -52,7 +63,9 @@ function parseFeatureFile(filename: string, content: string): FeatureFile {
     priority: priorityMatch?.[1]?.trim() ?? 'ENHANCEMENT',
     sprint: sprintMatch?.[1]?.trim() ?? 'unknown',
     description: descMatch?.[1]?.trim(),
+    url: urlMatch?.[1]?.trim(),
     raw: content,
+    review: parseReviewSection(content),
   };
 }
 

@@ -4,6 +4,8 @@ import { TEST_STATUS } from '../types.js';
 import type { StorageProvider, SprintInfo, ProjectRecord, ProjectCreate, ProjectUpdate } from './types.js';
 import { VIGILSessionSchema } from '../types.js';
 import type { Bug, Feature, VIGILSession, BugFile, FeatureFile, BugUpdate } from '../types.js';
+import { applyReviewPatch, parseStoredReview } from '@synaptix/vigil-shared';
+import type { TicketReview, TicketReviewPatch } from '@synaptix/vigil-shared';
 
 function formatDate(ts: number): string {
   return new Date(ts).toISOString().split('T')[0];
@@ -37,7 +39,9 @@ ${resolution ? `\n## Resolution\n${resolution}` : ''}`;
 
   const archivedAt = row.archived_at ? (row.archived_at as Date).toISOString() : null;
 
-  return { id, title, status, severity, sprint, discovered, stepsToReproduce, expected, actual, regressionTest, resolution, raw, archivedAt };
+  const url = (row.url as string | null | undefined) ?? undefined;
+  const review = parseStoredReview(row.review);
+  return { id, title, status, severity, sprint, discovered, stepsToReproduce, expected, actual, url, regressionTest, resolution, raw, archivedAt, review };
 }
 
 function rowToFeatureFile(row: Record<string, unknown>): FeatureFile {
@@ -57,7 +61,9 @@ ${description ? `\n## Description\n${description}` : ''}`;
 
   const archivedAt = row.archived_at ? (row.archived_at as Date).toISOString() : null;
 
-  return { id, title, status, priority, sprint, description, raw, archivedAt };
+  const url = (row.url as string | null | undefined) ?? undefined;
+  const review = parseStoredReview(row.review);
+  return { id, title, status, priority, sprint, description, url, raw, archivedAt, review };
 }
 
 const SESSION_SELECT_COLS = 'id, name, project_id, started_at, ended_at, clock, recordings, snapshots, bugs, features, annotations, sprint, description, archived_at';
@@ -258,6 +264,29 @@ export class NeonStorage implements StorageProvider {
 
     const result = await pool.query(query, values);
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  /** Optimistic read-modify-write on the JSONB review column: the UPDATE only
+   * lands when the block is still what was read; a concurrent writer retries. */
+  async updateReview(kind: 'bug' | 'feature', id: string, patch: TicketReviewPatch, sprint?: string): Promise<TicketReview | null> {
+    const pool = getPool();
+    const table = kind === 'bug' ? 'bugs' : 'features';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const read = sprint
+        ? await pool.query(`SELECT review FROM ${table} WHERE id = $1 AND sprint = $2`, [id, sprint])
+        : await pool.query(`SELECT review FROM ${table} WHERE id = $1`, [id]);
+      if (read.rows.length === 0) return null;
+      const before = read.rows[0].review ?? null;
+      const { review, changed } = applyReviewPatch(parseStoredReview(before), patch, new Date().toISOString());
+      if (!changed) return review;
+      const result = await pool.query(
+        `UPDATE ${table} SET review = $1::jsonb, updated_at = now()
+         WHERE id = $2 AND review IS NOT DISTINCT FROM $3::jsonb`,
+        [JSON.stringify(review), id, before === null ? null : JSON.stringify(before)],
+      );
+      if (result.rowCount !== null && result.rowCount > 0) return review;
+    }
+    throw new Error(`Review update for ${id} kept conflicting`);
   }
 
   async closeBug(bugId: string, resolution: string, keepTest: boolean, sprint?: string): Promise<boolean> {
